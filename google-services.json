@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "520794525951",
+    "project_id": "growshelby-b541e",
+    "storage_bucket": "growshelby-b541e.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:520794525951:android:b1bdaa998ba43706fabcca",
+        "android_client_info": {
+          "package_name": "com.app.growshelby"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7yJ-SQTEur1M1-Za2auefHDcOgC68HEo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:520794525951:android:cb175490e7ac049dfabcca",
+        "android_client_info": {
+          "package_name": "com.naim.growshelby"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA7yJ-SQTEur1M1-Za2auefHDcOgC68HEo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

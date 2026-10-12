@@ -1,0 +1,71 @@
+{
+  "expo": {
+    "name": "Growshelby",
+    "slug": "growshelby",
+    "version": "1.0.0",
+    "scheme": "growshelby",
+    "icon": "./assets/BETA (1).png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash_new.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "notification": {
+      "icon": "./assets/notification-icon.png",
+      "color": "#C6E615"
+    },
+    "android": {
+      "package": "com.naim.growshelby",
+      "googleServicesFile": "./google-services.json",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/BETA (1).png",
+        "backgroundColor": "#bbe319"
+      },
+      "permissions": [
+        "VIBRATE",
+        "android.permission.INTERNET",
+        "android.permission.CAMERA",
+        "REQUEST_INSTALL_PACKAGES",
+        "READ_EXTERNAL_STORAGE",
+        "WRITE_EXTERNAL_STORAGE",
+        "android.permission.POST_NOTIFICATIONS"
+      ]
+    },
+    "ios": {
+      "infoPlist": {
+        "NSAppTransportSecurity": {
+          "NSAllowsArbitraryLoads": true
+        }
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-font",
+      [
+        "expo-build-properties",
+        {
+          "android": {
+            "usesCleartextTraffic": true
+          }
+        }
+      ],
+      "expo-notifications"
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "55cc6dc3-1187-4d91-acf3-2ef17eb02468"
+      }
+    },
+    "owner": "growshelbydev"
+  }
+}
