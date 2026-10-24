@@ -1,43 +1,108 @@
 import { useState, useEffect, useRef } from 'react';
-import { Platform, Modal, View, Text, TouchableOpacity } from 'react-native';
+import { Platform, Modal, View, Text, TouchableOpacity, DeviceEventEmitter } from 'react-native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { FontAwesome5 } from '@expo/vector-icons';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import notifee, { AndroidStyle, EventType, AndroidImportance } from '@notifee/react-native';
+import { useRouter } from 'expo-router'; 
 
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
+    shouldShowAlert: false, 
+    shouldPlaySound: false,
+    shouldSetBadge: false,
   }),
 });
 
-export default function PushNotification() {
+export default function PushNotification({ onNotificationClick }) {
   const [expoPushToken, setExpoPushToken] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   
   const notificationListener = useRef();
-  const responseListener = useRef();
+  const router = useRouter(); 
+
+  const handleNotificationTap = async (data) => {
+    if (data && data.guideId) {
+      try {
+        const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          body: JSON.stringify({ action: 'import_guide', code: data.guideId })
+        });
+        const result = await response.json();
+
+        if (result.success && result.guide) {
+          await AsyncStorage.setItem('@temp_community_data', JSON.stringify({ ...result.guide, isFromExplore: true }));
+          router.push('/community');
+        }
+      } catch (error) {
+        console.log("Error opening notification guide:", error);
+      }
+    }
+  };
 
   useEffect(() => {
     checkAndRequestPermission();
 
-    notificationListener.current = Notifications.addNotificationReceivedListener(notification => {
-      console.log('Foreground Notification Received:', notification);
+    notifee.getInitialNotification().then(initialNotification => {
+      if (initialNotification) {
+        const data = initialNotification.notification.data;
+        setTimeout(() => handleNotificationTap(data), 1000); 
+      }
     });
 
-    responseListener.current = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('Notification Clicked:', response);
+    // 🚀 ফোরগ্রাউন্ড (ওপেন থাকা) অবস্থায় ডাটা-অনলি মেসেজ ধরা
+    notificationListener.current = Notifications.addNotificationReceivedListener(async (notification) => {
+      const data = notification.request.trigger.remoteMessage?.data || notification.request.content.data;
+
+      if (data && data.isSilentPush) {
+        if (data.guideId) {
+          DeviceEventEmitter.emit('new_unread_message', data.guideId);
+        }
+
+        const channelId = await notifee.createChannel({
+          id: 'squad_heads_up_final', 
+          name: 'Study Squad Alerts',
+          vibration: true,
+          importance: AndroidImportance.HIGH,
+          sound: 'default',
+        });
+
+        // 🚀 Notifee দিয়ে ডাটা থেকে টাইটেল ও বডি শো করানো
+        await notifee.displayNotification({
+          id: notification.request.identifier, 
+          title: data.title,
+          body: data.body,
+          data: data,
+          android: {
+            channelId,
+            largeIcon: data.senderAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+            circularLargeIcon: true, 
+            pressAction: {
+              id: 'default',
+            },
+          },
+        });
+      }
+    });
+
+    const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
+      if (type === EventType.PRESS) {
+        const data = detail.notification.data;
+        handleNotificationTap(data); 
+        if (data && onNotificationClick) {
+          onNotificationClick(data);
+        }
+      }
     });
 
     return () => {
       if (notificationListener.current) {
         Notifications.removeNotificationSubscription(notificationListener.current);
       }
-      if (responseListener.current) {
-        Notifications.removeNotificationSubscription(responseListener.current);
-      }
+      unsubscribe();
     };
   }, []);
 
@@ -70,11 +135,12 @@ export default function PushNotification() {
   const generateAndSendToken = async () => {
     try {
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('default', {
-          name: 'default',
+        await Notifications.setNotificationChannelAsync('squad_heads_up_final', {
+          name: 'Study Squad Alerts',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
           lightColor: '#FF231F7C',
+          sound: 'default',
         });
       }
 
@@ -89,25 +155,27 @@ export default function PushNotification() {
       const token = tokenResponse.data;
       
       setExpoPushToken(token);
-      sendTokenToBackend(token);
+      const userEmail = await AsyncStorage.getItem('@current_user_id');
+      sendTokenToBackend(token, userEmail);
       
     } catch (e) {
       console.log('❌ Token generation error:', e);
     }
   };
 
-  const sendTokenToBackend = async (token) => {
+  const sendTokenToBackend = async (token, userEmail) => {
+    if(!userEmail || userEmail === 'guest') return; 
     try {
-      // 🚀 Endpoint Fixed
       const SERVER_URL = 'https://growshelby-api.vercel.app/api/save_token'; 
 
       const response = await fetch(SERVER_URL, {
         method: 'POST',
         headers: { 
           Accept: 'application/json',
-          'Content-Type': 'application/json' 
+          'Content-Type': 'application/json',
+          'x-api-key': 'Growshelby_MVP_Secret_2026' 
         },
-        body: JSON.stringify({ token: token }),
+        body: JSON.stringify({ action: 'save_push_token', token: token, email: userEmail }),
       });
       
       const resultText = await response.text();

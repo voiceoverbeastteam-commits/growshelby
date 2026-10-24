@@ -25,7 +25,7 @@
         "foregroundImage": "./assets/BETA (1).png",
         "backgroundColor": "#bbe319"
       },
-      "permissions": [
+    "permissions": [
         "VIBRATE",
         "android.permission.INTERNET",
         "android.permission.CAMERA",
@@ -52,9 +52,9 @@
             "usesCleartextTraffic": true
           }
         }
+     ],
+     "expo-notifications"
       ],
-      "expo-notifications"
-    ],
     "experiments": {
       "typedRoutes": true
     },
@@ -66,6 +66,12 @@
         "projectId": "55cc6dc3-1187-4d91-acf3-2ef17eb02468"
       }
     },
-    "owner": "growshelbydev"
+    "owner": "growshelbydev",
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+    "updates": {
+      "url": "https://u.expo.dev/55cc6dc3-1187-4d91-acf3-2ef17eb02468"
+    }
   }
 }

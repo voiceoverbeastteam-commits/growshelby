@@ -7,18 +7,21 @@
     "development": {
       "developmentClient": true,
       "distribution": "internal",
-      "node": "20.19.4"
+      "node": "20.19.4",
+      "channel": "development"
     },
     "preview": {
       "distribution": "internal",
       "android": {
         "buildType": "apk"
       },
-      "node": "20.19.4"
+      "node": "20.19.4",
+      "channel": "preview"
     },
     "production": {
       "autoIncrement": true,
-      "node": "20.19.4"
+      "node": "20.19.4",
+      "channel": "production"
     }
   },
   "submit": {

@@ -3,7 +3,7 @@ import { View, Text, TouchableOpacity, Alert, TextInput, KeyboardAvoidingView, P
 import { FontAwesome5 } from '@expo/vector-icons';
 import { Camera } from 'expo-camera'; 
 import { processWithMasterMind } from './AiMasterMind'; 
-import AsyncStorage from '@react-native-async-storage/async-storage'; // 🚀 এটি নতুন করে যুক্ত করা হয়েছে
+import AsyncStorage from '@react-native-async-storage/async-storage'; 
 
 const AI_STEPS = [
   { text: "এআই তোমার দেওয়া ডেটা পড়া শুরু করেছে...", icon: "eye" },
@@ -158,7 +158,7 @@ export default function AiBadassContentGenerationEngine({ onLessonGenerated, onC
     setIsTextInputVisible(false);
   };
 
-  // 🚀 ডাটাবেসে কয়েন আপডেট করার ফাংশনটি এখানে অ্যাড করা হয়েছে
+  // 🚀 ডাটাবেসে কয়েন আপডেট করার ফাংশনটি এখানে অ্যাড করা হয়েছে
   const updateCoinsInDatabase = async (costAmount) => {
     try {
       const userEmail = await AsyncStorage.getItem('@current_user_id'); 
@@ -189,7 +189,7 @@ export default function AiBadassContentGenerationEngine({ onLessonGenerated, onC
         return; 
     }
 
-    // 🚀 অ্যাপে এবং সার্ভারে একসাথেই কয়েন কেটে নেওয়া হচ্ছে
+    // 🚀 অ্যাপে এবং সার্ভারে একসাথেই কয়েন কেটে নেওয়া হচ্ছে
     setUserCoins(prev => prev - 10);
     updateCoinsInDatabase(10); 
     setGenerationState('working');
@@ -216,23 +216,19 @@ export default function AiBadassContentGenerationEngine({ onLessonGenerated, onC
 
     } catch (error) {
       setGenerationState('server_overloaded');
-      // 🚀 সার্ভার বা নেটওয়ার্ক ফেইল করলে কয়েন রিফান্ড করে দেওয়া হবে
+      // 🚀 সার্ভার বা নেটওয়ার্ক ফেইল করলে কয়েন রিফান্ড করে দেওয়া হবে
       setUserCoins(prev => prev + 10); 
-      updateCoinsInDatabase(-10); // মাইনাস দিয়ে সার্ভারে কয়েন ফেরত পাঠানো হলো
+      updateCoinsInDatabase(-10); // মাইনাস দিয়ে সার্ভারে কয়েন ফেরত পাঠানো হলো
     }
   };
 
   const handlePremiumUpgrade = () => {
     const formattedNumber = waNumber.replace(/[^0-9]/g, ''); 
-    const url = `whatsapp://send?phone=${formattedNumber}&text=${encodeURIComponent(waMessage)}`;
+    const url = `https://wa.me/${formattedNumber}?text=${encodeURIComponent(waMessage)}`;
     
-    Linking.canOpenURL(url).then(supported => {
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        Alert.alert("দুঃখিত", "আপনার ফোনে হোয়াটসঅ্যাপ ইনস্টল করা নেই।");
-      }
-    }).catch(err => console.error("An error occurred", err));
+    Linking.openURL(url).catch(err => {
+      Alert.alert("দুঃখিত", "হোয়াটসঅ্যাপ ওপেন করতে সমস্যা হচ্ছে।");
+    });
   };
 
   const isWorking = generationState === 'working' || generationState === 'success';

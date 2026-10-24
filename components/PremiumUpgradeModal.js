@@ -37,15 +37,11 @@ export default function PremiumUpgradeModal({ visible, onClose }) {
 
   const handlePremiumUpgrade = () => {
     const formattedNumber = waNumber.replace(/[^0-9]/g, ''); 
-    const url = `whatsapp://send?phone=${formattedNumber}&text=${encodeURIComponent(waMessage)}`;
+    const url = `https://wa.me/${formattedNumber}?text=${encodeURIComponent(waMessage)}`;
     
-    Linking.canOpenURL(url).then(supported => {
-      if (supported) {
-        Linking.openURL(url);
-      } else {
-        Alert.alert("দুঃখিত", "আপনার ফোনে হোয়াটসঅ্যাপ ইনস্টল করা নেই।");
-      }
-    }).catch(err => console.error("An error occurred", err));
+    Linking.openURL(url).catch(err => {
+      Alert.alert("দুঃখিত", "হোয়াটসঅ্যাপ ওপেন করতে সমস্যা হচ্ছে।");
+    });
   };
 
   return (

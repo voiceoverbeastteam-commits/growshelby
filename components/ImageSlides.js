@@ -1,16 +1,39 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { View, Image, Animated } from 'react-native';
 
+// 🚀 ব্যানার লোডিং শিমার ইফেক্ট
+const SkeletonSlide = () => {
+  const shimmerAnim = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ opacity: shimmerAnim }} className="w-full h-52 bg-[#F5F5F5] rounded-2xl border-2 border-[#E5E5E5] border-b-[5px] border-b-[#CECECE] items-center justify-center">
+       <View className="w-32 h-4 bg-[#E5E5E5] rounded-full mb-3" />
+       <View className="w-20 h-4 bg-[#E5E5E5] rounded-full" />
+    </Animated.View>
+  );
+};
+
 export default function ImageSlides({ refreshTrigger }) {
   const [slides, setSlides] = useState([]);
+  const [isLoading, setIsLoading] = useState(true); // 🔥 ডাটা আসার আগ পর্যন্ত true থাকবে
   
-  const [currentIndex, setCurrentIndex] = useState(0); 
+  const [currentIndex, setCurrentIndex] = useState(0);
   const [nextIndex, setNextIndex] = useState(1);       
   
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  useEffect(() => {
+ useEffect(() => {
     const fetchBanners = () => {
+      setIsLoading(true);
       fetch('https://growshelby-api.vercel.app/api/get_slides')
         .then(response => response.json())
         .then(data => {
@@ -23,7 +46,8 @@ export default function ImageSlides({ refreshTrigger }) {
             fadeAnim.setValue(0);
           }
         })
-        .catch(error => console.error("Error fetching slides:", error));
+       .catch(error => console.error("Error fetching slides:", error))
+        .finally(() => setIsLoading(false)); // 🔥 ডাটা চলে আসলে শিমার অফ হয়ে যাবে
     };
 
     fetchBanners();
@@ -53,10 +77,10 @@ export default function ImageSlides({ refreshTrigger }) {
   }, [slides, nextIndex, fadeAnim]);
 
   return (
-    // এখানে mt-5 এর বদলে mt-2 দেওয়া হয়েছে যাতে উপরের স্পেস কমে যায়
     <View className="px-5 mt-2">
-      
-      {slides.length > 0 && (
+      {isLoading ? (
+        <SkeletonSlide />
+      ) : slides.length > 0 ? (
         <View className="w-full h-52 bg-white rounded-2xl overflow-hidden border-2 border-[#E5E5E5] border-b-[5px] border-b-[#CECECE]">
           
           <Image
@@ -87,8 +111,7 @@ export default function ImageSlides({ refreshTrigger }) {
             })}
           </View>
         </View>
-      )}
-
+      ) : null}
     </View>
   );
 }

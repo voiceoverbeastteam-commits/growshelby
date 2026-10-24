@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useCallback } from 'react';
-import { View, ScrollView, RefreshControl, AppState, Modal, Alert, TextInput, TouchableOpacity, Text, KeyboardAvoidingView, Platform } from 'react-native';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { View, ScrollView, RefreshControl, AppState, Modal, Alert, TextInput, TouchableOpacity, Text, KeyboardAvoidingView, Platform, Animated, Image } from 'react-native';
+import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 
@@ -9,17 +10,44 @@ import MaintainanceScreen from '../components/MaintainanceScreen';
 
 import TopBar from '../components/TopBar';
 import ImageSlides from '../components/ImageSlides';
-import DailyChallenge from '../components/DailyChallenge';
 import Bottombar from '../components/Bottombar';
-import PoraShuruKorun from '../components/PoraShuruKorun'; 
+import PorarPageEyeComfort from '../components/PorarPageEyeComfort';
 
-import AiBadassContentGenerationEngine from '../components/AiBadassContentGenerationEngine'; 
 import { runNetworkDiagnostic } from '../components/AiMasterMind';
 import SignUpLoginPage from '../components/SignUpLoginPage';
+import PushNotification from '../components/PushNotification'; // 🚀 পুশ নোটিফিকেশন কম্পোনেন্ট ইমপোর্ট করা হলো
+
 
 let cachedChallenges = [];
 let cachedUserCoins = 50;
 let currentUserId = 'default_user'; 
+
+// 🚀 Skeleton Loading Card (ইউটিউবের মতো শিমার ইফেক্ট)
+const SkeletonCard = () => {
+  const shimmerAnim = useRef(new Animated.Value(0.4)).current;
+
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+
+ return (
+    <Animated.View style={{ opacity: shimmerAnim }} className="mb-8">
+      <View className="w-full aspect-[16/9] bg-[#E5E5E5] rounded-xl" />
+      <View className="flex-row mt-3 px-1">
+        <View className="w-11 h-11 rounded-full bg-[#E5E5E5] mr-3" />
+        <View className="flex-1 mt-1">
+          <View className="h-4 bg-[#E5E5E5] rounded-full w-3/4 mb-2.5" />
+          <View className="h-3 bg-[#E5E5E5] rounded-full w-1/2" />
+        </View>
+      </View>
+    </Animated.View>
+  );
+};
 
 export default function Home() {
   const [showSplash, setShowSplash] = useState(true);
@@ -32,11 +60,15 @@ export default function Home() {
   const [refreshing, setRefreshing] = useState(false);
   const [refreshCount, setRefreshCount] = useState(0);
 
-  const [isAiModalVisible, setAiModalVisible] = useState(false);
   const [isLessonVisible, setLessonVisible] = useState(false);
   const [selectedLesson, setSelectedLesson] = useState(null);
 
   const [activeTab, setActiveTab] = useState('in_progress');
+
+  const [exploreGuides, setExploreGuides] = useState([]);
+  const [isExploreLoading, setIsExploreLoading] = useState(true);
+  const [exploreCategory, setExploreCategory] = useState('সব');
+  const [dynamicCategories, setDynamicCategories] = useState(['সব']); // 🚀 ডাইনামিক ক্যাটাগরি স্টেট
 
   const [userCoins, setUserCoins] = useState(cachedUserCoins);
   const [challenges, setChallenges] = useState(cachedChallenges);
@@ -48,38 +80,50 @@ export default function Home() {
   const [editCardId, setEditCardId] = useState(null);
   const [editCardName, setEditCardName] = useState('');
 
-  // 🚀 স্প্ল্যাশ চলাকালীনই সার্ভার মেইনটেন্যান্স চেক করার ফাংশন
+  // 🚀 স্ক্রল এনিমেশনের জন্য
+  const translateY = useRef(new Animated.Value(0)).current;
+  const lastScrollY = useRef(0);
+
+  const handleScroll = (event) => {
+    const currentScrollY = event.nativeEvent.contentOffset.y;
+    
+    if (currentScrollY <= 0) {
+      // স্ক্রল একদম উপরে থাকলে বার দেখাও
+      Animated.timing(translateY, { toValue: 0, duration: 250, useNativeDriver: true }).start();
+    } else if (currentScrollY > lastScrollY.current + 8) {
+      // নিচের দিকে স্ক্রল করলে হাইড করো (150px নিচে পাঠাও)
+      Animated.timing(translateY, { toValue: 150, duration: 250, useNativeDriver: true }).start();
+    } else if (currentScrollY < lastScrollY.current - 8) {
+      // উপরের দিকে স্ক্রল করলে আবার শো করো
+      Animated.timing(translateY, { toValue: 0, duration: 250, useNativeDriver: true }).start();
+    }
+    
+    lastScrollY.current = currentScrollY;
+  };
+
+ // 🚀 স্প্ল্যাশ চলাকালীনই সার্ভার মেইনটেন্যান্স চেক করার ফাংশন (Non-blocking)
   useEffect(() => {
     let isMounted = true;
+    setIsMaintenanceChecked(true); // 🚀 সাথে সাথে অ্যাপ আনব্লক করে দিলাম!
+    
     const checkServerMaintenance = async () => {
       try {
         const response = await fetch('https://growshelby-api.vercel.app/api/get_settings');
         const data = await response.json();
         
-        if (isMounted) {
-          if (data.isMaintenance) {
-            setIsMaintenance(true);
-            setMaintenanceEndTime(data.maintenanceEndTime);
-          } else {
-            setIsMaintenance(false);
-          }
+        if (isMounted && data && data.isMaintenance) {
+          setIsMaintenance(true);
+          setMaintenanceEndTime(data.maintenanceEndTime);
         }
       } catch (error) {
-        console.log("Initial maintenance check error:", error);
-      } finally {
-        if (isMounted) setIsMaintenanceChecked(true);
+        console.log("Maintenance check error:", error);
       }
     };
 
-    checkServerMaintenance();
-
-    const fallbackTimer = setTimeout(() => {
-      if (isMounted) setIsMaintenanceChecked(true);
-    }, 3500);
+    checkServerMaintenance(); // ব্যাকগ্রাউন্ডে এপিআই কল হবে, অ্যাপ আটকে থাকবে না
 
     return () => {
       isMounted = false;
-      clearTimeout(fallbackTimer);
     };
   }, []);
 
@@ -136,11 +180,64 @@ export default function Home() {
     }, [isLoggedIn])
   );
 
-  useEffect(() => {
+ useEffect(() => {
     runNetworkDiagnostic();
   }, []);
 
-  useEffect(() => {
+ // 🚀 এক্সপ্লোর ফিড লোড করার ফাংশন (YouTube Style SWR)
+  const loadExploreGuides = async () => {
+    // 🚀 ম্যাজিক ফিক্স: যদি স্টেটে আগে থেকেই ডেটা থাকে, তবে শিমার দেখাবে না (সাইলেন্ট লোড হবে)।
+    // শুধুমাত্র প্রথমবার অ্যাপে ঢোকার সময় (যখন ক্যাশ একদম ফাঁকা) শিমার দেখাবে।
+    if (exploreGuides.length === 0) {
+      setIsExploreLoading(true);
+    }
+    
+    try {
+      const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        body: JSON.stringify({ action: 'fetch_explore_channels' })
+      });
+      const data = await response.json();
+      if (data.success && data.channels) {
+        // 🚀 কমিউনিটি র‍্যাঙ্কিং (বেশি রেটিং ও মেম্বার উপরে)
+        const sortedChannels = data.channels.sort((a, b) => {
+          const scoreA = ((a.averageRating || 0) * 10) + (a.membersCount || 1);
+          const scoreB = ((b.averageRating || 0) * 10) + (b.membersCount || 1);
+          return scoreB - scoreA;
+        });
+        setExploreGuides(sortedChannels);
+
+        // 🚀 ক্যাটাগরি র‍্যাঙ্কিং ম্যাজিক (যে টার্গেটের কমিউনিটি বেশি, সেটা আগে আসবে)
+        const categoryCounts = {};
+        sortedChannels.forEach(guide => {
+          const niche = guide.niche;
+          // গারবেজ ডাটা ফিল্টার করে শুধু আসল ক্যাটাগরিগুলো কাউন্ট করবো
+          if (niche && niche !== 'সাধারণ শিক্ষার্থী' && niche !== 'আমার কমিউনিটি') {
+            categoryCounts[niche] = (categoryCounts[niche] || 0) + 1;
+          }
+        });
+
+        // কাউন্ট অনুযায়ী বড় থেকে ছোট সর্ট করা
+        const sortedCategories = Object.keys(categoryCounts).sort((a, b) => categoryCounts[b] - categoryCounts[a]);
+        
+        // 'সব' সবসময় প্রথমে থাকবে, তারপর র্যাঙ্কিং করা ক্যাটাগরিগুলো
+        setDynamicCategories(['সব', ...sortedCategories]);
+      }
+    } catch (error) {
+      console.log('Error fetching explore guides:', error);
+    } finally { 
+      setIsExploreLoading(false); 
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      if (isDataLoaded) loadExploreGuides();
+    }, [isDataLoaded])
+  );
+
+ useEffect(() => {
     const loadLocalData = async () => {
       try {
         const loggedInStatus = await AsyncStorage.getItem('@is_logged_in');
@@ -151,13 +248,11 @@ export default function Home() {
           const uid = await AsyncStorage.getItem('@current_user_id') || 'default_user';
           currentUserId = uid;
 
-          const resetCoins = await checkDailyReset(uid);
-
+          // 🚀 ১. আগে লোকাল স্টোরেজ থেকে বইগুলো ইনস্ট্যান্টলি লোড করবো
           const savedNotebooks = await AsyncStorage.getItem(`@my_notebooks_${uid}`);
           if (savedNotebooks !== null) {
-            const parsed = JSON.parse(savedNotebooks);
-            setChallenges(parsed);
-            cachedChallenges = parsed;
+            setChallenges(JSON.parse(savedNotebooks));
+            cachedChallenges = JSON.parse(savedNotebooks);
           } else if (uid === 'default_user') {
             const oldNotebooks = await AsyncStorage.getItem('@my_notebooks');
             if (oldNotebooks !== null) {
@@ -166,34 +261,37 @@ export default function Home() {
             } else {
               setChallenges([]);
             }
-          } else {
-            setChallenges([]);
           }
 
-          if (resetCoins !== null) {
-            setUserCoins(resetCoins);
-          } else {
-            const savedCoins = await AsyncStorage.getItem(`@user_coins_${uid}`);
-            if (savedCoins !== null) {
-              setUserCoins(parseInt(savedCoins));
-              cachedUserCoins = parseInt(savedCoins);
-            } else if (uid === 'default_user') {
-              const oldCoins = await AsyncStorage.getItem('@user_coins');
-              if (oldCoins !== null) {
-                setUserCoins(parseInt(oldCoins));
-                cachedUserCoins = parseInt(oldCoins);
-              } else {
-                setUserCoins(50);
-              }
+          // 🚀 ২. এরপর লোকাল স্টোরেজ থেকে কয়েন ইনস্ট্যান্টলি লোড করবো
+          const savedCoins = await AsyncStorage.getItem(`@user_coins_${uid}`);
+          if (savedCoins !== null) {
+            setUserCoins(parseInt(savedCoins));
+            cachedUserCoins = parseInt(savedCoins);
+          } else if (uid === 'default_user') {
+            const oldCoins = await AsyncStorage.getItem('@user_coins');
+            if (oldCoins !== null) {
+              setUserCoins(parseInt(oldCoins));
+              cachedUserCoins = parseInt(oldCoins);
             } else {
               setUserCoins(50);
             }
+          } else {
+            setUserCoins(50);
           }
+
+          // 🚀 ৩. ব্যাকগ্রাউন্ডে সার্ভার থেকে কয়েন চেক করতে পাঠাবো (কোনো await নেই, তাই অ্যাপ আটকে থাকবে না!)
+          checkDailyReset(uid).then(serverCoins => {
+            if (serverCoins !== null) {
+              setUserCoins(serverCoins);
+              cachedUserCoins = serverCoins;
+            }
+          });
         }
       } catch (error) {
         console.error("ডাটা লোড করতে সমস্যা হয়েছে:", error);
       } finally {
-        setIsDataLoaded(true); 
+        setIsDataLoaded(true); // 🚀 সব কাজ শেষ, সাথে সাথে স্প্ল্যাশ স্ক্রিন রিমুভ!
       }
     };
 
@@ -249,14 +347,27 @@ export default function Home() {
     return () => subscription.remove();
   }, []);
 
-  const handleGenerateNewCard = (newCardData) => {
-    setChallenges(prev => [newCardData, ...prev]);
-    setActiveTab('in_progress');
+const handleStartReading = (lessonItem) => {
+    setTimeout(() => {
+      setSelectedLesson({ ...lessonItem, isFromExplore: true });
+      setLessonVisible(true);
+    }, 50);
   };
 
-  const handleStartReading = (lessonItem) => {
-    setSelectedLesson(lessonItem);
-    setLessonVisible(true);
+  // 🚀 Push Notification এ ক্লিক করলে নির্দিষ্ট কমিউনিটি ওপেন করার ম্যাজিক ফাংশন
+  const handleNotificationClick = (data) => {
+    if (data && data.guideId) {
+      // লোকাল চ্যালেঞ্জ বা এক্সপ্লোর ফিড থেকে কমিউনিটিটি খুঁজে বের করা
+      const targetCommunity = challenges.find(c => c.shareCode === data.guideId || c.channelId === data.guideId) 
+                           || exploreGuides.find(c => c.shareCode === data.guideId || c.channelId === data.guideId);
+      
+      if (targetCommunity) {
+        handleStartReading(targetCommunity);
+      } else {
+        // যদি লিস্টে না থাকে, তবু সরাসরি ওপেন করার জন্য ডামি ডেটা তৈরি করা
+        handleStartReading({ channelId: data.guideId, notebookName: "কমিউনিটি চ্যাট" });
+      }
+    }
   };
 
   const handleCompleteLesson = (originalLesson, failedItems) => {
@@ -304,7 +415,7 @@ export default function Home() {
 
   const handleSaveEdit = () => {
     if (editCardName.trim() === '') {
-      Alert.alert("সতর্কতা", "নোটবুকের নাম ফাঁকা রাখা যাবেবিধা!");
+      Alert.alert("সতর্কতা", "নোটবুকের নাম ফাঁকা রাখা যাবে না!");
       return;
     }
     setChallenges(prev => prev.map(c =>
@@ -318,10 +429,8 @@ export default function Home() {
   const inProgressChallenges = challenges.filter(c => c.status === 'in_progress' && c.id !== selectedLesson?.id);
   const nextChallenge = inProgressChallenges.length > 0 ? inProgressChallenges[0] : null;
 
-  // 🚀 ডাটা লোড হওয়া ও লগইন স্ট্যাটাসের কম্বাইন্ড ভ্যালু (এটা স্প্ল্যাশ স্ক্রিনে পাঠানো হবে)
   const isReadyToEnter = isDataLoaded && isLoggedIn !== null && isMaintenanceChecked;
 
-  // 🚀 ১. সবার আগে স্প্ল্যাশ স্ক্রিন
   if (showSplash) {
     return (
       <SplashScreen 
@@ -331,7 +440,6 @@ export default function Home() {
     );
   }
 
-  // 🚀 ২. স্প্ল্যাশ শেষ হওয়ার সাথে সাথেই যদি সার্ভার মেইনটেন্যান্স অন থাকে, সরাসরি মেইনটেন্যান্স স্ক্রিন আসবে
   if (isMaintenance) {
     return (
       <MaintainanceScreen 
@@ -341,7 +449,6 @@ export default function Home() {
     );
   }
 
-  // ৩. স্প্ল্যাশ স্ক্রিন শেষ হওয়ার পর যদি ইউজার লগইন না থাকে, তাহলে লগইন পেজে যাবে
   if (isLoggedIn === false) {
     return <SignUpLoginPage onLoginSuccess={async () => {
       try {
@@ -379,15 +486,18 @@ export default function Home() {
     }} />;
   }
 
-  // ৪. ইউজার লগইন থাকলে সরাসরি মেইন অ্যাপ রেন্ডার হবে
-  return (
+return (
     <View className="flex-1 bg-white">
+      
+    {/* PushNotification এখন _layout.js থেকে গ্লোবালি হ্যান্ডেল হচ্ছে, তাই এখান থেকে রিমুভ করা হলো */}
 
       <TopBar refreshTrigger={refreshCount} />
 
       <ScrollView 
         className="flex-1"
         contentContainerStyle={{ paddingTop: 10, paddingBottom: 110 }} 
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
@@ -401,52 +511,59 @@ export default function Home() {
       >
         <ImageSlides refreshTrigger={refreshCount} />
 
-        <DailyChallenge 
-          challenges={challenges}
-          setChallenges={setChallenges}
-          activeTab={activeTab}
-          setActiveTab={setActiveTab}
-          onStartReading={handleStartReading}
-          onDeleteCard={handleDeleteCard}
-          onEditCard={(id, name) => {
-            setEditCardId(id);
-            setEditCardName(name);
-            setIsEditModalVisible(true);
-          }}
-        />
-      </ScrollView>
-
-      <Modal
-        visible={isAiModalVisible}
-        animationType="fade"
-        transparent={true}
-        onRequestClose={() => setAiModalVisible(false)}
-      >
-        <View className="flex-1 justify-end bg-black/50">
-          <AiBadassContentGenerationEngine 
-            onCancel={() => setAiModalVisible(false)}
-            userCoins={userCoins}
-            setUserCoins={setUserCoins}
-            onLessonGenerated={(aiGeneratedData, customNotebookName) => {
-              const topicCount = aiGeneratedData.length;
-              const mcqCount = aiGeneratedData.filter(item => item.quizType === 'mcq' || item.quizType === 'blanks').length;
-
-              const newAiCard = { 
-                id: 'ai_' + Date.now(), 
-                status: 'in_progress', 
-                notebookName: customNotebookName,
-                target: `${topicCount} টি টপিক • ${mcqCount > 0 ? mcqCount : topicCount + 2} টি এমসিকিউ`,
-                color: '#CE82FF', 
-                darkColor: '#A559D6',
-                failedItems: aiGeneratedData 
-              };
-
-              handleGenerateNewCard(newAiCard);
-              setAiModalVisible(false);
-            }} 
-          />
+ {/* 🚀 হট টপিকস (ডাইনামিক ক্যাটাগরি চিপস) */}
+        <View className="px-5 mt-4 mb-4">
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+            {dynamicCategories.map((cat, index) => (
+              <TouchableOpacity key={index} activeOpacity={0.8} onPress={() => setExploreCategory(cat)} className={`px-4 py-2 rounded-full border mr-2 ${exploreCategory === cat ? 'bg-[#1899D6] border-[#1899D6]' : 'bg-[#F9F9F9] border-[#E5E5E5]'}`}>
+                <Text className={`text-[13px] pt-0.5 ${exploreCategory === cat ? 'text-white' : 'text-[#777777]'}`} style={{ fontFamily: 'BanglaBold' }}>{cat}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
         </View>
-      </Modal>
+
+        {/* 🚀 কমিউনিটি কার্ড লিস্ট (The Hook) */}
+        <View className="px-5"></View>
+
+       {/* 🚀 কমিউনিটি কার্ড লিস্ট (The Hook) */}
+        <View className="px-5">
+          {isExploreLoading ? (
+            <View>
+              <SkeletonCard />
+              <SkeletonCard />
+              <SkeletonCard />
+            </View>
+         ) : (
+                exploreGuides
+                  .filter(guide => exploreCategory === 'সব' || (guide.niche && guide.niche.includes(exploreCategory)) || (guide.notebookName && guide.notebookName.includes(exploreCategory)))
+                  .map((guide, idx) => (
+
+            <TouchableOpacity key={idx} activeOpacity={0.9} onPress={() => handleStartReading(guide)} className="mb-8">
+                <View className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#F0F2F5] border border-[#E5E5E5]">
+                  <Image source={{ uri: guide.banner || 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1000' }} className="w-full h-full" resizeMode="cover" />
+                </View>
+                <View className="flex-row mt-3 px-1">
+                 <View className="w-11 h-11 rounded-full border border-[#E5E5E5] bg-[#F9F9F9] mr-3 overflow-hidden">
+                    <Image source={{ uri: guide.creatorAvatar || 'https://i.pravatar.cc/150?img=12' }} className="w-full h-full" />
+                  </View>
+                  <View className="flex-1 justify-center -mt-1">
+                    <Text className="text-[#3C3C3C] text-[17px] leading-[26px] pt-1 mb-1" style={{ fontFamily: 'BanglaBold' }} numberOfLines={2}>{guide.notebookName || guide.creatorName}</Text>
+                    <View className="flex-row items-center pr-2">
+                      <Text className="text-[#777777] text-[13px]" style={{ fontFamily: 'BanglaBold' }}>{guide.creatorName || 'শিক্ষার্থী'}</Text>
+                      <Text className="text-[#AFAFAF] text-[8px] mx-1.5">●</Text>
+                      <FontAwesome5 name="users" size={10} color="#777777" />
+                      <Text className="text-[#777777] text-[12px] ml-1 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{guide.membersCount || 1}</Text>
+                      <Text className="text-[#AFAFAF] text-[8px] mx-1.5">●</Text>
+                      <FontAwesome5 name="star" size={10} color="#FF9600" solid />
+                      <Text className="text-[#777777] text-[12px] ml-1 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{guide.averageRating > 0 ? guide.averageRating.toFixed(1) : 'নতুন'}</Text>
+                    </View>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            ))
+          )}
+        </View>
+      </ScrollView>
 
       <Modal
         visible={isEditModalVisible}
@@ -497,9 +614,9 @@ export default function Home() {
         </KeyboardAvoidingView>
       </Modal>
 
-      <PoraShuruKorun 
+     <PorarPageEyeComfort 
         visible={isLessonVisible} 
-        onClose={() => setLessonVisible(false)} 
+        onClose={() => setLessonVisible(false)}
         lessonItem={selectedLesson} 
         onComplete={handleCompleteLesson} 
         nextChallenge={nextChallenge}
@@ -544,11 +661,10 @@ export default function Home() {
         }}
         onGenerateNew={(originalLesson, failedItems) => {
           handleCompleteLesson(originalLesson, failedItems);
-          setTimeout(() => setAiModalVisible(true), 400); 
         }}
       />
 
-      <Bottombar onChallengePress={() => setAiModalVisible(true)} />
+      <Bottombar translateY={translateY} />
 
     </View>
   );

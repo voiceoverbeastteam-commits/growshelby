@@ -1,8 +1,6 @@
 import * as FileSystem from 'expo-file-system';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
-const FALLBACK_GEMINI_API_KEY = "AQ.Ab8RN6LoJ5ky9jsIMTWfNO_ApGWPW1JZW-_0DFwd3wyqVr2kYw"; 
-
 const MASTER_SYSTEM_PROMPT = `
   You are the "Badass Content Extraction Engine" for a Bangladeshi educational app. 
   Your ONLY goal is to extract factual information from the provided source (images or text) and transform it into an exhaustive, highly engaging, gamified JSON array.
@@ -32,18 +30,7 @@ const MASTER_SYSTEM_PROMPT = `
     "time": Integer (Default 15),
     "explanation": String (Brief, highly engaging explanation),
     "question": String (MANDATORY for all types. If type is "blanks", MUST HAVE "_____"),
-    "quizType": String (MANDATORY. Choose from: mcq, blanks, drag_drop, matching, blur_puzzle, imposter, tap_mistake, swipe_quiz, bucket_drop, vertical_reorder, spelling_quiz),
-    
-    // TYPE-SPECIFIC REQUIRED FIELDS:
-    // -> mcq: MUST include "options" (Array of exactly 3 strings) and "answer" (Integer index: 0, 1, or 2).
-    // -> blanks: MUST include "options" (Array of 3-4 strings) and "answers" (Array with exactly ONE correct string).
-    // -> drag_drop / matching: MUST include "pairs" (Array of objects [{"left": "...", "right": "..."}]).
-    // -> blur_puzzle / imposter: MUST include "answerWord" (String) and "options" (Array of strings).
-    // -> tap_mistake: MUST include "sentence" (Array of strings, split words) and "wrongWordIndex" (Integer).
-    // -> swipe_quiz: MUST include "facts" (Array of objects [{"text": "...", "isTrue": true/false}]).
-    // -> bucket_drop: MUST include "buckets" (Array of 2 strings) and "items" (Array of 4 objects [{"name": "...", "bucketId": "..."}]).
-    // -> vertical_reorder: MUST include "correctOrder" (Array of strings).
-    // -> spelling_quiz: MUST include "word" (String) and "scrambledLetters" (Array of single characters).
+    "quizType": String (MANDATORY. Choose from: mcq, blanks, drag_drop, matching, blur_puzzle, imposter, tap_mistake, swipe_quiz, bucket_drop, vertical_reorder, spelling_quiz)
   }
 `;
 
@@ -72,7 +59,7 @@ const validateAndFixData = (dataArray) => {
         if (correctAns && item.question.includes(correctAns)) {
           item.question = item.question.replace(correctAns, '_____');
         } else {
-          if (item.question.endsWith('?')) item.question = item.question.replace('?', ' এর সঠিক উত্তর হলো _____।');
+          if (item.question.endsWith('?')) item.question = item.question.replace('?', ' er sothik uttor holo _____।');
           else item.question = item.question + ' _____।';
         }
       }
@@ -97,20 +84,24 @@ const readFileAsBase64 = async (uri) => {
 };
 
 export const processWithMasterMind = async ({ images = [], rawText = "", onStatusChange }) => {
-  let geminiKeys = [FALLBACK_GEMINI_API_KEY]; 
+  let geminiKeys = [];
 
   try {
-    // 🚀 Fixed URL bug here
-    const response = await fetch('[https://growshelby-api.vercel.app/api/get_settings](https://growshelby-api.vercel.app/api/get_settings)');
-    const data = await response.json();
-    if (data.geminiKeys && Array.isArray(data.geminiKeys) && data.geminiKeys.length > 0) {
-      geminiKeys = data.geminiKeys;
+    if (onStatusChange) onStatusChange("এপিআই কানেকশন চেক করা হচ্ছে...");
+    const res = await fetch(`https://growshelby-api.vercel.app/api/get_settings?t=${Date.now()}`, {
+      headers: { 'Cache-Control': 'no-cache', 'Pragma': 'no-cache' }
+    });
+    const data = await res.json();
+    
+    // 🚀 সার্ভার থেকে রিয়েল-টাইমে API Key ফেচ করা হচ্ছে
+    if (data && data.gemini_keys_list && data.gemini_keys_list.length > 0) {
+      geminiKeys = data.gemini_keys_list.map(item => item.api_key).sort(() => 0.5 - Math.random());
     }
-  } catch (err) {
-    console.error("[AiMasterMind] Failed to fetch Gemini keys:", err);
+  } catch (error) {
+    console.log("Gemini Keys Fetch Error:", error);
   }
 
-  if (geminiKeys.length === 0) throw new Error("FREE_TIER_LIMIT"); 
+  if (geminiKeys.length === 0) throw new Error("সার্ভারে কোনো Gemini API Key পাওয়া যায়নি।");
 
   try {
     let promptParts = [MASTER_SYSTEM_PROMPT];
@@ -124,7 +115,7 @@ export const processWithMasterMind = async ({ images = [], rawText = "", onStatu
     promptParts.push(instruction);
 
     if (images && images.length > 0) {
-      if (onStatusChange) onStatusChange("ডেটা স্ক্যান করা হচ্ছে...");
+      if (onStatusChange) onStatusChange("Data scan kora hocche...");
       hasContent = true;
       for (const img of images) {
         const base64Data = await readFileAsBase64(img.uri);
@@ -136,10 +127,18 @@ export const processWithMasterMind = async ({ images = [], rawText = "", onStatu
     }
 
     if (!hasContent) throw new Error("No input provided.");
-    if (onStatusChange) onStatusChange("কুইজ ও গেম লেভেল সাজানো হচ্ছে...");
+    if (onStatusChange) onStatusChange("Quiz o game level sajano hocche...");
     
-    const FALLBACK_MODELS = ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.5-flash"];
+   // 🚀 ফিক্স: গুগলের ফ্রি টায়ারের সব ফাস্ট মডেল স্পিড অনুযায়ী সাজানো হলো
+    const FALLBACK_MODELS = [
+      "gemini-3.8-flash",       // সবচেয়ে ব্যালেন্সড ও মেইন মডেল
+      "gemini-3.5-flash-lite",  // সবচেয়ে ফাস্ট এবং হালকা (Lite)
+      "gemini-3.6-flash",       // মিড-জেনারেশন ফাস্ট মডেল
+      "gemini-3.5-flash",       // পুরোনো কিন্তু স্ট্যাবল ফাস্ট মডেল
+      "gemini-2.5-flash"        // সর্বশেষ ফলব্যাক (সবচেয়ে পুরোনো)
+    ]; 
     let generatedData = null;
+    let lastErrorDetails = "অজানা কোনো সমস্যা হচ্ছে!";
 
     for (const apiKey of geminiKeys) {
       const genAI = new GoogleGenerativeAI(apiKey);
@@ -155,22 +154,21 @@ export const processWithMasterMind = async ({ images = [], rawText = "", onStatu
             parsedData = validateAndFixData(parsedData); 
             generatedData = parsedData; 
             break; 
-          } else {
-            throw new Error("Parsed data is not a valid array.");
           }
         } catch (error) {
-           console.log(`[AiMasterMind] Retrying...`);
+           lastErrorDetails = error.message;
+           console.log(`[AiMasterMind] Retrying... Error:`, error.message);
         }
       }
       if (generatedData) break;
     }
 
-    if (!generatedData) throw new Error("FREE_TIER_LIMIT");
+    if (!generatedData) throw new Error(`Google AI Error: ${lastErrorDetails}`);
     return generatedData;
 
   } catch (error) {
     console.error("[AiMasterMind] Fatal Error:", error);
-    throw new Error("FREE_TIER_LIMIT"); 
+    throw new Error(error.message.includes("Google AI Error") ? error.message : "FREE_TIER_LIMIT"); 
   }
 };
 

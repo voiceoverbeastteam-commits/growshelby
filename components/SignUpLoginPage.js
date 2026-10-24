@@ -270,7 +270,7 @@ export default function SignUpLoginPage({ onLoginSuccess }) {
           <TextInput
             className="w-full border-2 border-gray-200 rounded-2xl p-4 text-lg bg-gray-50 mb-6 text-center"
             style={{ fontFamily: 'PoppinsRegular' }}
-            placeholder="nabila@gmail.com"
+            placeholder=""
             keyboardType="email-address"
             autoCapitalize="none"
             value={email}
