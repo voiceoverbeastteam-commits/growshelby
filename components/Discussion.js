@@ -688,7 +688,7 @@ const handleSendCommentModal = async () => {
                 <FontAwesome5 name="users" size={14} color="#1899D6" />
               </View>
               <View>
-                <Text className="text-[#3D382F] text-[17px] pt-1" style={{ fontFamily: 'BanglaBold' }}>স্টাডি স্কোয়াড</Text>
+                <Text className="text-[#3D382F] text-[17px] pt-1" style={{ fontFamily: 'BanglaBold' }}>স্টাডি কমিউনিটি</Text>
                 <Text className="text-[#827B6E] text-[12px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>লাইভ চ্যাট অন</Text>
               </View>
             </View>
