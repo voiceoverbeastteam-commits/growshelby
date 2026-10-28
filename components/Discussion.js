@@ -47,12 +47,40 @@ const ChatSkeleton = () => {
           <View className="w-40 h-12 bg-[#D7FFB8] border-2 border-b-[5px] border-[#8BA85E] opacity-40 rounded-2xl rounded-br-sm" />
         </View>
         <View className="w-8 h-8 rounded-full bg-[#EAE4D4] ml-2 self-end mb-2" />
-      </View>
-    </Animated.View>
-  );
-};
+     </View>
+      </Animated.View>
+    );
+  };
 
-const TypingIndicator = ({ userName }) => {
+  // 🚀 Comments Modal এর জন্য স্পেশাল Shimmer Effect
+  const CommentSkeleton = () => {
+    const shimmerAnim = useRef(new Animated.Value(0.4)).current;
+    
+    useEffect(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmerAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+          Animated.timing(shimmerAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
+        ])
+      ).start();
+    }, []);
+
+    return (
+      <Animated.View style={{ opacity: shimmerAnim }} className="flex-1 px-5 pt-6">
+        {[1, 2, 3].map((key) => (
+          <View key={key} className="mb-6 flex-row justify-start">
+            <View className="w-8 h-8 rounded-full bg-[#EAE4D4] mr-3" />
+            <View className="flex-1">
+              <View className="w-24 h-3 bg-[#EAE4D4] rounded-full mb-2.5" />
+              <View className="w-full h-16 bg-[#FFFDF8] border border-[#EFE8D6] rounded-2xl rounded-tl-sm" />
+            </View>
+          </View>
+        ))}
+      </Animated.View>
+    );
+  };
+
+  const TypingIndicator = ({ userName }) => {
   const dot1 = useRef(new Animated.Value(0)).current;
   const dot2 = useRef(new Animated.Value(0)).current;
   const dot3 = useRef(new Animated.Value(0)).current;
@@ -100,9 +128,112 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
   const [selectedMessage, setSelectedMessage] = useState(null);
   const [isActionSheetVisible, setActionSheetVisible] = useState(false);
   
+  // 🚀 Comments Modal States
+  const [activePost, setActivePost] = useState(null);
+  const [postComments, setPostComments] = useState([]);
+  const [isCommentsModalVisible, setCommentsModalVisible] = useState(false);
+  const [commentInput, setCommentInput] = useState('');
+  const [isLoadingComments, setIsLoadingComments] = useState(false);
+  const [expandedReplies, setExpandedReplies] = useState({});
+
+  const toggleReplies = (commentId) => {
+    setExpandedReplies(prev => ({ ...prev, [commentId]: !prev[commentId] }));
+  };
+
+  const getThreadedComments = () => {
+    const roots = [];
+    const replies = [];
+    
+    postComments.forEach(msg => {
+      if (msg.text && msg.text.startsWith('@[')) replies.push(msg);
+      else roots.push({ ...msg, childReplies: [] });
+    });
+
+    replies.forEach(reply => {
+      const match = reply.text.match(/^@\[(.*?)\]/);
+      let added = false;
+      if (match) {
+        const targetName = match[1];
+        const parent = roots.find(r => r.userName === targetName);
+        if (parent) {
+          parent.childReplies.unshift(reply);
+          added = true;
+        }
+      }
+      if (!added) roots.push({ ...reply, childReplies: [] });
+    });
+    
+    return roots;
+  };
+
   const [typingUser, setTypingUser] = useState(null);
   const typingTimeoutRef = useRef(null);
   const typingDebounceRef = useRef(null);
+
+  // 🚀 নির্দিষ্ট পোস্টের কমেন্ট লোড করার ফাংশন
+  const openComments = async (post) => {
+    setActivePost(post);
+    setCommentsModalVisible(true);
+    setIsLoadingComments(true);
+    setPostComments([]);
+    
+    try {
+      const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        body: JSON.stringify({ 
+          action: 'get_community_messages', 
+          guideId, 
+          userEmail: currentUser.email, 
+          parentId: post.messageId || post.id 
+        })
+      });
+      const result = await response.json();
+      if (result.success && result.messages) {
+        setPostComments(result.messages.map(msg => ({
+          ...msg,
+          reactions: msg.reactions || {}
+        })).reverse());
+      }
+    } catch (error) {
+      console.error("Comments fetch error:", error);
+    } finally {
+      setIsLoadingComments(false);
+    }
+  };
+
+  // 🚀 কমেন্ট সেন্ড করার ফাংশন (ইউজার এবং ক্রিয়েটর সবাই করতে পারবে)
+  const handleSendComment = async () => {
+    if (commentInput.trim() === '' || !activePost) return;
+    const textToSend = commentInput.trim();
+    setCommentInput('');
+    
+    const tempMessageId = `cmt_${Date.now()}`;
+    const newComment = {
+      messageId: tempMessageId,
+      guideId,
+      userEmail: currentUser.email,
+      userName: currentUser.name,
+      userAvatar: currentUser.avatar,
+      isAuthor: currentUser.email === guideId, 
+      text: textToSend,
+      isContextual: false,
+      contextQuestion: null,
+      parentId: activePost.messageId || activePost.id, 
+      reactions: { UP: [], DOWN: [] }, 
+      timestamp: new Date().toISOString()
+    };
+
+    setPostComments(prev => [newComment, ...prev]);
+
+    try {
+      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        body: JSON.stringify({ action: 'send_community_message', ...newComment })
+      });
+    } catch (error) {}
+  };
 
   const slideAnim = useRef(new Animated.Value(screenHeight)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -305,6 +436,88 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
     }
   };
 
+// 🚀 Comment States & Functions
+ const [isCommentModalVisible, setCommentModalVisible] = useState(false);
+ const [activePostForComment, setActivePostForComment] = useState(null);
+ const [commentText, setCommentText] = useState('');
+ const [replyToUser, setReplyToUser] = useState(null);
+
+const openCommentModal = (post) => {
+    setActivePostForComment(post);
+    setCommentModalVisible(true);
+    
+    const oldComments = post.legacyComments ? [...post.legacyComments].reverse() : [];
+    setPostComments(oldComments);
+    setIsLoadingComments(true);
+    
+    // 🚀 ম্যাজিক অপ্টিমাইজেশন: মডাল ওপেন হওয়ার অ্যানিমেশন শেষ হতে সময় দেব, তারপর API কল হবে।
+    // এতে করে ইউজারের ফোন হ্যাং হবে না এবং এক্সপেরিয়েন্স মাখনের মত স্মুথ হবে!
+    setTimeout(async () => {
+      try {
+        const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          body: JSON.stringify({ action: 'get_community_messages', guideId, parentId: post.messageId || post.id })
+        });
+        const result = await response.json();
+        
+        if (result.success && result.messages) {
+          const newComments = result.messages.reverse();
+          const allComments = [...newComments, ...oldComments];
+          
+          const uniqueComments = Array.from(new Map(allComments.map(item => [item.messageId || item.id, item])).values())
+            .filter(item => 
+              item.parentId === (post.messageId || post.id) || 
+              oldComments.some(old => (old.messageId || old.id) === (item.messageId || item.id))
+            );
+          
+          setPostComments(uniqueComments);
+        }
+      } catch (e) {
+        console.log("Error loading comments:", e);
+      } finally {
+        setIsLoadingComments(false);
+      }
+    }, 350); // মডাল ওপেন হতে ৩৫০ মিলিসেকেন্ড সময় দেওয়া হলো
+  };
+
+const handleSendCommentModal = async () => {
+   if (commentText.trim() === '' || !activePostForComment) return;
+   
+   // রিপ্লাই হলে নামের সাথে মেনশন যুক্ত করে দেওয়া হচ্ছে
+   const textToSend = replyToUser ? `@[${replyToUser.userName}] ${commentText.trim()}` : commentText.trim();
+   
+   setCommentText('');
+   setReplyToUser(null);
+    
+    const parentId = activePostForComment.messageId || activePostForComment.id;
+    const tempMessageId = `cmt_${Date.now()}`;
+    const newComment = {
+      messageId: tempMessageId,
+      guideId,
+      userEmail: currentUser.email,
+      userName: currentUser.name,
+      userAvatar: currentUser.avatar,
+      isAuthor: false, 
+      text: textToSend,
+      isContextual: false,
+      contextQuestion: null,
+      parentId: parentId,
+      reactions: { UP: [], DOWN: [] }, 
+      timestamp: new Date().toISOString()
+    };
+
+    setPostComments(prev => [newComment, ...prev]);
+
+    try {
+      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        body: JSON.stringify({ action: 'send_community_message', ...newComment })
+      });
+    } catch (error) {}
+  };
+
   const handleSend = async () => {
     if (inputText.trim() === '') return;
     const textToSend = inputText.trim();
@@ -317,59 +530,63 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
       userEmail: currentUser.email,
       userName: currentUser.name,
       userAvatar: currentUser.avatar,
-      isAuthor: false, 
+      isAuthor: true, 
       text: textToSend,
       isContextual: data ? true : false,
       contextQuestion: data ? data.question : null,
-      reactions: {}, 
+      parentId: null,
+      reactions: { UP: [], DOWN: [] }, 
       timestamp: new Date().toISOString()
     };
 
-    setComments(prev => [newMessage, ...prev]); // FlatList inverted এর জন্য নতুন মেসেজ শুরুতে
+    setComments(prev => [newMessage, ...prev]);
 
-try {
+    try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
         body: JSON.stringify({ action: 'send_community_message', ...newMessage })
       });
-
-      // 🚀 Push Notification টেস্টিং বট (৫ সেকেন্ড পর রিপ্লাই দিবে)
-      setTimeout(() => {
-        const botMessage = {
-          messageId: `bot_${Date.now()}`,
-          guideId,
-          userEmail: 'testbot@growshelby.com',
-          userName: 'নোটিফিকেশন বট 🤖',
-          userAvatar: 'https://cdn-icons-png.flaticon.com/512/4712/4712010.png',
-          isAuthor: false, 
-          text: `হ্যালো! এটি একটি টেস্ট পুশ নোটিফিকেশন! 🚀`,
-          isContextual: false,
-          contextQuestion: null,
-          reactions: {}, 
-          timestamp: new Date().toISOString()
-        };
-        
-        fetch('https://growshelby-api.vercel.app/api/update_coins', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
-          body: JSON.stringify({ action: 'send_community_message', ...botMessage })
-        }).catch(() => {});
-      }, 5000); // ⏱️ ৫ সেকেন্ড সময় দেওয়া হলো
-
     } catch (error) {}
   };
 
+ // 🚀 ম্যাজিক: পুরনো মেসেজগুলোকে পোস্ট এবং কমেন্টে ভাগ করার লজিক
+  const getProcessedFeed = () => {
+    const processedPosts = [];
+    let currentPostIndex = -1;
 
-  // 🚀 পারফেক্ট রিয়েকশন হ্যান্ডলার (টাইমিং বাগ ফিক্সড)
-  const handleReaction = async (emojiType) => {
-    if (!selectedMessage) return;
+    const reversedComments = [...comments].reverse();
     
-    const msgId = selectedMessage.messageId || selectedMessage.id || selectedMessage._id;
+  reversedComments.forEach(msg => {
+      // ১. ক্রিয়েটরের মেইন পোস্টগুলো আলাদা করা (যেগুলোর parentId নেই এবং যেগুলো রিপ্লাই না)
+      if ((msg.userEmail === guideId || msg.isAuthor) && !msg.parentId && !msg.text.startsWith('@[')) {
+        processedPosts.push({ ...msg, isAuthor: true, legacyComments: [] });
+        currentPostIndex = processedPosts.length - 1;
+      } 
+      else {
+        // ২. সাধারণ ইউজারের মেসেজগুলো শুধুমাত্র আগের ক্রিয়েটরের পোস্টের 'কমেন্ট' হিসেবে যুক্ত হবে
+        if (currentPostIndex >= 0) {
+          processedPosts[currentPostIndex].legacyComments.push(msg);
+        }
+      }
+    });
+
+    return processedPosts.reverse(); 
+  };
+
+  const finalFeed = getProcessedFeed();
+
+
+  // 🚀 পারফেক্ট রিয়েকশন হ্যান্ডলার (রেডিট আপভোট/ডাউনভোট সাপোর্টেড)
+  const handleReaction = async (emojiType, customMsgId = null) => {
+    const msgId = customMsgId || (selectedMessage ? (selectedMessage.messageId || selectedMessage.id || selectedMessage._id) : null);
+    if (!msgId) return;
+    
     setActionSheetVisible(false);
 
-    // ১. আগে টার্গেট মেসেজটা খুঁজে বের করে রিয়েকশন ক্যালকুলেট করছি (setComments এর বাইরে)
-    const targetMessage = comments.find(msg => (msg.messageId || msg.id || msg._id) === msgId);
+   // ১. আগে টার্গেট মেসেজটা খুঁজে বের করছি (মেইন ফিড এবং কমেন্ট ফিড দুই জায়গা থেকেই)
+   const targetMessage = comments.find(msg => (msg.messageId || msg.id || msg._id) === msgId) 
+                      || postComments.find(msg => (msg.messageId || msg.id || msg._id) === msgId);
     if (!targetMessage) return;
 
     let newReactions = JSON.parse(JSON.stringify(targetMessage.reactions || {}));
@@ -393,13 +610,17 @@ try {
 
     const finalReactions = newReactions; // 🚀 এইটাই হলো আমাদের পারফেক্ট ডেটা!
 
-    // ২. এবার ফ্রন্টএন্ডে রিয়েকশন দেখাচ্ছি
-    setComments(prev => prev.map(msg => {
-      if ((msg.messageId || msg.id || msg._id) === msgId) {
-        return { ...msg, reactions: finalReactions };
-      }
-      return msg;
-    }));
+    // ২. এবার ফ্রন্টএন্ডে রিয়েকশন দেখাচ্ছি
+   setComments(prev => prev.map(msg => {
+     if ((msg.messageId || msg.id || msg._id) === msgId) return { ...msg, reactions: finalReactions };
+     return msg;
+   }));
+   
+   // মডালের ভেতরের কমেন্টগুলোর রিয়েকশনও আপডেট করছি
+   setPostComments(prev => prev.map(msg => {
+     if ((msg.messageId || msg.id || msg._id) === msgId) return { ...msg, reactions: finalReactions };
+     return msg;
+   }));
 
     // ৩. এবং সার্ভারে পারফেক্ট ডেটা পাঠাচ্ছি (এখন আর ফাঁকা যাবে না)
     try {
@@ -507,9 +728,9 @@ try {
                 এখানে এখনো কেউ কোনো মেসেজ দেয়নি। তুমিই প্রথম মেসেজ দিয়ে বন্ধুদের সাথে আলোচনা শুরু করো।
               </Text>
             </View>
-          ) : (
+      ) : (
             <FlatList
-              data={comments}
+              data={finalFeed}
               keyExtractor={(item) => item.messageId || item.id}
               inverted={true}
               showsVerticalScrollIndicator={false}
@@ -521,110 +742,287 @@ try {
               onEndReachedThreshold={0.5}
               ListFooterComponent={isFetchingMore ? <Text className="text-[#AFAFAF] text-[12px] py-4 text-center" style={{fontFamily: 'BanglaRegular'}}>আরও মেসেজ লোড হচ্ছে...</Text> : null}
               
-              renderItem={({ item }) => {
-                const isMe = item.userEmail === currentUser.email;
+         renderItem={({ item }) => {
                 const reactions = item.reactions || {};
                 const hasReactions = Object.keys(reactions).length > 0;
                 
+                // 🚀 মোট রিঅ্যাকশন কাউন্ট করা
+                let totalReactions = 0;
+                Object.values(reactions).forEach(users => {
+                  if (Array.isArray(users)) {
+                     totalReactions += users.length;
+                  }
+                });
+                
                 return (
-                  <View className={`mb-4 flex-row ${isMe ? 'justify-end' : 'justify-start'}`}>
-                    {!isMe && (
-                      <View className="mr-2 justify-end pb-5">
-                         <View className="w-8 h-8 rounded-full border border-[#EFE8D6] overflow-hidden">
-                           <Image source={{ uri: item.userAvatar || 'https://i.pravatar.cc/150' }} className="w-full h-full" />
-                         </View>
-                      </View>
-                    )}
-
-                    <View className={`max-w-[75%] ${isMe ? 'items-end' : 'items-start'}`}>
-                      {!isMe && (
-                        <View className="flex-row items-center mb-1 ml-1">
-                          <Text className={`text-[12px] ${item.isAuthor ? 'text-[#D47B00]' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaBold' }}>
-                            {getShortName(item.userName || item.user)}
-                          </Text>
-                          {item.isAuthor && (
-                            <View className="bg-[#FFF4E5] px-1.5 py-0.5 rounded ml-2 border border-[#FFDDAA]">
-                              <Text className="text-[#D47B00] text-[9px]" style={{ fontFamily: 'BanglaBold' }}>অথর</Text>
-                            </View>
-                          )}
+                  <View className="mb-5 bg-white rounded-[20px] border-2 border-[#EFE8D6] shadow-sm overflow-hidden w-full">
+                    
+                    {/* 🚀 Header: Author Info */}
+                    <View className="flex-row items-center justify-between px-4 py-3 border-b border-[#F9F9F9]">
+                      <View className="flex-row items-center">
+                        <Image source={{ uri: item.userAvatar || 'https://i.pravatar.cc/150' }} className="w-10 h-10 rounded-full bg-[#EAE4D4] border border-[#EFE8D6]" />
+                        <View className="ml-3">
+                        <View className="flex-row items-center">
+                            <Text className="text-[14px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>{item.userName || 'অ্যাডমিন'}</Text>
+                            {(item.userEmail === guideId || item.isAuthor) && (
+                              <View className="bg-[#1CB0F6]/10 px-2 py-0.5 rounded ml-2 border border-[#1CB0F6]/30">
+                                <Text className="text-[#1899D6] text-[9px]" style={{ fontFamily: 'BanglaBold' }}>ক্রিয়েটর</Text>
+                              </View>
+                            )}
+                          </View>
+                          <Text className="text-[#AFAFAF] text-[11px] mt-0.5" style={{ fontFamily: 'BanglaRegular' }}>{formatTime(item.timestamp)}</Text>
                         </View>
-                      )}
-
-                      <TouchableOpacity 
-                        activeOpacity={0.9} 
-                        onLongPress={() => { setSelectedMessage(item); setActionSheetVisible(true); }}
-                        delayLongPress={250}
-                        className={`p-3.5 rounded-2xl border-2 border-b-[5px] ${isMe ? 'bg-[#D7FFB8] border-[#8BA85E] rounded-br-sm' : 'bg-[#FFFDF8] border-[#EFE8D6] rounded-bl-sm'} relative`}
-                      >
-                        {item.isContextual && item.contextQuestion && (
-                          <View className={`mb-2 pb-2 border-b pl-2 ${isMe ? 'border-[#C1D99A]' : 'border-[#EFE8D6]'}`}>
-                            <View className={`absolute left-0 top-0 bottom-2 w-0.5 rounded-full ${isMe ? 'bg-[#8BA85E]' : 'bg-[#D47B00]'}`} />
-                            <Text className={`text-[11px] ${isMe ? 'text-[#6A8A3A]' : 'text-[#D47B00]'}`} style={{ fontFamily: 'BanglaBold' }}>রিপ্লাই: প্রশ্ন</Text>
-                            <Text className={`text-[13px] leading-5 ${isMe ? 'text-[#4A632D]' : 'text-[#5C5549]'}`} style={{ fontFamily: 'BanglaRegular' }} numberOfLines={2}>
-                              {item.contextQuestion}
-                            </Text>
-                          </View>
-                        )}
-                        <Text className={`text-[15px] leading-6 ${isMe ? 'text-[#4A632D]' : 'text-[#3D382F]'}`} style={{ fontFamily: 'BanglaRegular' }}>{item.text}</Text>
-                        
-{hasReactions && (
-                          <View className={`absolute -bottom-3.5 flex-row flex-wrap items-center ${isMe ? 'right-3' : 'left-3'} z-10`} style={{ overflow: 'visible', gap: 4 }}>
-                            {Object.entries(reactions).map(([emoji, users]) => (
-                              users.length > 0 && (
-                                <View key={emoji} className="flex-row items-center bg-white px-2 py-1 rounded-full border border-[#EFE8D6] shadow-sm" style={{ overflow: 'visible', minHeight: 22 }}>
-                                  <Image source={{ uri: Emoji3D[emoji] }} className="w-5 h-5" resizeMode="contain" style={{ marginRight: users.length > 1 ? 3 : 0 }} />
-                                  {users.length > 1 && (
-                                    <Text className="text-[11px] text-[#5C564B] font-bold" style={{ fontFamily: 'BanglaBold', lineHeight: 14 }}>
-                                      {users.length}
-                                    </Text>
-                                  )}
-                                </View>
-                              )
-                            ))}
-                          </View>
-                        )}
-                      </TouchableOpacity>
-
-                      <View className={`flex-row items-center space-x-3 px-1 ${hasReactions ? 'mt-3' : 'mt-1'}`}>
-                        <Text className="text-[#AFAFAF] text-[11px]" style={{ fontFamily: 'BanglaRegular' }}>{formatTime(item.timestamp)}</Text>
                       </View>
+                      
+                      {/* থ্রি-ডট মেনু (শুধু ক্রিয়েটর দেখতে পাবে) */}
+                      {item.userEmail === currentUser.email && (
+                        <TouchableOpacity onPress={() => { setSelectedMessage(item); setActionSheetVisible(true); }} className="p-2 -mr-2">
+                          <FontAwesome5 name="ellipsis-h" size={14} color="#AFAFAF" />
+                        </TouchableOpacity>
+                      )}
                     </View>
 
-                  {isMe && (
-                      <View className="ml-2 justify-end pb-5">
-                         <View className="w-8 h-8 rounded-full border border-[#8BA85E] overflow-hidden">
-                           <Image source={{ uri: currentUser.avatar }} className="w-full h-full" />
-                         </View>
+                    {/* 🚀 Body: Post Content */}
+                    <View className="px-4 py-4">
+                      {item.isContextual && item.contextQuestion && (
+                        <View className="mb-3 pb-3 border-b border-[#EFE8D6] pl-2 relative">
+                          <View className="absolute left-0 top-0 bottom-2 w-[3px] rounded-full bg-[#D47B00]" />
+                          <Text className="text-[11px] text-[#D47B00]" style={{ fontFamily: 'BanglaBold' }}>প্রসঙ্গ:</Text>
+                          <Text className="text-[13px] leading-5 text-[#827B6E]" style={{ fontFamily: 'BanglaRegular' }} numberOfLines={2}>
+                            {item.contextQuestion}
+                          </Text>
+                        </View>
+                      )}
+                      <Text className="text-[15px] text-[#4B4B4B] leading-[26px]" style={{ fontFamily: 'BanglaRegular' }}>{item.text}</Text>
+                    </View>
+
+                    {/* 🚀 Reaction Info Row (Facebook Style) */}
+                    {hasReactions && totalReactions > 0 && (
+                      <View className="px-4 pb-3 flex-row items-center">
+                        <View className="flex-row items-center" style={{ overflow: 'visible' }}>
+                          {Object.keys(reactions).map((emoji, index) => (
+                            reactions[emoji] && reactions[emoji].length > 0 && emoji !== 'UP' && emoji !== 'DOWN' && (
+                              <Image key={index} source={{ uri: Emoji3D[emoji] || Emoji3D['👍'] }} className="w-4 h-4" resizeMode="contain" style={{ marginLeft: index > 0 ? -4 : 0 }} />
+                            )
+                          ))}
+                        </View>
+                        <Text className="text-[12px] text-[#827B6E] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{totalReactions}</Text>
                       </View>
                     )}
+
+                    {/* 🚀 Footer: Action Buttons */}
+                    <View className="flex-row items-center justify-between px-4 py-2 bg-[#FDF6E3] border-t border-[#EFE8D6]">
+                      
+                      {/* React Button */}
+                      <TouchableOpacity 
+                        activeOpacity={0.7}
+                        onPress={() => { setSelectedMessage(item); setActionSheetVisible(true); }}
+                        className="flex-row items-center bg-white px-4 py-1.5 rounded-full border border-[#EAE4D4] shadow-sm flex-1 mr-2 justify-center"
+                      >
+                        <FontAwesome5 name="thumbs-up" size={13} color="#827B6E" />
+                        <Text className="text-[#6B655B] text-[12px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>রিঅ্যাক্ট</Text>
+                      </TouchableOpacity>
+
+                  {/* Comment Button */}
+                      <TouchableOpacity 
+                        activeOpacity={0.7}
+                        onPress={() => openCommentModal(item)} 
+                        className="flex-row items-center bg-white px-4 py-1.5 rounded-full border border-[#EAE4D4] shadow-sm flex-1 ml-2 justify-center"
+                      >
+                        <FontAwesome5 name="comment-alt" size={13} color="#827B6E" />
+                        <Text className="text-[#6B655B] text-[12px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>
+                          {item.legacyComments && item.legacyComments.length > 0 
+                            ? `${item.legacyComments.length} মতামত` 
+                            : 'মতামত দিন'}
+                        </Text>
+                      </TouchableOpacity>
+
+                    </View>
                   </View>
                 );
               }}
             />
           )}
 
+       {/* 🚀 স্মার্ট ইনপুট বক্স (শুধু ক্রিয়েটর পোস্ট/নোটিস দিতে পারবে) */}
           <View className="px-4 py-3 border-t-2 border-[#EFE8D6] bg-[#FDF6E3] flex-row items-end">
-            <View className="flex-1 bg-[#FFFDF8] border-2 border-b-[4px] border-[#EFE8D6] rounded-2xl px-4 py-2 min-h-[48px] max-h-[120px] justify-center mr-3">
-              <TextInput
-                className="text-[#3D382F] text-[15px] pt-1"
-                style={{ fontFamily: 'BanglaRegular' }}
-                placeholder={data ? "এই প্রশ্নের উত্তর লিখুন..." : "কমিউনিটিতে মেসেজ দিন..."}
-                placeholderTextColor="#AFAFAF"
-                multiline
-                value={inputText}
-                onChangeText={handleTyping}
-              />
-            </View>
-            <TouchableOpacity activeOpacity={0.8} onPress={handleSend} disabled={inputText.trim() === ''}>
-              <View className={`rounded-full pb-[4px] ${inputText.trim() === '' ? 'bg-[#D7D7D7]' : 'bg-[#1073A4]'}`}>
-                <View className={`w-12 h-12 rounded-full items-center justify-center border-2 ${inputText.trim() === '' ? 'bg-[#EAE4D4] border-[#EAE4D4]' : 'bg-[#1899D6] border-[#1899D6]'}`}>
-                  <FontAwesome5 name="paper-plane" size={16} color={inputText.trim() === '' ? '#827B6E' : '#FFFFFF'} solid />
+            {currentUser.email === guideId ? (
+              <>
+                <View className="flex-1 bg-[#FFFDF8] border-2 border-b-[4px] border-[#EFE8D6] rounded-2xl px-4 py-2 min-h-[48px] max-h-[120px] justify-center mr-3">
+                  <TextInput
+                    className="text-[#3D382F] text-[15px] pt-1"
+                    style={{ fontFamily: 'BanglaRegular' }}
+                    placeholder={data ? "এই প্রশ্নের নোটিস দিন..." : "নতুন নোটিস বা পোস্ট লিখুন..."}
+                    placeholderTextColor="#AFAFAF"
+                    multiline
+                    value={inputText}
+                    onChangeText={handleTyping}
+                  />
                 </View>
+                <TouchableOpacity activeOpacity={0.8} onPress={handleSend} disabled={inputText.trim() === ''}>
+                  <View className={`rounded-full pb-[4px] ${inputText.trim() === '' ? 'bg-[#D7D7D7]' : 'bg-[#1073A4]'}`}>
+                    <View className={`w-12 h-12 rounded-full items-center justify-center border-2 ${inputText.trim() === '' ? 'bg-[#EAE4D4] border-[#EAE4D4]' : 'bg-[#1899D6] border-[#1899D6]'}`}>
+                      <FontAwesome5 name="paper-plane" size={16} color={inputText.trim() === '' ? '#827B6E' : '#FFFFFF'} solid />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <View className="flex-1 bg-[#EAE4D4] rounded-2xl px-4 py-3 items-center justify-center border border-[#D7D7D7]">
+                <Text className="text-[#827B6E] text-[13px] pt-1" style={{ fontFamily: 'BanglaBold' }}>
+                  <FontAwesome5 name="lock" size={12} /> শুধুমাত্র ক্রিয়েটররাই পোস্ট করতে পারবেন
+                </Text>
               </View>
-            </TouchableOpacity>
+            )}
           </View>
-        </Animated.View>
+       </Animated.View>
       </KeyboardAvoidingView>
+
+      {/* 🚀 Comment Modal (ফেসবুকের মতো) */}
+      <Modal visible={isCommentModalVisible} transparent animationType="slide" onRequestClose={() => setCommentModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 justify-end bg-black/50">
+          <TouchableOpacity className="flex-1" activeOpacity={1} onPress={() => setCommentModalVisible(false)} />
+          <View className="bg-[#FDF6E3] w-full h-[75%] rounded-t-[32px] overflow-hidden flex-col pb-6">
+            
+            <View className="w-12 h-1.5 bg-[#D7D7D7] rounded-full self-center mt-3 mb-1" />
+            <View className="flex-row items-center justify-between px-5 pb-3 border-b border-[#EFE8D6]">
+            <Text className="text-[#3D382F] text-[17px] pt-1" style={{ fontFamily: 'BanglaBold' }}>মতামতসমূহ</Text>
+                <TouchableOpacity onPress={() => setCommentModalVisible(false)} className="p-2 bg-[#EAE4D4] rounded-full w-9 h-9 items-center justify-center">
+                  <FontAwesome5 name="times" size={14} color="#6B655B" />
+                </TouchableOpacity>
+              </View>
+
+            {isLoadingComments && postComments.length === 0 ? (
+              <CommentSkeleton />
+            ) : postComments.length === 0 ? (
+              <View className="flex-1 items-center justify-center px-8">
+                <FontAwesome5 name="comment-dots" size={40} color="#D7D7D7" />
+                <Text className="text-[16px] text-[#AFAFAF] mt-4" style={{ fontFamily: 'BanglaBold' }}>কোনো মতামত নেই। প্রথম কমেন্ট করুন!</Text>
+              </View>
+            ) : (
+            <FlatList
+                data={getThreadedComments()}
+                keyExtractor={(item) => item.messageId || item.id}
+                inverted={true}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: 20, paddingTop: 10 }}
+                renderItem={({ item }) => {
+                  const renderSingleMessage = (msg, isReply = false) => {
+                    const commentReactions = msg.reactions || {};
+                    let totalReactions = 0;
+                    Object.values(commentReactions).forEach(users => {
+                      if (Array.isArray(users)) totalReactions += users.length;
+                    });
+
+                    let replyName = '';
+                    let actualText = msg.text;
+                    if (isReply) {
+                      const match = msg.text.match(/^@\[(.*?)\]/);
+                      if (match) {
+                        replyName = match[1];
+                        actualText = msg.text.replace(/^@\[.*?\]\s*/, '');
+                      }
+                    }
+
+                    return (
+                      <View key={msg.messageId || msg.id} className={`flex-row mb-4 ${isReply ? 'mt-2' : ''}`}>
+                        <Image source={{ uri: msg.userAvatar || 'https://i.pravatar.cc/150' }} className="w-8 h-8 rounded-full bg-[#EAE4D4] mr-3 border border-[#EFE8D6]" />
+                        <View className="flex-1">
+                          <TouchableOpacity 
+                            activeOpacity={0.7} 
+                            onLongPress={() => { setSelectedMessage(msg); setActionSheetVisible(true); }}
+                            className="max-w-[95%]"
+                          >
+                            <View className={`px-4 py-3 rounded-2xl rounded-tl-sm border border-[#EFE8D6] shadow-sm ${isReply ? 'bg-[#F9F9F9]' : 'bg-white'}`}>
+                              <Text className="text-[12px] text-[#D47B00] mb-1" style={{ fontFamily: 'BanglaBold' }}>{msg.userName || 'ইউজার'}</Text>
+                              <Text className="text-[14px] text-[#4B4B4B] leading-5" style={{ fontFamily: 'BanglaRegular' }}>
+                                {isReply && <Text className="text-[#1899D6]" style={{ fontFamily: 'BanglaBold' }}>{replyName} </Text>}
+                                {actualText}
+                              </Text>
+                            </View>
+                          </TouchableOpacity>
+
+                        {totalReactions > 0 && (
+                            <View className="flex-row items-center mt-1.5 ml-1">
+                              {Object.keys(commentReactions).map((emoji, idx) => (
+                                commentReactions[emoji] && commentReactions[emoji].length > 0 && emoji !== 'UP' && emoji !== 'DOWN' && (
+                                  <Image key={idx} source={{ uri: Emoji3D[emoji] || Emoji3D['👍'] }} className="w-3.5 h-3.5" resizeMode="contain" style={{ marginLeft: idx > 0 ? -4 : 0 }} />
+                                )
+                              ))}
+                              <Text className="text-[10px] text-[#827B6E] ml-1 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{totalReactions}</Text>
+                            </View>
+                          )}
+                        </View>
+                      </View>
+                    );
+                  };
+
+                  const hasReplies = item.childReplies && item.childReplies.length > 0;
+                  const isExpanded = expandedReplies[item.messageId || item.id];
+
+                  return (
+                    <View className="mb-2">
+                      {renderSingleMessage(item, false)}
+
+                      {hasReplies && !isExpanded && (
+                        <TouchableOpacity 
+                          className="ml-12 mb-4 flex-row items-center" 
+                          onPress={() => toggleReplies(item.messageId || item.id)}
+                        >
+                          <View className="w-6 h-[1px] bg-[#AFAFAF] mr-2" />
+                          <Text className="text-[12px] text-[#1899D6]" style={{ fontFamily: 'BanglaBold' }}>
+                            {item.childReplies.length} টি রিপ্লাই দেখুন
+                          </Text>
+                        </TouchableOpacity>
+                      )}
+
+                      {hasReplies && isExpanded && (
+                        <View className="border-l-2 border-[#EFE8D6] ml-4 pl-4 mb-2">
+                          {item.childReplies.map(reply => renderSingleMessage(reply, true))}
+                        </View>
+                      )}
+                    </View>
+                  );
+                }}
+              />
+            )}
+
+          {/* 🚀 Comment Input Box */}
+            <View className="px-4 py-3 border-t-2 border-[#EFE8D6] bg-white flex-col">
+              {replyToUser && (
+                <View className="flex-row items-center justify-between bg-[#FDF6E3] px-3 py-2 rounded-t-xl border-x border-t border-[#EFE8D6] mb-[-5px] pb-3">
+                  <Text className="text-[12px] text-[#827B6E]" style={{ fontFamily: 'BanglaBold' }}>
+                    <FontAwesome5 name="reply" size={10} color="#827B6E" />  {replyToUser.userName}-কে রিপ্লাই দিচ্ছেন...
+                  </Text>
+                  <TouchableOpacity onPress={() => setReplyToUser(null)}>
+                    <FontAwesome5 name="times-circle" size={14} color="#AFAFAF" />
+                  </TouchableOpacity>
+                  
+                </View>
+              )}
+              <View className="flex-row items-end">
+                <View className="flex-1 bg-[#FDF6E3] border border-[#EFE8D6] rounded-2xl px-4 py-2 min-h-[44px] max-h-[100px] justify-center mr-3 z-10">
+                <TextInput
+                  className="text-[#3D382F] text-[14px] pt-1"
+                  style={{ fontFamily: 'BanglaRegular' }}
+                  placeholder="আপনার মতামত লিখুন..."
+                  placeholderTextColor="#AFAFAF"
+                  multiline
+                  value={commentText}
+                  onChangeText={setCommentText}
+                />
+              </View>
+            <TouchableOpacity activeOpacity={0.8} onPress={handleSendCommentModal} disabled={commentText.trim() === ''}>
+                <View className={`w-11 h-11 rounded-full items-center justify-center border ${commentText.trim() === '' ? 'bg-[#EAE4D4] border-[#EAE4D4]' : 'bg-[#1899D6] border-[#1899D6]'}`}>
+                  <FontAwesome5 name="paper-plane" size={14} color={commentText.trim() === '' ? '#827B6E' : '#FFFFFF'} solid />
+                </View>
+              </TouchableOpacity>
+          </View>
+
+          </View>
+        </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
       <Modal visible={isActionSheetVisible} transparent animationType="fade" onRequestClose={() => setActionSheetVisible(false)}>
         <View className="flex-1 justify-end bg-black/60">
@@ -638,6 +1036,16 @@ try {
                 </TouchableOpacity>
               ))}
             </View>
+
+          {/* রিপ্লাই বাটন (শুধু কমেন্ট মডাল ওপেন থাকলে দেখাবে) */}
+            {isCommentModalVisible && (
+              <TouchableOpacity activeOpacity={0.8} onPress={() => { setReplyToUser(selectedMessage); setActionSheetVisible(false); }} className="bg-[#E6F4FB] p-4 rounded-[20px] mb-4 flex-row items-center border border-[#BCE3F5]">
+                <View className="w-10 h-10 bg-[#1899D6] rounded-full items-center justify-center mr-4 shadow-sm">
+                  <FontAwesome5 name="reply" size={16} color="#FFF" />
+                </View>
+                <Text className="text-[#1073A4] text-[16px] pt-1" style={{ fontFamily: 'BanglaBold' }}>রিপ্লাই করুন</Text>
+              </TouchableOpacity>
+            )}
 
             <TouchableOpacity activeOpacity={0.8} onPress={handleCopyText} className="bg-[#EAE4D4] p-4 rounded-[20px] mb-4 flex-row items-center">
               <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-4 shadow-sm">

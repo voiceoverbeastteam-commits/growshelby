@@ -8,58 +8,66 @@ import { View } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { Poppins_400Regular, Poppins_700Bold } from '@expo-google-fonts/poppins';
 import { HindSiliguri_400Regular, HindSiliguri_700Bold } from '@expo-google-fonts/hind-siliguri';
-
 import { Audio } from 'expo-av';
 
-import PushNotification from '../components/PushNotification';
+import PushNotification, { NEW_CHANNEL_ID } from '../components/PushNotification';
 import Autoupdate from '../components/Autoupdate';
 
-// 🚀 ম্যাজিক ইমপোর্টস (Background Handling)
 import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
-import notifee, { AndroidImportance } from '@notifee/react-native';
+import notifee, { AndroidImportance, AndroidVisibility, AndroidStyle } from '@notifee/react-native';
 
-// 🚀 ১. গ্লোবাল ব্যাকগ্রাউন্ড টাস্ক ডিফাইন (অ্যাপ বন্ধ থাকলেও কাজ করবে)
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
 
+// 🚀 FIX 3: অ্যাপ কিলড/ব্যাকগ্রাউন্ড থাকা অবস্থায় 100% গ্যারান্টিড পপআপ
 TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
   if (error) return;
   if (data && data.notification) {
-    // ডাটা-অনলি পেলোড এক্সট্র্যাক্ট করা হচ্ছে
     const payload = data.notification.data || data.notification.request?.content?.data;
     
-    if (payload && payload.isSilentPush) {
-      // Notifee এর নতুন হাই-প্রায়োরিটি চ্যানেল ক্রিয়েট
+    // 🟢 আগের সেই isSilentPush ভুলের ফাঁদ সরিয়ে দিয়েছি। এখন ডাটা থাকলেই পপআপ হবে!
+    if (payload) {
+      // Background এ Channel ID তৈরি করে নিচ্ছি যেন কোনো রিস্ক না থাকে
       const channelId = await notifee.createChannel({
-        id: 'squad_heads_up_final',
-        name: 'Study Squad Alerts',
+        id: NEW_CHANNEL_ID,
+        name: 'Squad VIP Alerts',
         vibration: true,
-        importance: AndroidImportance.HIGH,
+        vibrationPattern: [300, 500],
+        importance: AndroidImportance.HIGH, // 🟢 Force Heads-up Display
+        visibility: AndroidVisibility.PUBLIC,
         sound: 'default',
       });
 
-      // Notifee দিয়ে পপ-আপ করে দেখানো
+      // 🚀 Notifee দিয়ে হাই প্রায়োরিটি পপআপ
       await notifee.displayNotification({
-        title: payload.title,
-        body: payload.body,
+        title: payload.title || payload.userName || 'স্টাডি স্কোয়াড',
+        body: payload.body || payload.text || 'কমিউনিটিতে নতুন মেসেজ এসেছে!',
         data: payload,
         android: {
           channelId,
-          largeIcon: payload.senderAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+          importance: AndroidImportance.HIGH, 
+          largeIcon: payload.senderAvatar || payload.userAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
           circularLargeIcon: true,
-          pressAction: { id: 'default' },
+          pressAction: { 
+             id: 'default',
+             launchActivity: 'default' 
+          },
+          style: {
+             type: AndroidStyle.BIGTEXT,
+             text: payload.body || payload.text || 'কমিউনিটিতে নতুন মেসেজ এসেছে!'
+          }
         },
       });
     }
   }
 });
 
-// 🚀 ২. টাস্কটিকে এক্সপো-তে রেজিস্টার করা
 Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
 
-// 🚀 ৩. Notifee এর ম্যান্ডেটরি ব্যাকগ্রাউন্ড ইভেন্ট (ওয়ার্নিং রিমুভ করার জন্য)
+// 🚀 Notifee Background Event Handler (ম্যান্ডেটরি, না হলে অ্যাপ ক্র্যাশ বা ওয়ার্নিং দেয়)
 notifee.onBackgroundEvent(async ({ type, detail }) => {
-  // অ্যাপ কিলড থাকা অবস্থায় নোটিফিকেশনে ক্লিক করলে এখানে ফায়ার হবে
+  // ব্যবহারকারী নোটিফিকেশনে ক্লিক করলে ডাটা ক্যাশ করে রাখতে পারেন
+  // তবে রাউটিং ফ্রন্টএন্ড ওপেন হওয়ার পর getInitialNotification() হ্যান্ডেল করবে।
 });
 
 ExpoSplashScreen.preventAutoHideAsync();

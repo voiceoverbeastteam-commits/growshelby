@@ -5,16 +5,20 @@ import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import notifee, { AndroidStyle, EventType, AndroidImportance } from '@notifee/react-native';
+import notifee, { AndroidImportance, EventType, AndroidVisibility, AndroidStyle } from '@notifee/react-native';
 import { useRouter } from 'expo-router'; 
 
+// 🚀 FIX 1: ফোরগ্রাউন্ডে (অ্যাপ ওপেন থাকা অবস্থায়) পপআপ অ্যালাও করা হলো!
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: false, 
-    shouldPlaySound: false,
-    shouldSetBadge: false,
+    shouldShowAlert: true, // 🟢 এটা আগে false ছিল, তাই পপআপ হতো না!
+    shouldPlaySound: true,
+    shouldSetBadge: true,
   }),
 });
+
+// 🚀 FIX 2: একদম নতুন Channel ID (যাতে অ্যান্ড্রয়েড ক্যাশ ক্লিয়ার হয়ে ফোর্স পপআপ হয়)
+export const NEW_CHANNEL_ID = 'study_squad_heads_up_v1';
 
 export default function PushNotification({ onNotificationClick }) {
   const [expoPushToken, setExpoPushToken] = useState('');
@@ -24,12 +28,13 @@ export default function PushNotification({ onNotificationClick }) {
   const router = useRouter(); 
 
   const handleNotificationTap = async (data) => {
-    if (data && data.guideId) {
+    if (data && (data.guideId || data.channelId)) {
+      const targetId = data.guideId || data.channelId;
       try {
         const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
-          body: JSON.stringify({ action: 'import_guide', code: data.guideId })
+          body: JSON.stringify({ action: 'import_guide', code: targetId })
         });
         const result = await response.json();
 
@@ -46,43 +51,53 @@ export default function PushNotification({ onNotificationClick }) {
   useEffect(() => {
     checkAndRequestPermission();
 
+    // অ্যাপ কিলড অবস্থা থেকে ওপেন করলে
     notifee.getInitialNotification().then(initialNotification => {
-      if (initialNotification) {
+      if (initialNotification && initialNotification.notification.data) {
         const data = initialNotification.notification.data;
         setTimeout(() => handleNotificationTap(data), 1000); 
       }
     });
 
-    // 🚀 ফোরগ্রাউন্ড (ওপেন থাকা) অবস্থায় ডাটা-অনলি মেসেজ ধরা
+    // 🚀 অ্যাপ ওপেন থাকা অবস্থায় Notifee দিয়ে হাই-প্রায়োরিটি হেডস-আপ পপআপ
     notificationListener.current = Notifications.addNotificationReceivedListener(async (notification) => {
-      const data = notification.request.trigger.remoteMessage?.data || notification.request.content.data;
-
-      if (data && data.isSilentPush) {
-        if (data.guideId) {
-          DeviceEventEmitter.emit('new_unread_message', data.guideId);
+      const payload = notification.request.trigger.remoteMessage?.data || notification.request.content.data;
+      
+      if (payload) {
+        // নতুন মেসেজ এলে লাইভ চ্যাটে সিগন্যাল পাঠানো
+        if (payload.guideId) {
+          DeviceEventEmitter.emit('new_unread_message', payload.guideId);
         }
 
+        // 🚀 চ্যানেলটি সাথে সাথে তৈরি করে নেওয়া
         const channelId = await notifee.createChannel({
-          id: 'squad_heads_up_final', 
-          name: 'Study Squad Alerts',
+          id: NEW_CHANNEL_ID,
+          name: 'Squad VIP Alerts',
           vibration: true,
-          importance: AndroidImportance.HIGH,
+          vibrationPattern: [300, 500],
+          importance: AndroidImportance.HIGH, // 🟢 100% Guaranteed Popup
+          visibility: AndroidVisibility.PUBLIC,
           sound: 'default',
         });
 
-        // 🚀 Notifee দিয়ে ডাটা থেকে টাইটেল ও বডি শো করানো
+        // 🚀 Notifee দিয়ে সরাসরি পপআপ (ডাটা পেইলড থেকে)
         await notifee.displayNotification({
-          id: notification.request.identifier, 
-          title: data.title,
-          body: data.body,
-          data: data,
+          title: payload.title || payload.userName || 'স্টাডি স্কোয়াড',
+          body: payload.body || payload.text || 'কমিউনিটিতে নতুন আপডেট এসেছে!',
+          data: payload,
           android: {
             channelId,
-            largeIcon: data.senderAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+            importance: AndroidImportance.HIGH,
+            largeIcon: payload.senderAvatar || payload.userAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
             circularLargeIcon: true, 
             pressAction: {
               id: 'default',
+              launchActivity: 'default', // ক্লিক করলে সরাসরি অ্যাপ খুলবে
             },
+            style: {
+               type: AndroidStyle.BIGTEXT,
+               text: payload.body || payload.text || 'কমিউনিটিতে নতুন আপডেট এসেছে!'
+            }
           },
         });
       }
@@ -127,29 +142,24 @@ export default function PushNotification({ onNotificationClick }) {
     
     if (status === 'granted') {
       generateAndSendToken();
-    } else {
-      console.log('❌ User denied push notifications.');
     }
   };
 
   const generateAndSendToken = async () => {
     try {
       if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync('squad_heads_up_final', {
-          name: 'Study Squad Alerts',
+        // এক্সপোর বিল্ট-ইন চ্যানেলও আপডেট করে দিলাম
+        await Notifications.setNotificationChannelAsync(NEW_CHANNEL_ID, {
+          name: 'Squad VIP Alerts',
           importance: Notifications.AndroidImportance.MAX,
           vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#FF231F7C',
+          lightColor: '#1899D6',
           sound: 'default',
         });
       }
 
       const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-      
-      if (!projectId) {
-        console.log('⚠️ EAS Project ID not found. Run "eas init" in your terminal.');
-        return;
-      }
+      if (!projectId) return;
 
       const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
       const token = tokenResponse.data;
@@ -167,8 +177,7 @@ export default function PushNotification({ onNotificationClick }) {
     if(!userEmail || userEmail === 'guest') return; 
     try {
       const SERVER_URL = 'https://growshelby-api.vercel.app/api/save_token'; 
-
-      const response = await fetch(SERVER_URL, {
+      await fetch(SERVER_URL, {
         method: 'POST',
         headers: { 
           Accept: 'application/json',
@@ -177,17 +186,7 @@ export default function PushNotification({ onNotificationClick }) {
         },
         body: JSON.stringify({ action: 'save_push_token', token: token, email: userEmail }),
       });
-      
-      const resultText = await response.text();
-      
-      if (response.ok) {
-        console.log('✅ Token sent to database successfully:', resultText);
-      } else {
-        console.log('❌ Server returned an error status:', resultText);
-      }
-    } catch (error) {
-      console.log('⚠️ Error saving token:', error);
-    }
+    } catch (error) {}
   };
 
   return (
@@ -201,7 +200,7 @@ export default function PushNotification({ onNotificationClick }) {
 
           <Text className="text-xl mb-2 text-[#3C3C3C] text-center" style={{ fontFamily: 'BanglaBold' }}>নোটিফিকেশন চালু করুন</Text>
           <Text className="text-[15px] mb-6 text-[#777777] text-center" style={{ fontFamily: 'BanglaRegular', lineHeight: 22 }}>
-            নতুন ডেইলি চ্যালেঞ্জ, রিভিশন রিমাইন্ডার এবং এক্সাম আপডেটের নোটিফিকেশন পেতে 'এলাও' বাটনে ক্লিক করুন।
+            কমিউনিটি মেম্বারদের মেসেজ এবং চ্যালেঞ্জের আপডেট সবার আগে পেতে 'এলাও' বাটনে ক্লিক করুন।
           </Text>
           
           <View className="flex-row justify-between space-x-3 w-full">
