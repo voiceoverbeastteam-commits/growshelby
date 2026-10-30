@@ -358,9 +358,60 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
   const [isRevealLoading, setIsRevealLoading] = useState(false);
   const [isFilterLoading, setIsFilterLoading] = useState(false);
   // 🚀 ফোকাস মোড এবং লাইভ রিয়্যাকশন স্টেট
+ // 🚀 ফোকাস মোড এবং লাইভ রিয়্যাকশন স্টেট
   const [isReactionVisible, setIsReactionVisible] = useState(true);
   const [activeReaders, setActiveReaders] = useState([]);
   const [membersModalVisible, setMembersModalVisible] = useState(false);
+
+  // 🚀 ইনভাইট ও মেম্বার সার্চ স্টেট
+  const [searchQuery, setSearchQuery] = useState('');
+  const [communityMembersList, setCommunityMembersList] = useState([]);
+  const [invitedUsers, setInvitedUsers] = useState([]);
+
+  const fetchCommunityMembers = async () => {
+    if (!guideData) return;
+    const guideId = guideData.channelId || guideData.id || guideData.shareCode;
+    try {
+      const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        body: JSON.stringify({ action: 'get_community_members', guideId, limit: 100, skip: 0 })
+      });
+      const result = await response.json();
+      if (result.success && result.members) {
+        setCommunityMembersList(result.members);
+      }
+    } catch (error) {
+      console.log('Error fetching members:', error);
+    }
+  };
+
+  const handleSendInvite = async (targetEmail) => {
+    if (invitedUsers.includes(targetEmail) || !guideData) return;
+    setInvitedUsers(prev => [...prev, targetEmail]); // সাথমে সাথে বাটন সবুজ করার জন্য
+
+    const guideId = guideData.channelId || guideData.id || guideData.shareCode;
+    const uid = await AsyncStorage.getItem('@current_user_id') || 'guest';
+    const name = await AsyncStorage.getItem(`@user_name_${uid}`) || 'শিক্ষার্থী';
+    const avatar = await AsyncStorage.getItem(`@user_avatar_${uid}`) || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+
+    try {
+      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        body: JSON.stringify({
+          action: 'send_reading_invite',
+          guideId,
+          targetEmail,
+          notebookName: guideData.notebookName,
+          userName: name,
+          userAvatar: avatar
+        })
+      });
+    } catch (error) {
+      console.log('Error sending invite:', error);
+    }
+  };
   // 🚀 Dynamic Social Dock States & Animations
   const [isQuickChatOpen, setIsQuickChatOpen] = useState(false);
   const [liveReaction, setLiveReaction] = useState(null); // { type: 'emoji' | 'message', content: '...', user: {...} }
@@ -498,25 +549,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
       const name = await AsyncStorage.getItem(`@user_name_${uid}`) || await AsyncStorage.getItem('@user_name') || 'শিক্ষার্থী';
       const avatar = await AsyncStorage.getItem(`@user_avatar_${uid}`) || await AsyncStorage.getItem('@user_avatar') || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
       
-    // 🚀 টেস্টিং ট্রিক: কুলডাউন পুরোপুরি অফ করে দিলাম। এখন বইয়ে ঢুকলেই প্রতিবার নোটিফিকেশন রিকোয়েস্ট যাবে!
-      const targetChannelId = guideData.channelId || guideData.creatorEmail; 
-        
-      // 🚀 ৪ সেকেন্ডের টাইমার (যাতে অ্যাপ স্লিপ মোডে যাওয়ার আগেই রিকোয়েস্ট চলে যায়)
-      setTimeout(() => {
-        fetch('https://growshelby-api.vercel.app/api/update_coins', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
-          body: JSON.stringify({
-            action: 'notify_reading_started',
-            guideId,
-            channelId: targetChannelId,
-            notebookName: guideData.notebookName,
-            userEmail: uid,
-            userName: name,
-            userAvatar: avatar
-          })
-        }).catch(()=>{});
-      }, 4000); // ⏱️ ৪ সেকেন্ড টাইমার
+   
 
       // ২. Pusher চ্যানেল সাবস্ক্রাইব করা (Auth সহ)
       pusher = new Pusher('94415a0ec2e09647c277', { 
@@ -756,7 +789,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
                   </View>
                   <View className="justify-center flex-shrink">
                     <Text className="text-[#3C3C3C] text-[12px] leading-[15px]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>
-                      {activeReaders.length > 0 ? 'লাইভ' : 'একা'}
+                      {activeReaders.length > 0 ? 'লাই' : 'একা'}
                     </Text>
                     <Text className="text-[#777777] text-[9px] leading-[12px]" style={{ fontFamily: 'BanglaRegular' }} numberOfLines={1}>
                       পড়ছে
@@ -1033,8 +1066,72 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
       </Modal>
 
 
+    {/* 🚀 Members & Invite Modal */}
+      <Modal visible={membersModalVisible} transparent animationType="slide" onRequestClose={() => setMembersModalVisible(false)} onShow={fetchCommunityMembers}>
+        <View className="flex-1 justify-end bg-black/50">
+          <TouchableOpacity className="flex-1" activeOpacity={1} onPress={() => setMembersModalVisible(false)} />
+          <View className="bg-white w-full h-[75%] rounded-t-[32px] overflow-hidden flex-col p-5">
+            <View className="w-12 h-1.5 bg-[#E5E5E5] rounded-full self-center mb-4" />
+            <Text className="text-[18px] text-[#3C3C3C] mb-4 text-center" style={{ fontFamily: 'BanglaBold' }}>কমিউনিটি মেম্বারস</Text>
+
+            {/* Search Bar */}
+            <View className="flex-row items-center bg-[#F9F9F9] rounded-[16px] border border-[#E5E5E5] px-4 py-2 mb-4">
+              <FontAwesome5 name="search" size={14} color="#AFAFAF" />
+              <TextInput
+                className="flex-1 ml-3 text-[15px] text-[#3C3C3C] h-[36px] pt-1"
+                style={{ fontFamily: 'BanglaRegular' }}
+                placeholder="মেম্বার খুঁজুন..."
+                placeholderTextColor="#AFAFAF"
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+
+            {/* Member List */}
+            <FlatList
+              data={communityMembersList.filter(m => m.userName?.toLowerCase().includes(searchQuery.toLowerCase()))}
+              keyExtractor={(item, index) => index.toString()}
+              showsVerticalScrollIndicator={false}
+              renderItem={({ item }) => (
+                <View className="flex-row items-center justify-between py-3 border-b border-[#F5F5F5]">
+                  <View className="flex-row items-center">
+                    <Image source={{ uri: item.userAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-10 h-10 rounded-full bg-[#EAE4D4] mr-3 border border-[#E5E5E5]" />
+                    <View>
+                      <Text className="text-[15px] text-[#3C3C3C] pt-1" style={{ fontFamily: 'BanglaBold' }}>{item.userName}</Text>
+                      <Text className="text-[12px] text-[#777777]" style={{ fontFamily: 'BanglaRegular' }}>মেম্বার</Text>
+                    </View>
+                  </View>
+                  <View className="flex-row space-x-2">
+                    {/* Add Friend Placeholder (আপাতত ফাংশন ছাড়া শুধু বাটন) */}
+                    <TouchableOpacity activeOpacity={0.7} className="bg-[#F0F0F0] px-3 py-1.5 rounded-full items-center justify-center border border-[#E5E5E5]">
+                      <FontAwesome5 name="user-plus" size={12} color="#777777" />
+                    </TouchableOpacity>
+                    
+                    {/* Invite Button */}
+                    <TouchableOpacity 
+                      activeOpacity={0.7} 
+                      onPress={() => handleSendInvite(item.userEmail)}
+                      className={`px-4 py-1.5 rounded-full items-center justify-center ${invitedUsers.includes(item.userEmail) ? 'bg-[#D7FFB8] border border-[#58CC02]' : 'bg-[#1899D6] border border-[#1899D6]'}`}
+                    >
+                      <Text className={`text-[12px] pt-1 ${invitedUsers.includes(item.userEmail) ? 'text-[#58A700]' : 'text-white'}`} style={{ fontFamily: 'BanglaBold' }}>
+                        {invitedUsers.includes(item.userEmail) ? 'ডাকানো হয়েছে' : 'ডাকুন'}
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              )}
+              ListEmptyComponent={
+                <View className="items-center justify-center py-10">
+                  <Text className="text-[#AFAFAF] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>কোনো মেম্বার পাওয়া যায়নি</Text>
+                </View>
+              }
+            />
+          </View>
+        </View>
+      </Modal>
+
       {/* 🚀 Global Community Chat inside Reading Engine */}
-      <Discussion 
+      <Discussion
         visible={discussionVisible} 
         onClose={() => setDiscussionVisible(false)} 
         data={activeDiscussionData} 

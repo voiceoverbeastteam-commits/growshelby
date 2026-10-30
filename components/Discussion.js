@@ -140,26 +140,47 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
     setExpandedReplies(prev => ({ ...prev, [commentId]: !prev[commentId] }));
   };
 
+ // 🟢 আপডেট করা স্মার্ট getThreadedComments
   const getThreadedComments = () => {
     const roots = [];
     const replies = [];
     
+    // প্রথমে মেইন কমেন্ট এবং রিপ্লাই আলাদা করা হচ্ছে
     postComments.forEach(msg => {
       if (msg.text && msg.text.startsWith('@[')) replies.push(msg);
       else roots.push({ ...msg, childReplies: [] });
     });
 
+    // এবার রিপ্লাইগুলোকে ঠিক জায়গায় বসানোর লজিক
     replies.forEach(reply => {
       const match = reply.text.match(/^@\[(.*?)\]/);
       let added = false;
+      
       if (match) {
-        const targetName = match[1];
-        const parent = roots.find(r => r.userName === targetName);
+        const targetName = match[1]; // যাকে মেনশন করা হয়েছে
+        
+        // ১. প্রথমে চেক করবো সে কোনো মেইন কমেন্টার কিনা
+        let parent = roots.find(r => r.userName === targetName);
+        
         if (parent) {
           parent.childReplies.unshift(reply);
           added = true;
+        } else {
+          // ২. 🚀 যদি মেইন কমেন্টার না হয়, তারমানে সে নিজেই কোনো রিপ্লাইয়ের রিপ্লাই দিচ্ছে। 
+          // তাই আমরা এখন খুঁজবো যে ওই টার্গেট ব্যক্তিটা কার রিপ্লাই বক্সে বসে আছে।
+          for (let root of roots) {
+            const foundInReplies = root.childReplies.find(r => r.userName === targetName);
+            if (foundInReplies) {
+              root.childReplies.unshift(reply); // তাকে অরিজিনাল মেইন কমেন্টের আন্ডারেই ঢুকিয়ে দিলাম
+              added = true;
+              break; // কাজ শেষ, লুপ বন্ধ
+            }
+          }
         }
       }
+      
+      // ৩. যদি কোনোভাবেই প্যারেন্ট খুঁজে না পাওয়া যায় (যেমন কেউ নাম চেঞ্জ করলে বা অন্য কোনো কারণে), 
+      // শুধু তখনই তাকে নতুন কমেন্ট হিসেবে দেখাবে।
       if (!added) roots.push({ ...reply, childReplies: [] });
     });
     
@@ -337,24 +358,42 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
           }
           setIsCacheChecked(true); // ক্যাশ লোড শেষ, এবার স্ক্রিন দেখাবে
 
-          channel.bind('new_message', (newMessage) => {
+        channel.bind('new_message', (newMessage) => {
+            const formattedMsg = { ...newMessage, reactions: newMessage.reactions || {} };
+            
+            // মেইন ফিড আপডেট
             setComments(prev => {
-              // 🚀 স্মার্ট ফিল্টার: যদি আমরা কোনো স্পেসিফিক কোশ্চেনে থাকি আর আসা মেসেজটা অন্য কোশ্চেনের বা নরমাল চ্যাটের হয়, তাহলে ইগনোর করব!
+              // 🚀 স্মার্ট ফিল্টার: যদি আমরা কোনো স্পেসিফিক কোশ্চেনে থাকি আর আসা মেসেজটা অন্য কোশ্চেনের বা নরমাল চ্যাটের হয়, তাহলে ইগনোর করব!
               if (data && newMessage.contextQuestion !== data.question) return prev;
 
               if (prev.some(msg => msg.messageId === newMessage.messageId)) return prev;
-              const formattedMsg = { ...newMessage, reactions: newMessage.reactions || {} };
               return [formattedMsg, ...prev]; 
+            });
+
+            // 🟢 রিয়েল-টাইমে কমেন্ট ফিড আপডেট
+            setPostComments(prev => {
+              if (prev.some(msg => (msg.messageId || msg.id) === newMessage.messageId)) return prev;
+              return [formattedMsg, ...prev];
             });
           });
 
-      // ২. 🚀 রিয়্যাকশন আপডেট রিসিভার
-      channel.bind('message_updated', (data) => {
-        if (data.messageId && data.reactions) {
+      // ২. 🚀 রিয়্যাকশন আপডেট রিসিভার
+      channel.bind('message_updated', (updatedData) => {
+        if (updatedData.messageId && updatedData.reactions) {
+          // মেইন ফিডের রিয়্যাকশন আপডেট
           setComments(prevComments => 
             prevComments.map(msg => 
-              (msg.messageId || msg.id) === data.messageId 
-                ? { ...msg, reactions: data.reactions } 
+              (msg.messageId || msg.id) === updatedData.messageId 
+                ? { ...msg, reactions: updatedData.reactions } 
+                : msg
+            )
+          );
+          
+          // 🟢 রিয়েল-টাইমে কমেন্টের রিয়্যাকশন আপডেট
+          setPostComments(prevComments => 
+            prevComments.map(msg => 
+              (msg.messageId || msg.id) === updatedData.messageId 
+                ? { ...msg, reactions: updatedData.reactions } 
                 : msg
             )
           );
@@ -362,7 +401,10 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
       });
 
       channel.bind('delete_message', (deletedData) => {
+        // মেইন ফিড থেকে রিমুভ
         setComments(prev => prev.filter(msg => msg.messageId !== deletedData.messageId));
+        // 🟢 রিয়েল-টাইমে কমেন্ট ফিড থেকেও রিমুভ
+        setPostComments(prev => prev.filter(msg => (msg.messageId || msg.id) !== deletedData.messageId));
       });
       
           channel.bind('typing', (data) => {
@@ -484,8 +526,9 @@ const openCommentModal = (post) => {
 const handleSendCommentModal = async () => {
    if (commentText.trim() === '' || !activePostForComment) return;
    
-   // রিপ্লাই হলে নামের সাথে মেনশন যুক্ত করে দেওয়া হচ্ছে
+   // রিপ্লাই হলে নামের সাথে মেনশন যুক্ত করে দেওয়া হচ্ছে
    const textToSend = replyToUser ? `@[${replyToUser.userName}] ${commentText.trim()}` : commentText.trim();
+   const mentionedUserEmail = replyToUser ? replyToUser.userEmail : null; // 🚀 যাকে রিপ্লাই দেওয়া হচ্ছে তার ইমেইল ব্যাকএন্ডে পাঠানোর জন্য
    
    setCommentText('');
    setReplyToUser(null);
@@ -503,6 +546,7 @@ const handleSendCommentModal = async () => {
       isContextual: false,
       contextQuestion: null,
       parentId: parentId,
+      mentionedEmail: mentionedUserEmail, // 🚀 API-কে জানিয়ে দিলাম কাকে নোটিফিকেশন দিতে হবে
       reactions: { UP: [], DOWN: [] }, 
       timestamp: new Date().toISOString()
     };
