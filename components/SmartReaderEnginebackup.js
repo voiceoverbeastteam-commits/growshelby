@@ -3,6 +3,7 @@ import { View, Text, TouchableOpacity, Modal, ScrollView, TextInput, Animated, D
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useRouter } from 'expo-router';
 import Pusher from 'pusher-js/react-native';
 import Discussion from './Discussion';
 
@@ -11,6 +12,31 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// 🚀 মেম্বার লিস্টের শিমার ইফেক্ট
+const MemberSkeleton = () => {
+  const shimmerAnim = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+  return (
+    <Animated.View style={{ opacity: shimmerAnim }} className="flex-row items-center justify-between py-3 border-b border-[#F5F5F5]">
+      <View className="flex-row items-center">
+        <View className="w-10 h-10 rounded-full bg-[#EAE4D4] mr-3" />
+        <View>
+          <View className="w-24 h-4 bg-[#EAE4D4] rounded-full mb-2" />
+          <View className="w-12 h-3 bg-[#EAE4D4] rounded-full" />
+        </View>
+      </View>
+      <View className="w-24 h-8 rounded-[12px] bg-[#EAE4D4]" />
+    </Animated.View>
+  );
+};
 
 // 🚀 রিডিং ইঞ্জিনের কোশ্চেন লোডিং শিমার
 const QuestionSkeleton = () => {
@@ -230,6 +256,38 @@ useEffect(() => {
 
 export default function SmartReaderEngine({ visible, onClose, guideData, onOpenChat }) {
   const insets = useSafeAreaInsets();
+  const router = useRouter();
+  const [loadingCommunityId, setLoadingCommunityId] = useState(null);
+
+  // 🚀 ইউজারের প্রোফাইল থেকে অন্য কমিউনিটিতে যাওয়ার ম্যাজিক ফাংশন
+  const handleCommunityClick = async (community) => {
+    setLoadingCommunityId(community.channelId);
+    try {
+      const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        body: JSON.stringify({ action: 'import_community', code: community.channelId })
+      });
+      const result = await response.json();
+
+      if (result.success && result.community) {
+        await AsyncStorage.setItem('@temp_community_data', JSON.stringify(result.community));
+        
+      // বর্তমান প্রোফাইল ও রিডিং মডাল বন্ধ করে দিচ্ছি
+        setMembersModalVisible(false);
+        onClose(); 
+        
+        // 🚀 ম্যাজিক ফিক্স: মডালগুলো বন্ধ হওয়ার জন্য ৩০০ মিলিসেকেন্ড সময় দিয়ে তারপর পেজ রিপ্লেস করবো
+        setTimeout(() => {
+          router.replace('/community');
+        }, 300);
+      }
+    } catch (error) {
+      console.log("Error navigating to community:", error);
+    } finally {
+      setLoadingCommunityId(null);
+    }
+  };
   
  const [activeCategory, setActiveCategory] = useState('সব');
   const [cqSubFilter, setCqSubFilter] = useState('সব');
@@ -361,28 +419,130 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
  // 🚀 ফোকাস মোড এবং লাইভ রিয়্যাকশন স্টেট
   const [isReactionVisible, setIsReactionVisible] = useState(true);
   const [activeReaders, setActiveReaders] = useState([]);
-  const [membersModalVisible, setMembersModalVisible] = useState(false);
+ const [membersModalVisible, setMembersModalVisible] = useState(false);
+  const [selectedLiveMember, setSelectedLiveMember] = useState(null);
+  const [selectedUserProfile, setSelectedUserProfile] = useState(null);
+  const [isProfileLoading, setIsProfileLoading] = useState(true);
+  const profileSlideAnim = useRef(new Animated.Value(Dimensions.get('window').width)).current;
 
-  // 🚀 ইনভাইট ও মেম্বার সার্চ স্টেট
-  const [searchQuery, setSearchQuery] = useState('');
-  const [communityMembersList, setCommunityMembersList] = useState([]);
-  const [invitedUsers, setInvitedUsers] = useState([]);
+  // 🚀 Duolingo Style Bouncy Profile Slide-in & Fetch Real Data
+  const openMemberProfile = async (member) => {
+    setSelectedLiveMember(member);
+    setIsProfileLoading(true);
+    Animated.spring(profileSlideAnim, {
+      toValue: 0,
+      friction: 8,
+      tension: 50,
+      useNativeDriver: true
+    }).start();
 
-  const fetchCommunityMembers = async () => {
-    if (!guideData) return;
-    const guideId = guideData.channelId || guideData.id || guideData.shareCode;
     try {
+      const currentUid = await AsyncStorage.getItem('@current_user_id') || 'guest';
       const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
-        body: JSON.stringify({ action: 'get_community_members', guideId, limit: 100, skip: 0 })
+        body: JSON.stringify({ 
+          action: 'get_user_social_profile', 
+          targetEmail: member.email || member.id || member.name, 
+          viewerEmail: currentUid 
+        })
       });
       const result = await response.json();
-      if (result.success && result.members) {
-        setCommunityMembersList(result.members);
+      if (result.success) {
+        setSelectedUserProfile(result.data);
       }
     } catch (error) {
-      console.log('Error fetching members:', error);
+      console.log("Profile fetch error:", error);
+    } finally {
+      setIsProfileLoading(false);
+    }
+  };
+
+ // 🚀 Slide-out (স্টেট null করার দরকার নেই, জাস্ট বাইরে পাঠিয়ে দিব)
+  const closeMemberProfile = () => {
+    Animated.spring(profileSlideAnim, {
+      toValue: Dimensions.get('window').width,
+      friction: 8,
+      tension: 50,
+      useNativeDriver: true
+    }).start(); // 🚀 ফিক্স: এখান থেকে setSelectedLiveMember(null) সরিয়ে দেওয়া হয়েছে
+  };
+
+  // 🚀 Public Profile States (The Stacked Social Snapshot)
+  const [selectedUser, setSelectedUser] = useState(null);
+  const [isPublicProfileVisible, setIsPublicProfileVisible] = useState(false);
+
+// 🚀 গেম লবি ও ইনভাইট স্টেট
+  const [myEmail, setMyEmail] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [myFriends, setMyFriends] = useState([]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [invitedUsers, setInvitedUsers] = useState([]);
+  const [sentRequests, setSentRequests] = useState([]); 
+  const [pendingRequests, setPendingRequests] = useState([]); // 🚀 যেগুলোতে অলরেডি রিকোয়েস্ট পাঠানো হয়েছে
+  const [isMembersLoading, setIsMembersLoading] = useState(true);
+
+ const fetchLobbyData = async (query = '') => {
+    setIsMembersLoading(true);
+    try {
+      const currentUid = await AsyncStorage.getItem('@current_user_id') || 'guest';
+      setMyEmail(currentUid); // 🚀 নিজের ইমেইলটা স্টেটে সেভ করে নিলাম
+      const currentGuideId = guideData?.channelId || guideData?.id || guideData?.shareCode; // 🚀 বর্তমান কমিউনিটির আইডি
+      const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        body: JSON.stringify({ action: 'get_lobby_data', userEmail: currentUid, searchQuery: query, guideId: currentGuideId })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setMyFriends(result.friends || []);
+        setSearchResults(result.searchResults || []);
+      }
+    } catch (error) {
+      console.log('Lobby fetch error:', error);
+    } finally {
+      setIsMembersLoading(false);
+    }
+  };
+
+  // মডাল ওপেন হলে একবার ফ্রেন্ড লিস্ট কল হবে
+  useEffect(() => {
+    if (membersModalVisible) fetchLobbyData();
+  }, [membersModalVisible]);
+
+  // সার্চ বারে কিছু লিখলে ডিবাউন্স (হাফ সেকেন্ড পর) করে সার্চ হবে
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (membersModalVisible) fetchLobbyData(searchQuery);
+    }, 500);
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchQuery]);
+
+ const handleAddFriend = async (targetEmail) => {
+    const isAlreadyPending = pendingRequests.includes(targetEmail);
+    
+    // যদি অলরেডি রিকোয়েস্ট পাঠানো থাকে, তবে ক্যানসেল করবে
+    if (isAlreadyPending) {
+      setPendingRequests(prev => prev.filter(email => email !== targetEmail));
+      try {
+        const currentUid = await AsyncStorage.getItem('@current_user_id');
+        await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          body: JSON.stringify({ action: 'cancel_friend_request', senderEmail: currentUid, receiverEmail: targetEmail })
+        });
+      } catch(e) {}
+    } else {
+      // নতুবা রিকোয়েস্ট পাঠাবে
+      setPendingRequests(prev => [...prev, targetEmail]);
+      try {
+        const currentUid = await AsyncStorage.getItem('@current_user_id');
+        await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          body: JSON.stringify({ action: 'send_friend_request', senderEmail: currentUid, receiverEmail: targetEmail })
+        });
+      } catch(e) {}
     }
   };
 
@@ -572,21 +732,23 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
 
       presenceChannel = pusher.subscribe(`presence-guide_${guideId}`);
       
-      presenceChannel.bind('pusher:subscription_succeeded', (members) => {
+    presenceChannel.bind('pusher:subscription_succeeded', (members) => {
         const membersArray = [];
-        members.each((member) => membersArray.push(member.info));
+        // 🚀 ফিক্স: member.id (যেটা মূলত ইমেইল) এখানে ইনজেক্ট করে দিলাম
+        members.each((member) => membersArray.push({ ...member.info, email: member.id }));
         setActiveReaders(membersArray);
       });
 
       presenceChannel.bind('pusher:member_added', (member) => {
         setActiveReaders(prev => {
           if(prev.some(reader => reader.name === member.info.name)) return prev;
-          return [member.info, ...prev];
+          // 🚀 ফিক্স: নতুন মেম্বার অ্যাড হলেও তার ইমেইলটা সাথে দিয়ে দিলাম
+          return [{ ...member.info, email: member.id }, ...prev];
         });
       });
 
       presenceChannel.bind('pusher:member_removed', (member) => {
-        setActiveReaders(prev => prev.filter(m => m.name !== member.info.name));
+        setActiveReaders(prev => prev.filter(m => m.email !== member.id));
       });
     // 🚀 অন্য কেউ রিয়েল-টাইমে কুইক চ্যাট বা রিঅ্যাকশন দিলে রিসিভ করবে
       presenceChannel.bind('live_reaction', async (data) => {
@@ -1066,80 +1228,351 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
       </Modal>
 
 
-    {/* 🚀 Members & Invite Modal */}
-      <Modal visible={membersModalVisible} transparent animationType="slide" onRequestClose={() => setMembersModalVisible(false)} onShow={fetchCommunityMembers}>
-        <View className="flex-1 justify-end bg-black/50">
-          <TouchableOpacity className="flex-1" activeOpacity={1} onPress={() => setMembersModalVisible(false)} />
-          <View className="bg-white w-full h-[75%] rounded-t-[32px] overflow-hidden flex-col p-5">
-            <View className="w-12 h-1.5 bg-[#E5E5E5] rounded-full self-center mb-4" />
-            <Text className="text-[18px] text-[#3C3C3C] mb-4 text-center" style={{ fontFamily: 'BanglaBold' }}>কমিউনিটি মেম্বারস</Text>
-
-            {/* Search Bar */}
-            <View className="flex-row items-center bg-[#F9F9F9] rounded-[16px] border border-[#E5E5E5] px-4 py-2 mb-4">
-              <FontAwesome5 name="search" size={14} color="#AFAFAF" />
-              <TextInput
-                className="flex-1 ml-3 text-[15px] text-[#3C3C3C] h-[36px] pt-1"
-                style={{ fontFamily: 'BanglaRegular' }}
-                placeholder="মেম্বার খুঁজুন..."
-                placeholderTextColor="#AFAFAF"
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
+{/* 🚀 3D Single Modal with Nested Slide (Duolingo Vibe) */}
+      <Modal visible={membersModalVisible} transparent animationType="fade" onRequestClose={() => setMembersModalVisible(false)}>
+        <View className="flex-1 justify-end bg-black/60">
+          <TouchableOpacity className="absolute inset-0" activeOpacity={1} onPress={() => setMembersModalVisible(false)} />
+          
+          {/* Main Modal Container */}
+          <View className="bg-[#FDF6E3] w-full h-[75%] rounded-t-[32px] overflow-hidden flex-col border-t-4 border-[#EFE8D6]">
+            
+            <View className="w-12 h-1.5 bg-[#D7D7D7] rounded-full self-center mt-3 mb-2" />
+            
+            <View className="flex-row items-center justify-between px-5 pb-3 border-b border-[#EFE8D6]">
+              <Text className="text-[#3D382F] text-[18px] pt-1" style={{ fontFamily: 'BanglaBold' }}>লাইভ মেম্বারস</Text>
+              <TouchableOpacity onPress={() => setMembersModalVisible(false)} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
+                <FontAwesome5 name="times" size={14} color="#6B655B" />
+              </TouchableOpacity>
             </View>
 
-            {/* Member List */}
-            <FlatList
-              data={communityMembersList.filter(m => m.userName?.toLowerCase().includes(searchQuery.toLowerCase()))}
-              keyExtractor={(item, index) => index.toString()}
-              showsVerticalScrollIndicator={false}
-              renderItem={({ item }) => (
-                <View className="flex-row items-center justify-between py-3 border-b border-[#F5F5F5]">
-                  <View className="flex-row items-center">
-                    <Image source={{ uri: item.userAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-10 h-10 rounded-full bg-[#EAE4D4] mr-3 border border-[#E5E5E5]" />
-                    <View>
-                      <Text className="text-[15px] text-[#3C3C3C] pt-1" style={{ fontFamily: 'BanglaBold' }}>{item.userName}</Text>
-                      <Text className="text-[12px] text-[#777777]" style={{ fontFamily: 'BanglaRegular' }}>মেম্বার</Text>
-                    </View>
+         {/* 🚀 Layer Wrapper: এই বক্সটার কারণে প্রোফাইল এখন ঠিক হেডারের নিচ থেকে আসবে */}
+            <View className="flex-1 relative">
+              
+            {/* Layer 1: The Game Lobby (Search & Sections) */}
+              <View className="flex-1">
+                {/* 🔍 Search Bar */}
+                <View className="px-5 py-3 border-b border-[#EFE8D6]">
+                  <View className="flex-row items-center bg-white rounded-[16px] border border-[#E5E5E5] px-4 py-1.5 shadow-sm">
+                    <FontAwesome5 name="search" size={14} color="#AFAFAF" />
+                    <TextInput 
+                      className="flex-1 ml-3 text-[15px] text-[#3D382F] pt-1" 
+                      style={{ fontFamily: 'BanglaRegular' }} 
+                      placeholder="বন্ধুদের খুঁজুন..." 
+                      placeholderTextColor="#AFAFAF"
+                      value={searchQuery}
+                      onChangeText={setSearchQuery}
+                    />
                   </View>
-                  <View className="flex-row space-x-2">
-                    {/* Add Friend Placeholder (আপাতত ফাংশন ছাড়া শুধু বাটন) */}
-                    <TouchableOpacity activeOpacity={0.7} className="bg-[#F0F0F0] px-3 py-1.5 rounded-full items-center justify-center border border-[#E5E5E5]">
-                      <FontAwesome5 name="user-plus" size={12} color="#777777" />
-                    </TouchableOpacity>
+                </View>
+
+                <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+                  {isMembersLoading && myFriends.length === 0 ? (
+                    <>
+                      <MemberSkeleton />
+                      <MemberSkeleton />
+                    </>
+                  ) : (() => {
+                   const renderUserCard = (user, type) => {
+                      const isLive = activeReaders.some(r => (r.email || r.id) === user.email);
+                      const isInvited = invitedUsers.includes(user.email);
+                      const isPending = pendingRequests.includes(user.email);
+
+                      return (
+                        <View key={user.email} className="mb-4 bg-white rounded-[24px] border-2 border-[#EFE8D6] shadow-sm p-4">
+                          <View className="flex-row items-center justify-between mb-3">
+                            <TouchableOpacity activeOpacity={0.7} onPress={() => openMemberProfile(user)} className="flex-row items-center flex-1">
+                              <Image source={{ uri: user.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-12 h-12 rounded-full border-2 border-[#EFE8D6] bg-[#F9F9F9]" />
+                              <View className="ml-3 flex-1 pr-2">
+                                <Text className="text-[#3D382F] text-[15px]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>{user.name || 'শিক্ষার্থী'}</Text>
+                                {isLive && (
+                                  <View className="flex-row items-center mt-0.5">
+                                    <View className="w-1.5 h-1.5 bg-[#58CC02] rounded-full mr-1.5" />
+                                    <Text className="text-[#58CC02] text-[10px]" style={{ fontFamily: 'BanglaBold' }}>লাইভ আছে</Text>
+                                  </View>
+                                )}
+                              </View>
+                            </TouchableOpacity>
+                          </View>
+
+                          {/* ডুওলিঙ্গো স্টাইল ফুল উইডথ বাটন */}
+                          {type === 'friend' ? (
+                            isLive ? (
+                              <View className="w-full py-2.5 rounded-[16px] flex-row justify-center items-center bg-[#F2FDE6] border border-[#D7FFB8]">
+                                <View className="w-2 h-2 bg-[#58CC02] rounded-full mr-2" />
+                                <Text className="text-[#58CC02] text-[14px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>একসাথে পড়ছেন</Text>
+                              </View>
+                            ) : (
+                              <TouchableOpacity activeOpacity={0.8} onPress={() => handleSendInvite(user.email)} disabled={isInvited} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isInvited ? 'bg-[#D7FFB8] border-[#58CC02]' : 'bg-[#1899D6] border-[#1899D6]'}`}>
+                                {isInvited ? (
+                                  <>
+                                    <FontAwesome5 name="check" size={12} color="#58A700" />
+                                    <Text className="text-[#58A700] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>ইনভাইট পাঠানো হয়েছে</Text>
+                                  </>
+                                ) : (
+                                  <>
+                                    <Text className="text-white text-[16px]">👋</Text>
+                                    <Text className="text-white text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>ইনভাইট করুন</Text>
+                                  </>
+                                )}
+                              </TouchableOpacity>
+                            )
+                          ) : (
+                            <TouchableOpacity activeOpacity={0.8} onPress={() => handleAddFriend(user.email)} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isPending ? 'bg-[#FFF4E5] border-[#FFC800]' : 'bg-white border-[#20A090]'}`}>
+                              {isPending ? (
+                                <>
+                                  <FontAwesome5 name="times-circle" size={14} color="#D47B00" />
+                                  <Text className="text-[#D47B00] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>ক্যানসেল করুন</Text>
+                                </>
+                              ) : (
+                                <>
+                                  <FontAwesome5 name="user-plus" size={14} color="#20A090" />
+                                  <Text className="text-[#20A090] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>অ্যাড ফ্রেন্ড</Text>
+                                </>
+                              )}
+                            </TouchableOpacity>
+                          )}
+                        </View>
+                      );
+                    };
+
+                    // 🚀 সার্চ করা থাকলে শুধু সার্চ রেজাল্ট দেখাবে
+                    if (searchQuery.trim().length > 0) {
+                      return (
+                        <View>
+                          <Text className="text-[#777777] text-[13px] mb-3" style={{ fontFamily: 'BanglaBold' }}>সার্চ রেজাল্ট ({searchResults.length})</Text>
+                          {searchResults.length === 0 ? (
+                            <View className="items-center py-6">
+                              <Text className="text-[#AFAFAF] text-[13px]" style={{ fontFamily: 'BanglaBold' }}>কাউকে পাওয়া যায়নি!</Text>
+                            </View>
+                          ) : (
+                            searchResults.map(user => {
+                              const isFriend = myFriends.some(f => f.email === user.email);
+                              return renderUserCard(user, isFriend ? 'friend' : 'explore');
+                            })
+                          )}
+                        </View>
+                      );
+                    }
+
+                  // 🚀 সার্চ না করা থাকলে দুইটা আলাদা সেকশন দেখাবে (নিজের আইডি বাদ দিয়ে)
+                    const otherLiveReaders = activeReaders.filter(r => 
+                      (r.email || r.id) !== myEmail && 
+                      !myFriends.some(f => f.email === (r.email || r.id))
+                    );
+
+                    return (
+                      <View>
+                        {/* সেকশন ১: তোমার বন্ধুরা */}
+                        <Text className="text-[#777777] text-[13px] mb-3" style={{ fontFamily: 'BanglaBold' }}>তোমার বন্ধুরা ({myFriends.length})</Text>
+                        {myFriends.length === 0 ? (
+                          <View className="items-center py-6 bg-white rounded-[20px] border border-[#EFE8D6] mb-6 shadow-sm border-dashed">
+                            <FontAwesome5 name="user-friends" size={24} color="#D7D7D7" />
+                            <Text className="text-[#AFAFAF] text-[13px] mt-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>তোমার কোনো বন্ধু নেই। নতুন বন্ধু খুঁজুন!</Text>
+                          </View>
+                        ) : (
+                          // যারা লাইভ আছে তারা উপরে থাকবে, অফলাইনরা নিচে
+                          [...myFriends].sort((a, b) => {
+                            const aLive = activeReaders.some(r => (r.email || r.id) === a.email);
+                            const bLive = activeReaders.some(r => (r.email || r.id) === b.email);
+                            return (bLive === aLive) ? 0 : bLive ? 1 : -1;
+                          }).map(user => renderUserCard(user, 'friend'))
+                        )}
+
+                        {/* সেকশন ২: অন্যান্য লাইভ রিডার */}
+                        {otherLiveReaders.length > 0 && (
+                          <View className="mt-4">
+                            <Text className="text-[#777777] text-[13px] mb-3" style={{ fontFamily: 'BanglaBold' }}>অন্যান্য লাইভ রিডার ({otherLiveReaders.length})</Text>
+                            {otherLiveReaders.map(user => renderUserCard({
+                              name: user.name,
+                              email: user.email || user.id,
+                              avatar: user.avatar
+                            }, 'explore'))}
+                          </View>
+                        )}
+                      </View>
+                    );
+                  })()}
+                </ScrollView>
+              </View>
+{/* Layer 2: Sliding Profile View (Minimalist Social Profile) */}
+              <Animated.View 
+                style={{ 
+                  transform: [{ translateX: profileSlideAnim }],
+                  position: 'absolute',
+                  top: 0, 
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  backgroundColor: '#FFFFFF', // 🚀 ক্লিন সাদা ব্যাকগ্রাউন্ড
+                  zIndex: 10
+                }}
+              >
+              {selectedLiveMember && (
+                  <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
                     
-                    {/* Invite Button */}
-                    <TouchableOpacity 
-                      activeOpacity={0.7} 
-                      onPress={() => handleSendInvite(item.userEmail)}
-                      className={`px-4 py-1.5 rounded-full items-center justify-center ${invitedUsers.includes(item.userEmail) ? 'bg-[#D7FFB8] border border-[#58CC02]' : 'bg-[#1899D6] border border-[#1899D6]'}`}
-                    >
-                      <Text className={`text-[12px] pt-1 ${invitedUsers.includes(item.userEmail) ? 'text-[#58A700]' : 'text-white'}`} style={{ fontFamily: 'BanglaBold' }}>
-                        {invitedUsers.includes(item.userEmail) ? 'ডাকানো হয়েছে' : 'ডাকুন'}
-                      </Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              )}
-              ListEmptyComponent={
-                <View className="items-center justify-center py-10">
-                  <Text className="text-[#AFAFAF] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>কোনো মেম্বার পাওয়া যায়নি</Text>
-                </View>
-              }
-            />
+                    {/* 🚀 ১. কভার ব্যানার ও ব্যাক বাটন */}
+                    <View className="h-[140px] bg-[#A8B3FF] w-full relative rounded-b-[20px]">
+                      <TouchableOpacity onPress={closeMemberProfile} className="absolute top-5 left-5 bg-black/20 w-9 h-9 rounded-full items-center justify-center z-20">
+                        <FontAwesome5 name="arrow-left" size={14} color="#FFFFFF" />
+                      </TouchableOpacity>
+                    </View>
+
+                    {/* 🚀 ২. অ্যাভাটার ও বেসিক ইনফো */}
+                    <View className="items-center -mt-16 px-5 relative z-10">
+                      <View className="w-[110px] h-[110px] rounded-full border-[5px] border-white shadow-sm bg-[#EAE4D4]">
+                        <Image source={{ uri: selectedLiveMember.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-full h-full rounded-full" />
+                      </View>
+                      <Text className="text-[#3D382F] text-[22px] pt-2 mb-1" style={{ fontFamily: 'BanglaBold' }}>{selectedLiveMember.name}</Text>
+                      <Text className="text-[#777777] text-[13px]" style={{ fontFamily: 'BanglaRegular' }}>স্টাডি স্কোয়াড মেম্বার</Text>
+                    </View>
+
+                    {isProfileLoading ? (
+                      <View className="px-5 mt-10">
+                        <MemberSkeleton />
+                        <MemberSkeleton />
+                      </View>
+                    ) : (
+                      <>
+                     {/* 🚀 ৩. ডাইনামিক ফ্রেন্ড/ইনভাইট বাটন */}
+                        <View className="px-5 mt-5">
+                          {(() => {
+                            const targetEmail = selectedLiveMember.email || selectedLiveMember.id;
+                            const isFriend = myFriends.some(f => f.email === targetEmail);
+                            const isReqSent = sentRequests.includes(targetEmail);
+                            const isInvited = invitedUsers.includes(targetEmail);
+                            const isLive = activeReaders.some(r => (r.email || r.id) === targetEmail);
+
+                            if (isFriend) {
+                              if (isLive) {
+                                return (
+                                  <View className="w-full bg-[#F2FDE6] border border-[#D7FFB8] py-3 rounded-[16px] flex-row justify-center items-center shadow-sm">
+                                    <View className="w-2 h-2 bg-[#58CC02] rounded-full mr-2" />
+                                    <Text className="text-[#58CC02] text-[16px] pt-1" style={{ fontFamily: 'BanglaBold' }}>একসাথে পড়ছেন</Text>
+                                  </View>
+                                );
+                              } else {
+                                return (
+                                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleSendInvite(targetEmail)} disabled={isInvited} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isInvited ? 'bg-[#D7FFB8] border-[#58CC02]' : 'bg-[#1899D6] border-[#1899D6]'}`}>
+                                    {isInvited ? (
+                                      <>
+                                        <FontAwesome5 name="check" size={14} color="#58A700" />
+                                        <Text className="text-[#58A700] text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>ইনভাইট পাঠানো হয়েছে</Text>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <Text className="text-white text-[18px]">👋</Text>
+                                        <Text className="text-white text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>পড়ার জন্য ডাকুন</Text>
+                                      </>
+                                    )}
+                                  </TouchableOpacity>
+                                );
+                              }
+                            } else {
+                              return (
+                                <TouchableOpacity activeOpacity={0.7} onPress={() => handleAddFriend(targetEmail)} disabled={isReqSent} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isReqSent ? 'bg-[#FDF6E3] border-[#EFE8D6]' : 'bg-white border-[#20A090]'}`}>
+                                  {isReqSent ? (
+                                    <>
+                                      <FontAwesome5 name="clock" size={14} color="#D47B00" />
+                                      <Text className="text-[#D47B00] text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>রিকোয়েস্ট পাঠানো হয়েছে</Text>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <FontAwesome5 name="user-plus" size={14} color="#20A090" />
+                                      <Text className="text-[#20A090] text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>বন্ধু হিসেবে যোগ করো</Text>
+                                    </>
+                                  )}
+                                </TouchableOpacity>
+                              );
+                            }
+                          })()}
+                        </View>
+
+                        {/* 🚀 ৪. বন্ধুদের প্রিভিউ লিস্ট (ডাইনামিক ডেটা) */}
+                        <View className="px-5 mt-8">
+                          <View className="flex-row justify-between items-center mb-4">
+                            <Text className="text-[#3C3C3C] text-[16px]" style={{ fontFamily: 'BanglaBold' }}>বন্ধুসমূহ ({selectedUserProfile?.friendsCount || 0})</Text>
+                            <TouchableOpacity activeOpacity={0.7}>
+                              <Text className="text-[#1899D6] text-[13px]" style={{ fontFamily: 'BanglaBold' }}>সব দেখুন</Text>
+                            </TouchableOpacity>
+                          </View>
+                          
+                          <View className="flex-row items-center">
+                            <View className="flex-row -space-x-3">
+                              {[1, 2, 3].map((i) => (
+                                <Image key={i} source={{ uri: `https://i.pravatar.cc/150?img=${i + 10}` }} className="w-10 h-10 rounded-full border-2 border-white bg-[#EAE4D4]" style={{ zIndex: 5 - i }} />
+                              ))}
+                              <TouchableOpacity activeOpacity={0.7} className="w-10 h-10 rounded-full border-2 border-white bg-[#F0F0F0] items-center justify-center" style={{ zIndex: 1 }}>
+                                <Text className="text-[11px] text-[#777777]" style={{ fontFamily: 'BanglaBold' }}>+{selectedUserProfile?.friendsCount > 3 ? selectedUserProfile.friendsCount - 3 : 0}</Text>
+                              </TouchableOpacity>
+                            </View>
+                            <Text className="text-[#777777] text-[12px] ml-4 pt-1" style={{ fontFamily: 'BanglaRegular' }}>মিউচুয়াল বন্ধু: {selectedUserProfile?.mutualFriendsCount || 0} জন</Text>
+                          </View>
+                        </View>
+
+                        <View className="w-full h-2 bg-[#F5F5F5] mt-8 mb-6" />
+
+                        {/* 🚀 ৫. জয়েন করা কমিউনিটি লিস্ট (ডাইনামিক) */}
+                        <View className="px-5">
+                          <Text className="text-[#3C3C3C] text-[16px] mb-4" style={{ fontFamily: 'BanglaBold' }}>যুক্ত হওয়া কমিউনিটি ({selectedUserProfile?.communities?.length || 0})</Text>
+                          
+                          {selectedUserProfile?.communities && selectedUserProfile.communities.length > 0 ? (
+                           selectedUserProfile.communities.map((community, index) => (
+                              <TouchableOpacity key={index} activeOpacity={0.9} className="mb-6" onPress={() => handleCommunityClick(community)}>
+                                <View className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#F0F2F5] border border-[#E5E5E5] relative">
+                                  <Image source={{ uri: community.banner }} className="w-full h-full" resizeMode="cover" />
+                                  {/* 🚀 ক্লিক করলে ছবির উপরে একটা সুন্দর লোডিং দেখাবে */}
+                                  {loadingCommunityId === community.channelId && (
+                                    <View className="absolute inset-0 bg-black/40 items-center justify-center">
+                                      <ActivityIndicator size="large" color="#FFFFFF" />
+                                    </View>
+                                  )}
+                                  {community.isOwner && (
+                                    <View className="absolute top-2 left-2 bg-[#FF9600] px-3 py-1 rounded-full flex-row items-center border border-white shadow-sm">
+                                      <FontAwesome5 name="crown" size={10} color="#FFFFFF" solid />
+                                      <Text className="text-white text-[10px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>ক্রিয়েটর</Text>
+                                    </View>
+                                  )}
+                                </View>
+                              <View className="flex-row mt-3 px-1">
+                                  <View className="w-11 h-11 rounded-full border border-[#E5E5E5] bg-[#F9F9F9] mr-3 overflow-hidden">
+                                    <Image source={{ uri: community.creatorAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-full h-full" />
+                                  </View>
+                                  <View className="flex-1 justify-center -mt-1">
+                                    <Text className="text-[#3C3C3C] text-[17px] leading-[26px] pt-1 mb-1" style={{ fontFamily: 'BanglaBold' }} numberOfLines={2}>{community.notebookName}</Text>
+                                    <View className="flex-row items-center pr-2">
+                                      <Text className="text-[#777777] text-[13px]" style={{ fontFamily: 'BanglaBold' }}>{community.creatorName || 'শিক্ষার্থী'}</Text>
+                                      <Text className="text-[#AFAFAF] text-[8px] mx-1.5">●</Text>
+                                      <Text className="text-[#1899D6] text-[11px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>পাবলিক</Text>
+                                    </View>
+                                  </View>
+                                </View>
+                              </TouchableOpacity>
+                            ))
+                          ) : (
+                            <View className="items-center justify-center py-10 bg-[#F9F9F9] rounded-xl border border-[#E5E5E5] border-dashed">
+                              <FontAwesome5 name="users-slash" size={24} color="#D7D7D7" />
+                              <Text className="text-[#AFAFAF] text-[14px] mt-3 pt-1" style={{ fontFamily: 'BanglaBold' }}>কোনো কমিউনিটিতে যুক্ত নেই</Text>
+                            </View>
+                          )}
+                        </View>
+                      </>
+                    )}
+                  </ScrollView>
+                )}
+              </Animated.View>
+            </View>
+
           </View>
         </View>
       </Modal>
 
-      {/* 🚀 Global Community Chat inside Reading Engine */}
       <Discussion
         visible={discussionVisible} 
         onClose={() => setDiscussionVisible(false)} 
         data={activeDiscussionData} 
         guideName={guideData?.creatorName}
-      guideId={guideData?.channelId || 'default_channel'}
+        guideId={guideData?.channelId || 'default_channel'}
       />
     </Modal>
-
-    
   );
 }
