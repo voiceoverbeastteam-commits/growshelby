@@ -436,7 +436,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
       try {
         const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'get_real_user_name', email: adminEmail })
         });
         const data = await res.json();
@@ -480,14 +480,14 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
         // ১. গাইড ফেচ
         fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'fetch_channel_guides', channelId: lessonItem?.channelId })
         }).then(res => res.json()).then(data => { if (data.success) setChannelGuides(data.guides); }),
         
         // ২. মেম্বার ফেচ
         fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'get_community_members', guideId, limit: 10, skip: 0 })
         }).then(res => res.json()).then(data => { 
           if (data.success) { setMembers(data.members); setTotalMemberCount(data.totalMembers !== null ? data.totalMembers : 0); } 
@@ -496,7 +496,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
         // ৩. রিভিউ ফেচ
         fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'get_reviews', guideId })
         }).then(res => res.json()).then(data => { if (data.success && data.reviews) setReviews(data.reviews); })
       ]);
@@ -570,7 +570,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
     try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'save_guide', guideData: updatedGuide })
       });
     } catch (e) { console.log("Update Error:", e); }
@@ -588,7 +588,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
           try {
             await fetch('https://growshelby-api.vercel.app/api/update_coins', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+              headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
               body: JSON.stringify({ action: 'delete_guide', shareCode: guide.shareCode })
             });
           } catch (e) { console.log("Delete Error:", e); }
@@ -606,7 +606,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
         try {
           const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+            headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
             body: JSON.stringify({ action: 'fetch_channel_guides', channelId: lessonItem.channelId })
           });
           const data = await res.json();
@@ -634,7 +634,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
       try {
         fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ 
             action: 'record_guide_view', 
             shareCode: guide.shareCode, 
@@ -659,10 +659,205 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
 
   const [membersSkip, setMembersSkip] = useState(0);
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const [hasMoreMembers, setHasMoreMembers] = useState(true);
   // 🚀 অরিজিনাল কমিউনিটি বাউন্স অ্যানিমেশন 
   const membersSlideAnim = useRef(new Animated.Value(1000)).current;
   const membersFadeAnim = useRef(new Animated.Value(0)).current;
+  // 🚀 Vibe Coder Magic: ফ্রেন্ড ও প্রোফাইল ট্র্যাকিং স্টেটস
+ const [myFriends, setMyFriends] = useState([]);
+  const [pendingRequests, setPendingRequests] = useState([]);
+  const [receivedRequests, setReceivedRequests] = useState([]); // 🚀 নতুন যুক্ত করা হলো
+  const [profileStack, setProfileStack] = useState([]); 
+  const profileSlideAnim = useRef(new Animated.Value(Dimensions.get('window').width)).current;
+
+  // 🚀 সরাসরি রিকোয়েস্ট এক্সেপ্ট করার লজিক
+  const handleAcceptRequest = async (targetEmail, targetName, targetAvatar) => {
+    setReceivedRequests(prev => prev.filter(e => e !== targetEmail));
+    setMyFriends(prev => [{ email: targetEmail, name: targetName, avatar: targetAvatar }, ...prev]); 
+    try {
+      const currentUid = await AsyncStorage.getItem('@current_user_id');
+      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: 'accept_friend_request_direct', senderEmail: targetEmail, receiverEmail: currentUid })
+      });
+    } catch(e) {}
+  };
+
+  // 🚀 মডাল ওপেন/ক্লোজ হলে ফ্রেন্ড লিস্ট আনা ও স্ট্যাক রিসেট করা
+  useEffect(() => {
+    if (!membersModalVisible) {
+      setProfileStack([]);
+      profileSlideAnim.setValue(Dimensions.get('window').width);
+    } else {
+      fetchFriendNetworkData();
+    }
+  }, [membersModalVisible]);
+
+  const currentProfileEntry = profileStack[profileStack.length - 1];
+  const selectedLiveMember = currentProfileEntry?.member || null;
+  const selectedUserProfile = currentProfileEntry?.profileData || null;
+  const isProfileLoading = currentProfileEntry ? currentProfileEntry.isLoading : true;
+
+  const fetchFriendNetworkData = async () => {
+    try {
+      const currentUid = await AsyncStorage.getItem('@current_user_id') || 'guest';
+      const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: 'get_lobby_data', userEmail: currentUid, searchQuery: '', guideId: lessonItem?.channelId || 'default' })
+      });
+    const result = await response.json();
+      if (result.success) {
+        setMyFriends(result.friends || []);
+        setPendingRequests(result.sentRequestEmails || []);
+        setReceivedRequests(result.receivedRequestEmails || []); // 🚀 রিসিভড রিকোয়েস্ট ট্র্যাক
+      }
+    } catch (error) { console.log(error); }
+  };
+
+  const handleAddFriend = async (targetEmail) => {
+    const isAlreadyPending = pendingRequests.includes(targetEmail);
+    if (isAlreadyPending) {
+      setPendingRequests(prev => prev.filter(email => email !== targetEmail));
+      try {
+        const currentUid = await AsyncStorage.getItem('@current_user_id');
+        await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'cancel_friend_request', senderEmail: currentUid, receiverEmail: targetEmail })
+        });
+      } catch(e) {}
+    } else {
+      setPendingRequests(prev => [...prev, targetEmail]);
+      try {
+        const currentUid = await AsyncStorage.getItem('@current_user_id');
+        await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'send_friend_request', senderEmail: currentUid, receiverEmail: targetEmail })
+        });
+      } catch(e) {}
+    }
+  };
+
+  const fetchProfileFriends = async (type, reset = false, specificEmail = null) => {
+    const targetEmail = specificEmail || selectedLiveMember?.email || selectedLiveMember?.id;
+    if (!targetEmail) return;
+
+    setProfileStack(prev => {
+      const newStack = [...prev];
+      if (newStack.length === 0) return newStack;
+      const lastIdx = newStack.length - 1;
+      if (!reset && (!newStack[lastIdx].hasMoreInlineFriends || newStack[lastIdx].isFetchingFriends)) return newStack;
+      
+      newStack[lastIdx] = { 
+        ...newStack[lastIdx], 
+        isFetchingFriends: true,
+        inlineFriendsType: type,
+        ...(reset ? { inlineFriends: [], inlineFriendsSkip: 0, hasMoreInlineFriends: true } : {})
+      };
+      return newStack;
+    });
+
+    try {
+      const currentUid = await AsyncStorage.getItem('@current_user_id') || 'guest';
+      let currentSkip = 0;
+      setProfileStack(prev => {
+        if(prev.length > 0) currentSkip = prev[prev.length - 1].inlineFriendsSkip;
+        return prev;
+      });
+
+      const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ 
+          action: 'get_profile_friends', 
+          targetEmail: targetEmail, 
+          viewerEmail: currentUid,
+          listType: type,
+          limit: 10,
+          skip: currentSkip
+        })
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        setProfileStack(prev => {
+          const newStack = [...prev];
+          if (newStack.length === 0) return newStack;
+          const lastIdx = newStack.length - 1;
+          if ((newStack[lastIdx].member.userEmail || newStack[lastIdx].member.email || newStack[lastIdx].member.id) !== targetEmail) return newStack;
+
+          newStack[lastIdx] = {
+            ...newStack[lastIdx],
+            inlineFriends: reset ? result.friends : [...newStack[lastIdx].inlineFriends, ...result.friends],
+            inlineFriendsSkip: currentSkip + 10,
+            hasMoreInlineFriends: result.friends.length >= 10,
+            isFetchingFriends: false
+          };
+          return newStack;
+        });
+      }
+    } catch (e) {
+      setProfileStack(prev => {
+        const newStack = [...prev];
+        if (newStack.length > 0) newStack[newStack.length - 1].isFetchingFriends = false;
+        return newStack;
+      });
+    }
+  };
+
+  const openMemberProfile = async (member) => {
+    setProfileStack(prev => [...prev, { 
+      member, 
+      profileData: null, 
+      isLoading: true,
+      inlineFriends: [],
+      inlineFriendsSkip: 0,
+      hasMoreInlineFriends: true,
+      inlineFriendsType: 'all',
+      isFetchingFriends: false
+    }]);
+    
+    const targetEmail = member.userEmail || member.email || member.id || member.name;
+    fetchProfileFriends('all', true, targetEmail);
+    
+    if (profileStack.length === 0) {
+      Animated.spring(profileSlideAnim, { toValue: 0, friction: 8, tension: 50, useNativeDriver: true }).start();
+    }
+
+    try {
+      const currentUid = await AsyncStorage.getItem('@current_user_id') || 'guest';
+      const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: 'get_user_social_profile', targetEmail: targetEmail, viewerEmail: currentUid })
+      });
+      const result = await response.json();
+      if (result.success) {
+        setProfileStack(prev => {
+          const newStack = [...prev];
+          const lastIndex = newStack.length - 1;
+          newStack[lastIndex] = { ...newStack[lastIndex], profileData: result.data, isLoading: false };
+          return newStack;
+        });
+      }
+    } catch (error) {}
+  };
+
+  const goBackProfile = () => {
+    if (profileStack.length > 1) {
+      setProfileStack(prev => prev.slice(0, -1));
+    } else {
+      closeMemberProfile();
+    }
+  };
+
+  const closeMemberProfile = () => {
+    Animated.spring(profileSlideAnim, { toValue: Dimensions.get('window').width, friction: 8, tension: 50, useNativeDriver: true }).start(() => setProfileStack([]));
+  };
 
   useEffect(() => {
     if (membersModalVisible) {
@@ -716,7 +911,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
         try {
           const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+            headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
             body: JSON.stringify({ action: 'get_community_members', guideId, limit: 10, skip: 0 })
           });
           const data = await res.json();
@@ -748,7 +943,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
       try {
         const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'get_reviews', guideId })
         });
         const data = await res.json();
@@ -797,7 +992,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
     try {
       const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'get_community_members', guideId, limit: 10, skip: newSkip })
       });
       const data = await res.json();
@@ -832,7 +1027,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
     try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'join_community', guideId, userEmail: uid, userName: name, userAvatar: avatar })
       });
 
@@ -861,7 +1056,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
         setReviews(reviews.map(r => r.userId === uid ? { ...r, rating: userRating, text: reviewText } : r));
         await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'update_review', guideId, userId: uid, rating: userRating, text: reviewText })
         });
       } else {
@@ -870,7 +1065,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
         setReviews([newReview, ...reviews]);
         await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'add_review', guideId, review: newReview })
         });
       }
@@ -918,7 +1113,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
           
           fetch('https://growshelby-api.vercel.app/api/update_coins', {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+            headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
             body: JSON.stringify({ action: 'delete_review', guideId, userId: uid })
           });
         }
@@ -945,6 +1140,46 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
       ]).start();
     }
     lastScrollY.current = currentY;
+  };
+
+  // 🚀 স্টুডেন্ট ব্যাজে ক্লিক করলে নতুন করে ফেচ এবং শিমার দেখানোর ফাংশন
+  const handleMembersBadgeClick = async () => {
+    // ১. আগের ডাটা ক্লিয়ার করে শিমার চালু করা ও মডাল ওপেন করা
+    setMembers([]);
+    setMembersSkip(0);
+    setHasMoreMembers(true);
+    setIsLoadingMembers(true);
+    setMembersModalVisible(true);
+
+    // ২. ডাটাবেস থেকে ফ্রেশ ডাটা ফেচ করা
+    const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
+    if (!guideId) {
+      setIsLoadingMembers(false);
+      return;
+    }
+
+    try {
+      const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: 'get_community_members', guideId, limit: 10, skip: 0 })
+      });
+      const data = await res.json();
+      
+      if (data.success) {
+        setMembers(data.members);
+        if (data.totalMembers !== null) setTotalMemberCount(data.totalMembers);
+        
+        const uid = await AsyncStorage.getItem('@current_user_id');
+        setIsMember(data.members.some(m => m.userEmail === uid));
+        
+        if (data.members.length < 10) setHasMoreMembers(false);
+      }
+    } catch (e) {
+      console.log("Member Fetch Error:", e);
+    } finally {
+      setIsLoadingMembers(false); // ৩. নতুন ডাটা আসলে শিমার অফ হয়ে যাবে
+    }
   };
 
   const handleShareCode = () => {
@@ -1006,37 +1241,41 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
           {(isLoadingMembers && members.length === 0) || refreshing || isInitialLoading ? (
             <HeaderBadgeSkeleton />
           ) : (
-            <TouchableOpacity 
+          <TouchableOpacity 
               activeOpacity={0.7} 
-              onPress={() => setMembersModalVisible(true)} 
+              onPress={handleMembersBadgeClick} 
               className="flex-row items-center bg-white pl-1.5 pr-4 py-1.5 rounded-full border border-[#EFE8D6] shadow-sm"
             >
-              <View className="flex-row -space-x-3 mr-2.5">
+          <View className="flex-row -space-x-3 mr-2.5">
                 {members.slice(0, 3).map((m, i) => (
-               <Image key={i} source={{uri: m.userAvatar && m.userAvatar !== 'null' ? m.userAvatar : undefined}} className="w-7 h-7 rounded-full border-2 border-white bg-[#EAE4D4]" />
+                  <Image 
+                    key={m.userEmail || `avatar_${i}`} 
+                    source={{uri: m.userAvatar && m.userAvatar !== 'null' ? m.userAvatar : 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'}} 
+                    className="w-7 h-7 rounded-full border-2 border-white bg-[#EAE4D4]" 
+                  />
                 ))}
-                {totalMemberCount > 3 && (
-                  <View className="w-7 h-7 rounded-full bg-[#F3F4F6] border-2 border-white items-center justify-center">
-                    <Text className="text-[10px] text-[#4B5563]" style={{ fontFamily: 'BanglaBold' }}>
-                      +{totalMemberCount > 99 ? '99' : totalMemberCount - 3}
+                   {totalMemberCount > 3 && (
+                     <View className="w-7 h-7 rounded-full bg-[#F3F4F6] border-2 border-white items-center justify-center">
+                       <Text className="text-[10px] text-[#4B5563]" style={{ fontFamily: 'BanglaBold' }}>
+                         +{totalMemberCount > 99 ? '99' : totalMemberCount - 3}
+                       </Text>
+                     </View>
+                   )}
+                   {totalMemberCount === 0 && (
+                     <View className="w-7 h-7 rounded-full bg-[#F3F4F6] border-2 border-white items-center justify-center">
+                       <FontAwesome5 name="users" size={10} color="#9CA3AF" />
+                     </View>
+                   )}
+                 </View>
+                 
+                 <View>
+                    <Text className="text-[13px] text-[#1F2937]" style={{ fontFamily: 'BanglaBold', lineHeight: 18 }}>
+                      {totalMemberCount > 0 ? `${totalMemberCount} জন স্টুডেন্ট` : 'স্টাডি স্কোয়াড'}
                     </Text>
-                  </View>
-                )}
-                {totalMemberCount === 0 && (
-                  <View className="w-7 h-7 rounded-full bg-[#F3F4F6] border-2 border-white items-center justify-center">
-                    <FontAwesome5 name="users" size={10} color="#9CA3AF" />
-                  </View>
-                )}
-              </View>
-              
-              <View>
-                 <Text className="text-[13px] text-[#1F2937]" style={{ fontFamily: 'BanglaBold', lineHeight: 18 }}>
-                   {totalMemberCount > 0 ? `${totalMemberCount}+ স্টুডেন্টস` : 'স্টাডি স্কোয়াড'}
-                 </Text>
-                 <Text className="text-[10px] text-[#6B7280]" style={{ fontFamily: 'BanglaRegular', lineHeight: 12 }}>
-                   {totalMemberCount > 0 ? 'যুক্ত আছেন' : 'প্রথম মেম্বার হোন!'}
-                 </Text>
-              </View>
+                    <Text className="text-[10px] text-[#6B7280]" style={{ fontFamily: 'BanglaRegular', lineHeight: 12 }}>
+                      {totalMemberCount > 0 ? 'যুক্ত আছেন' : 'প্রথম মেম্বার হোন!'}
+                    </Text>
+                 </View>
             </TouchableOpacity>
           )}
 
@@ -1376,18 +1615,33 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
           >
             <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mb-4" />
             
-            <View className="flex-row justify-between items-center mb-2 pb-3 border-b border-[#EFE8D6]">
-              <View>
-                <Text className="text-[18px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>স্টাডি স্কোয়াড 🎯</Text>
-                <Text className="text-[13px] text-[#827B6E]" style={{ fontFamily: 'BanglaRegular' }}>মোট {totalMemberCount} জন বন্ধু যুক্ত আছে</Text>
+          <View className="flex-row justify-between items-center mb-2 pb-3 border-b border-[#EFE8D6]">
+                <View>
+                  <Text className="text-[18px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>স্টাডি স্কোয়াড 🎯</Text>
+                  <Text className="text-[13px] text-[#827B6E]" style={{ fontFamily: 'BanglaRegular' }}>মোট {totalMemberCount} জন মেম্বার যুক্ত আছেন</Text>
+                </View>
+                <TouchableOpacity onPress={closeMembersModalSmoothly} className="bg-[#FFF4E5] w-9 h-9 rounded-full items-center justify-center border border-[#FFDDAA]">
+                  <FontAwesome5 name="times" size={14} color="#D47B00" />
+                </TouchableOpacity>
               </View>
-              <TouchableOpacity onPress={closeMembersModalSmoothly} className="bg-[#FFF4E5] w-9 h-9 rounded-full items-center justify-center border border-[#FFDDAA]">
-                <FontAwesome5 name="times" size={14} color="#D47B00" />
-              </TouchableOpacity>
-            </View>
-            
-            <FlatList
-              data={members}
+
+              {/* 🔍 Search Bar (Vibe Coder Fix) */}
+              <View className="pb-3 border-b border-[#EFE8D6] mb-2">
+                <View className="flex-row items-center bg-white rounded-[16px] border border-[#E5E5E5] px-4 py-1.5 shadow-sm">
+                  <FontAwesome5 name="search" size={14} color="#AFAFAF" />
+                  <TextInput 
+                    className="flex-1 ml-3 text-[15px] text-[#3D382F] pt-1" 
+                    style={{ fontFamily: 'BanglaRegular' }} 
+                    placeholder="মেম্বারদের খুঁজুন..." 
+                    placeholderTextColor="#AFAFAF"
+                    value={searchQuery}
+                    onChangeText={setSearchQuery}
+                  />
+                </View>
+              </View>
+              
+              <FlatList
+                data={members.filter(m => m.userName?.toLowerCase().includes(searchQuery.toLowerCase()))}
               keyExtractor={(item, index) => index.toString()}
               showsVerticalScrollIndicator={false}
               contentContainerStyle={{ paddingBottom: 20, paddingTop: 10 }}
@@ -1400,34 +1654,278 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
                   <MemberSkeleton />
                 </View>
               }
-              ListFooterComponent={
-                isLoadingMembers ? <ActivityIndicator size="small" color="#D47B00" style={{ marginVertical: 10 }} /> : null
+             ListFooterComponent={
+                // 🚀 স্পিনার শুধু তখন দেখাবে যখন লিস্টে আগে থেকে মেম্বার থাকবে (অর্থাৎ নিচে স্ক্রল করে লোড করার সময়)
+                (isLoadingMembers && members.length > 0) ? <ActivityIndicator size="small" color="#D47B00" style={{ marginVertical: 10 }} /> : null
               }
-              renderItem={({ item, index }) => (
-                <View className="flex-row items-center mb-3 bg-[#FDF6E3] p-3 rounded-[20px] border border-[#EFE8D6] shadow-sm">
-                  <View className="relative">
-                    <Image source={{uri: item.userAvatar}} className="w-12 h-12 rounded-full border-2 border-[#FFC800]" />
-                    {index < 3 && (
-                      <View className="absolute -top-1 -right-1 bg-[#FF9600] w-5 h-5 rounded-full items-center justify-center border-2 border-white">
-                        <Text className="text-[9px] text-white" style={{ fontFamily: 'BanglaBold' }}>{index + 1}</Text>
+    renderItem={({ item, index }) => {
+              const targetEmail = item.userEmail || item.id;
+              const isMe = targetEmail === currentUserEmail;
+              const isFriend = myFriends.some(f => f.email === targetEmail);
+              const isPending = pendingRequests.includes(targetEmail);
+              const isReceived = receivedRequests.includes(targetEmail); // 🚀 নতুন চেক
+
+              return (
+                <View className="mb-4 bg-white rounded-[24px] border-2 border-[#EFE8D6] shadow-sm p-4 mx-1">
+                  <View className="flex-row items-center justify-between mb-3">
+                    <TouchableOpacity 
+                      activeOpacity={0.7} 
+                      onPress={() => openMemberProfile(item)} 
+                      className="flex-row items-center flex-1"
+                    >
+                      <View className="relative">
+                        <Image source={{uri: item.userAvatar && item.userAvatar !== 'null' ? item.userAvatar : 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png'}} className="w-12 h-12 rounded-full border-2 border-[#EFE8D6] bg-[#F9F9F9]" />
+                        {index < 3 && (
+                          <View className="absolute -top-1 -right-1 bg-[#FF9600] w-5 h-5 rounded-full items-center justify-center border-2 border-white shadow-sm">
+                            <Text className="text-[9px] text-white" style={{ fontFamily: 'BanglaBold' }}>{index + 1}</Text>
+                          </View>
+                        )}
                       </View>
-                    )}
+                      <View className="ml-3 flex-1 pr-2">
+                        <Text className="text-[#3D382F] text-[15px] pt-0.5" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>{item.userName || 'শিক্ষার্থী'}</Text>
+                        <Text className="text-[#827B6E] text-[11px] mt-0.5" style={{ fontFamily: 'BanglaRegular' }}>স্টাডি স্কোয়াড মেম্বার</Text>
+                      </View>
+                    </TouchableOpacity>
                   </View>
-                  <View className="ml-3 flex-1">
-                    <Text className="text-[15px] text-[#3D382F] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{item.userName}</Text>
-                    <Text className="text-[11px] text-[#827B6E]" style={{ fontFamily: 'BanglaRegular' }}>আড্ডায় যুক্ত আছেন</Text>
-                  </View>
-                  <TouchableOpacity className="bg-[#FFFDF8] px-3 py-1.5 rounded-full border border-[#EFE8D6]">
-                    <Text className="text-[11px] text-[#D47B00]" style={{ fontFamily: 'BanglaBold' }}>প্রোফাইল</Text>
-                  </TouchableOpacity>
+
+                  {/* 🚀 বটম সেকশন: ফুল-উইডথ ডাইনামিক বাটন */}
+                {isMe ? (
+                    <View className="w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border bg-[#F9F9F9] border-[#E5E5E5]">
+                      <FontAwesome5 name="user-circle" size={14} color="#AFAFAF" />
+                      <Text className="text-[#AFAFAF] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>এটি আপনার প্রোফাইল</Text>
+                    </View>
+                  ) : isFriend ? (
+                    <View className="w-full py-2.5 rounded-[16px] flex-row justify-center items-center bg-[#E6F4FB] border border-[#BCE3F5]">
+                      <FontAwesome5 name="user-check" size={14} color="#1073A4" />
+                      <Text className="text-[#1073A4] text-[14px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>ফ্রেন্ডস</Text>
+                    </View>
+                  ) : isReceived ? (
+                    <TouchableOpacity activeOpacity={0.8} onPress={() => handleAcceptRequest(targetEmail, item.userName, item.userAvatar)} className="w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border bg-[#1899D6] border-[#1899D6]">
+                      <FontAwesome5 name="check" size={14} color="#FFF" />
+                      <Text className="text-white text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>কনফার্ম করুন</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <TouchableOpacity activeOpacity={0.8} onPress={() => handleAddFriend(targetEmail)} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isPending ? 'bg-[#FFF4E5] border-[#FFC800]' : 'bg-white border-[#20A090]'}`}>
+                      {isPending ? (
+                        <>
+                          <FontAwesome5 name="times-circle" size={14} color="#D47B00" />
+                          <Text className="text-[#D47B00] text-[14px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>ক্যানসেল করুন</Text>
+                        </>
+                      ) : (
+                        <>
+                          <FontAwesome5 name="user-plus" size={14} color="#20A090" />
+                          <Text className="text-[#20A090] text-[14px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>অ্যাড ফ্রেন্ড</Text>
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  )}
                 </View>
+              );
+            }}
+           />
+
+            {/* 🚀 Vibe Coder Magic: Layer 2 Sliding Profile View */}
+            <Animated.View 
+              style={{ 
+                transform: [{ translateX: profileSlideAnim }],
+                position: 'absolute',
+                top: 0, 
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: profileStack.length > 0 ? '#FFFFFF' : 'transparent',
+                zIndex: 10,
+                pointerEvents: profileStack.length > 0 ? 'auto' : 'none'
+              }}
+              className="rounded-t-[32px] overflow-hidden"
+            >
+              {selectedLiveMember && (
+                  <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
+                    
+                    {/* ১. কভার ব্যানার ও ব্যাক/ক্লোজ বাটন */}
+                    <View className="h-[140px] bg-[#A8B3FF] w-full relative rounded-b-[20px]">
+                      <TouchableOpacity onPress={goBackProfile} className="absolute top-5 left-5 bg-black/20 w-9 h-9 rounded-full items-center justify-center z-20">
+                        <FontAwesome5 name="arrow-left" size={14} color="#FFFFFF" />
+                      </TouchableOpacity>
+                      
+                      {profileStack.length > 1 && (
+                        <TouchableOpacity onPress={closeMemberProfile} className="absolute top-5 right-5 bg-black/20 w-9 h-9 rounded-full items-center justify-center z-20">
+                          <FontAwesome5 name="times" size={14} color="#FFFFFF" />
+                        </TouchableOpacity>
+                      )}
+                    </View>
+
+                    {/* ২. অ্যাভাটার ও বেসিক ইনফো */}
+                    <View className="items-center -mt-16 px-5 relative z-10">
+                      <View className="w-[110px] h-[110px] rounded-full border-[5px] border-white shadow-sm bg-[#EAE4D4]">
+                        <Image source={{ uri: selectedLiveMember.userAvatar || selectedLiveMember.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-full h-full rounded-full" />
+                      </View>
+                      <Text className="text-[#3D382F] text-[22px] pt-2 mb-1" style={{ fontFamily: 'BanglaBold' }}>{selectedLiveMember.userName || selectedLiveMember.name}</Text>
+                      <Text className="text-[#777777] text-[13px]" style={{ fontFamily: 'BanglaRegular' }}>স্টাডি স্কোয়াড মেম্বার</Text>
+                    </View>
+
+                 {isProfileLoading ? (
+                      <View className="px-5 mt-6 w-full">
+                        <MemberSkeleton />
+                        <MemberSkeleton />
+                        <MemberSkeleton />
+                      </View>
+                    ) : (
+                      <>
+                        {/* ৩. বন্ধুদের লিস্ট (ইনলাইন ডাইনামিক কার্ড) */}
+                        <View className="px-5 mt-8">
+                          <View className="flex-row justify-between items-center mb-4">
+                            <View className="flex-row space-x-2">
+                              <TouchableOpacity activeOpacity={0.7} onPress={() => fetchProfileFriends('all', true)} className={`px-3 py-1.5 rounded-full border ${currentProfileEntry?.inlineFriendsType === 'all' ? 'bg-[#E6F4FB] border-[#BCE3F5]' : 'bg-[#F9F9F9] border-[#E5E5E5]'}`}>
+                                <Text className={`text-[12px] pt-0.5 ${currentProfileEntry?.inlineFriendsType === 'all' ? 'text-[#1073A4]' : 'text-[#AFAFAF]'}`} style={{ fontFamily: 'BanglaBold' }}>
+                                  বন্ধুসমূহ ({selectedUserProfile?.friendsCount || 0})
+                                </Text>
+                              </TouchableOpacity>
+                              
+                              {selectedUserProfile?.mutualFriendsCount > 0 && (
+                                <TouchableOpacity activeOpacity={0.7} onPress={() => fetchProfileFriends('mutual', true)} className={`px-3 py-1.5 rounded-full border ${currentProfileEntry?.inlineFriendsType === 'mutual' ? 'bg-[#FFF4E5] border-[#FFDDAA]' : 'bg-[#F9F9F9] border-[#E5E5E5]'}`}>
+                                  <Text className={`text-[12px] pt-0.5 ${currentProfileEntry?.inlineFriendsType === 'mutual' ? 'text-[#D47B00]' : 'text-[#AFAFAF]'}`} style={{ fontFamily: 'BanglaBold' }}>
+                                    মিউচুয়াল ({selectedUserProfile?.mutualFriendsCount || 0})
+                                  </Text>
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                          </View>
+                          
+                        <View>
+                         {(currentProfileEntry?.inlineFriends || []).map((item, idx) => {
+                              const targetEmail = item.email || item.id;
+                              const isMe = targetEmail === currentUserEmail;
+                              const isFriend = myFriends.some(f => f.email === targetEmail);
+                              const isPending = pendingRequests.includes(targetEmail);
+                              const isReceived = receivedRequests.includes(targetEmail); // 🚀 নতুন চেক
+
+                              return (
+                                <View key={idx} className="mb-4 bg-white rounded-[24px] border-2 border-[#EFE8D6] shadow-sm p-4">
+                                  <View className="flex-row items-center justify-between mb-3">
+                                    <TouchableOpacity 
+                                      activeOpacity={0.7} 
+                                      onPress={() => openMemberProfile(item)} 
+                                      className="flex-row items-center flex-1"
+                                    >
+                                      <Image source={{ uri: item.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-12 h-12 rounded-full border-2 border-[#EFE8D6] bg-[#F9F9F9]" />
+                                      <View className="ml-3 flex-1 pr-2">
+                                        <Text className="text-[#3D382F] text-[15px]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>{item.name || 'শিক্ষার্থী'}</Text>
+                                      </View>
+                                    </TouchableOpacity>
+                                  </View>
+
+                              {isMe ? (
+                                    <View className="w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border bg-[#F9F9F9] border-[#E5E5E5]">
+                                      <FontAwesome5 name="user-circle" size={14} color="#AFAFAF" />
+                                      <Text className="text-[#AFAFAF] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>এটি আপনার প্রোফাইল</Text>
+                                    </View>
+                                  ) : isFriend ? (
+                                    <View className="w-full py-2.5 rounded-[16px] flex-row justify-center items-center bg-[#E6F4FB] border border-[#BCE3F5]">
+                                      <FontAwesome5 name="user-check" size={14} color="#1073A4" />
+                                      <Text className="text-[#1073A4] text-[14px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>ফ্রেন্ডস</Text>
+                                    </View>
+                                  ) : isReceived ? (
+                                    <TouchableOpacity activeOpacity={0.8} onPress={() => handleAcceptRequest(targetEmail, item.name, item.avatar)} className="w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border bg-[#1899D6] border-[#1899D6]">
+                                      <FontAwesome5 name="check" size={14} color="#FFF" />
+                                      <Text className="text-white text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>কনফার্ম করুন</Text>
+                                    </TouchableOpacity>
+                                  ) : (
+                                    <TouchableOpacity activeOpacity={0.8} onPress={() => handleAddFriend(targetEmail)} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isPending ? 'bg-[#FFF4E5] border-[#FFC800]' : 'bg-white border-[#20A090]'}`}>
+                                      {isPending ? (
+                                        <>
+                                          <FontAwesome5 name="times-circle" size={14} color="#D47B00" />
+                                          <Text className="text-[#D47B00] text-[14px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>ক্যানসেল করুন</Text>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <FontAwesome5 name="user-plus" size={14} color="#20A090" />
+                                          <Text className="text-[#20A090] text-[14px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>অ্যাড ফ্রেন্ড</Text>
+                                        </>
+                                      )}
+                                    </TouchableOpacity>
+                                  )}
+                                </View>
+                              );
+                            })}
+                          </View>
+                          
+                          {currentProfileEntry?.hasMoreInlineFriends && (currentProfileEntry?.inlineFriends || []).length > 0 && (
+                            <TouchableOpacity 
+                              activeOpacity={0.8} 
+                              onPress={() => fetchProfileFriends(currentProfileEntry?.inlineFriendsType, false)} 
+                              className="mt-2 mb-4 bg-[#F9F9F9] py-3.5 rounded-[16px] border border-[#EFE8D6] items-center"
+                            >
+                              {currentProfileEntry?.isFetchingFriends ? (
+                                <ActivityIndicator size="small" color="#AFAFAF" />
+                              ) : (
+                                <Text className="text-[#777777] text-[13px] pt-1" style={{ fontFamily: 'BanglaBold' }}>আরো দেখুন...</Text>
+                              )}
+                            </TouchableOpacity>
+                          )}
+                          
+                          {(currentProfileEntry?.inlineFriends || []).length === 0 && !currentProfileEntry?.isFetchingFriends && (
+                            <View className="bg-[#FDF6E3] p-4 rounded-xl border border-[#EFE8D6] border-dashed items-center justify-center mt-2 mb-4">
+                              <Text className="text-[#827B6E] text-[13px] text-center leading-[22px]" style={{ fontFamily: 'BanglaRegular' }}>কোনো বন্ধু পাওয়া যায়নি।</Text>
+                            </View>
+                          )}
+                        {(currentProfileEntry?.inlineFriends || []).length === 0 && currentProfileEntry?.isFetchingFriends && (
+                            <View className="mt-2 mb-4">
+                              <MemberSkeleton />
+                              <MemberSkeleton />
+                            </View>
+                          )}
+                        </View>
+
+                        <View className="w-full h-2 bg-[#F5F5F5] mt-8 mb-6" />
+
+                        {/* ৫. জয়েন করা কমিউনিটি লিস্ট */}
+                        <View className="px-5">
+                          <Text className="text-[#3C3C3C] text-[16px] mb-4" style={{ fontFamily: 'BanglaBold' }}>যুক্ত হওয়া কমিউনিটি ({selectedUserProfile?.communities?.length || 0})</Text>
+                          
+                          {selectedUserProfile?.communities && selectedUserProfile.communities.length > 0 ? (
+                           selectedUserProfile.communities.map((community, index) => (
+                              <View key={index} className="mb-6">
+                                <View className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#F0F2F5] border border-[#E5E5E5] relative">
+                                  <Image source={{ uri: community.banner }} className="w-full h-full" resizeMode="cover" />
+                                  {community.isOwner && (
+                                    <View className="absolute top-2 left-2 bg-[#FF9600] px-3 py-1 rounded-full flex-row items-center border border-white shadow-sm">
+                                      <FontAwesome5 name="crown" size={10} color="#FFFFFF" solid />
+                                      <Text className="text-white text-[10px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>ক্রিয়েটর</Text>
+                                    </View>
+                                  )}
+                                </View>
+                                <View className="flex-row mt-3 px-1">
+                                  <View className="w-11 h-11 rounded-full border border-[#E5E5E5] bg-[#F9F9F9] mr-3 overflow-hidden">
+                                    <Image source={{ uri: community.creatorAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-full h-full" />
+                                  </View>
+                                  <View className="flex-1 justify-center -mt-1">
+                                    <Text className="text-[#3C3C3C] text-[17px] leading-[26px] pt-1 mb-1" style={{ fontFamily: 'BanglaBold' }} numberOfLines={2}>{community.notebookName}</Text>
+                                    <View className="flex-row items-center pr-2">
+                                      <Text className="text-[#777777] text-[13px]" style={{ fontFamily: 'BanglaBold' }}>{community.creatorName || 'শিক্ষার্থী'}</Text>
+                                    </View>
+                                  </View>
+                                </View>
+                              </View>
+                            ))
+                          ) : (
+                            <View className="items-center justify-center py-10 bg-[#F9F9F9] rounded-xl border border-[#E5E5E5] border-dashed">
+                              <FontAwesome5 name="users-slash" size={24} color="#D7D7D7" />
+                              <Text className="text-[#AFAFAF] text-[14px] mt-3 pt-1" style={{ fontFamily: 'BanglaBold' }}>কোনো কমিউনিটিতে যুক্ত নেই</Text>
+                            </View>
+                          )}
+                        </View>
+                      </>
+                    )}
+                  </ScrollView>
               )}
-            />
+            </Animated.View>
+            
           </Animated.View>
         </View>
       </Modal>
 
-     {/* 🚀 Review & Rating Modal */}
+      {/* 🚀 Review & Rating Modal */}
       <Modal visible={isReviewModalVisible} transparent animationType="none" onRequestClose={closeReviewModalSmoothly}>
         <View className="flex-1 justify-end">
           

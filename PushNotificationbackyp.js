@@ -31,7 +31,7 @@ export default function PushNotification({ onNotificationClick }) {
         // ১. এপিআই কল করে ওই নির্দিষ্ট বইয়ের সব ডেটা নিয়ে আসা
         const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'import_guide', code: data.guideId })
         });
         const result = await response.json();
@@ -182,7 +182,7 @@ export default function PushNotification({ onNotificationClick }) {
         headers: { 
           Accept: 'application/json',
           'Content-Type': 'application/json',
-          'x-api-key': 'Growshelby_MVP_Secret_2026' // 🚀 সিকিউরিটির জন্য API Key অ্যাড করা হলো
+          'x-api-key': process.env.EXPO_PUBLIC_API_KEY // 🚀 সিকিউরিটির জন্য API Key অ্যাড করা হলো
         },
         // 🚀 টোকেনের সাথে ইউজারের ইমেইলও পাঠানো হচ্ছে
         body: JSON.stringify({ action: 'save_push_token', token: token, email: userEmail }),

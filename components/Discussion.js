@@ -201,7 +201,7 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
     try {
       const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ 
           action: 'get_community_messages', 
           guideId, 
@@ -250,7 +250,7 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
     try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'send_community_message', ...newComment })
       });
     } catch (error) {}
@@ -264,7 +264,7 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
     try {
       const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
        body: JSON.stringify({ action: 'get_community_messages', guideId, userEmail, contextQuestion: data ? data.question : null })
       });
       const result = await response.json();
@@ -298,7 +298,7 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
         const newSkip = skipAmount + 40;
         const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
          body: JSON.stringify({ action: 'get_community_messages', guideId, userEmail: currentUser.email, skip: newSkip, contextQuestion: data ? data.question : null })
         });
         
@@ -468,7 +468,7 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
 
       fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'trigger_typing', guideId, userEmail: currentUser.email, userName: currentUser.name })
       }).catch(() => {});
 
@@ -498,7 +498,7 @@ const openCommentModal = (post) => {
       try {
         const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'get_community_messages', guideId, parentId: post.messageId || post.id })
         });
         const result = await response.json();
@@ -556,7 +556,7 @@ const handleSendCommentModal = async () => {
     try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'send_community_message', ...newComment })
       });
     } catch (error) {}
@@ -588,7 +588,7 @@ const handleSendCommentModal = async () => {
     try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'send_community_message', ...newMessage })
       });
     } catch (error) {}
@@ -670,7 +670,7 @@ const handleSendCommentModal = async () => {
     try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ 
           action: 'toggle_message_reaction', 
           messageId: msgId, 
@@ -692,7 +692,7 @@ const handleSendCommentModal = async () => {
     try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'delete_community_message', messageId: msgId, userEmail: currentUser.email, deleteType, guideId })
       });
     } catch (error) {}
@@ -1091,12 +1091,28 @@ const handleSendCommentModal = async () => {
               </TouchableOpacity>
             )}
 
-            <TouchableOpacity activeOpacity={0.8} onPress={handleCopyText} className="bg-[#EAE4D4] p-4 rounded-[20px] mb-4 flex-row items-center">
+          <TouchableOpacity activeOpacity={0.8} onPress={handleCopyText} className="bg-[#EAE4D4] p-4 rounded-[20px] mb-4 flex-row items-center">
               <View className="w-10 h-10 bg-white rounded-full items-center justify-center mr-4 shadow-sm">
                 <FontAwesome5 name="copy" size={16} color="#6B655B" />
               </View>
               <Text className="text-[#3D382F] text-[16px] pt-1" style={{ fontFamily: 'BanglaBold' }}>টেক্সট কপি করুন</Text>
             </TouchableOpacity>
+
+            {/* ইউজিসি (UGC) পলিসির জন্য রিপোর্ট বাটন */}
+            {selectedMessage?.userEmail !== currentUser.email && (
+              <TouchableOpacity activeOpacity={0.8} onPress={() => {
+                Alert.alert("রিপোর্ট সাবমিট হয়েছে", "অ্যাডমিন এই মেসেজটি রিভিউ করবে।");
+                setActionSheetVisible(false);
+              }} className="bg-[#FFF4E5] p-4 rounded-[20px] mb-4 flex-row items-center border border-[#FFDDAA]">
+                <View className="w-10 h-10 bg-[#FF9600] rounded-full items-center justify-center mr-4">
+                  <FontAwesome5 name="flag" size={16} color="#FFF" />
+                </View>
+                <View>
+                  <Text className="text-[#D47B00] text-[16px] pt-1" style={{ fontFamily: 'BanglaBold' }}>রিপোর্ট করুন (Report)</Text>
+                  <Text className="text-[#D47B00]/70 text-[12px]" style={{ fontFamily: 'BanglaRegular' }}>খারাপ মেসেজ রিপোর্ট করুন</Text>
+                </View>
+              </TouchableOpacity>
+            )}
 
             {selectedMessage?.userEmail === currentUser.email && (
               <TouchableOpacity activeOpacity={0.8} onPress={() => handleDeleteMessage('everyone')} className="bg-[#FFECCC] p-4 rounded-[20px] mb-4 flex-row items-center border border-[#FFDDAA]">

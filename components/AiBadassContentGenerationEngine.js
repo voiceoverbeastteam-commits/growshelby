@@ -168,7 +168,7 @@ export default function AiBadassContentGenerationEngine({ onLessonGenerated, onC
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': 'Growshelby_MVP_Secret_2026'
+          'x-api-key': process.env.EXPO_PUBLIC_API_KEY
         },
         body: JSON.stringify({
           email: userEmail,
@@ -184,14 +184,8 @@ export default function AiBadassContentGenerationEngine({ onLessonGenerated, onC
     if (notebookName.trim() === "") return Alert.alert("নাম দিন", "নোটবুকের জন্য একটি সুন্দর নাম দিন।");
     if (capturedImages.length === 0 && savedText.length === 0) return Alert.alert("তথ্য নেই", "দয়া করে অন্তত একটি ছবি তুলুন অথবা টেক্সট দিন।");
     
-    if (userCoins < 10) {
-        setGenerationState('server_overloaded');
-        return; 
-    }
-
-    // 🚀 অ্যাপে এবং সার্ভারে একসাথেই কয়েন কেটে নেওয়া হচ্ছে
-    setUserCoins(prev => prev - 10);
-    updateCoinsInDatabase(10); 
+   // প্লে স্টোরের জন্য আপাতত সম্পূর্ণ ফ্রি! কোনো কয়েন কাটবে না।
+    // 🚀 সরাসরি কাজ শুরু করবে
     setGenerationState('working');
 
     try {

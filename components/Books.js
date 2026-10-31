@@ -106,7 +106,7 @@ const [refreshing, setRefreshing] = useState(false);
       if (!isSessionLoaded || forceNetwork) {
         const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'fetch_joined_communities', userEmail: uid })
         });
         const data = await response.json();
@@ -185,7 +185,7 @@ const [refreshing, setRefreshing] = useState(false);
       try {
         await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'save_guide', guideData: finalGuide })
         });
       } catch (serverErr) { console.log("Server upload error:", serverErr); }
@@ -207,7 +207,7 @@ const [refreshing, setRefreshing] = useState(false);
           if (guideToDelete && guideToDelete.shareCode) {
             fetch('https://growshelby-api.vercel.app/api/update_coins', {
               method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+              headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
               body: JSON.stringify({ action: 'delete_guide', shareCode: guideToDelete.shareCode })
             });
           }

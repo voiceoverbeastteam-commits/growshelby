@@ -69,7 +69,7 @@ export default function SignUpLoginPage({ onLoginSuccess }) {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-api-key': 'Growshelby_MVP_Secret_2026'
+          'x-api-key': process.env.EXPO_PUBLIC_API_KEY
         },
         body: JSON.stringify({ email: cleanEmail })
       });
@@ -162,7 +162,7 @@ export default function SignUpLoginPage({ onLoginSuccess }) {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-api-key': 'Growshelby_MVP_Secret_2026'
+          'x-api-key': process.env.EXPO_PUBLIC_API_KEY
         },
         body: JSON.stringify({
           name: finalName,
@@ -196,7 +196,7 @@ export default function SignUpLoginPage({ onLoginSuccess }) {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
-          'x-api-key': 'Growshelby_MVP_Secret_2026'
+          'x-api-key': process.env.EXPO_PUBLIC_API_KEY
         },
         body: JSON.stringify({
           email: finalEmail,

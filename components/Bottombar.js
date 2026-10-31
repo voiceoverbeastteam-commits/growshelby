@@ -88,7 +88,7 @@ export default function Bottombar({ translateY }) {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
-            'x-api-key': 'Growshelby_MVP_Secret_2026'
+            'x-api-key': process.env.EXPO_PUBLIC_API_KEY
           },
           body: JSON.stringify({
             action: 'save_guide',

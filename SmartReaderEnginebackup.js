@@ -309,7 +309,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
         const targetChannelId = guideData.channelId || guideData.creatorEmail; 
         fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({
             action: 'notify_reading_started',
             guideId,
@@ -331,7 +331,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
             authorize: (socketId, callback) => {
               fetch('https://growshelby-api.vercel.app/api/update_coins', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+                headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
                 body: JSON.stringify({ action: 'pusher_auth', socket_id: socketId, channel_name: channel.name, userEmail: uid, userName, userAvatar })
               })
               .then(res => res.json())
@@ -405,7 +405,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
     try {
       const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'get_community_members', guideId, limit: 100, skip: 0 })
       });
       const result = await response.json();
@@ -431,7 +431,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
     try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({
           action: 'send_reading_invite',
           guideId,
@@ -542,7 +542,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
     if(guideId) {
       fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'trigger_live_reaction', guideId, content, type, userEmail: uid, userName: name, userAvatar: avatar })
       }).catch(() => {});
     }
@@ -592,7 +592,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
             authorize: (socketId, callback) => {
               fetch('https://growshelby-api.vercel.app/api/update_coins', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+                headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
                 body: JSON.stringify({ action: 'pusher_auth', socket_id: socketId, channel_name: channel.name, userEmail: uid, userName: name, userAvatar: avatar })
               })
               .then(res => res.json())

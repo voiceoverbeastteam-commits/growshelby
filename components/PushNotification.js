@@ -27,13 +27,23 @@ export default function PushNotification({ onNotificationClick }) {
   const notificationListener = useRef();
   const router = useRouter(); 
 
-  const handleNotificationTap = async (data) => {
+const handleNotificationTap = async (data) => {
+    // 🚀 ফ্রেন্ড রিকোয়েস্ট বা এক্সেপ্ট নোটিফিকেশনে ক্লিক করলে সরাসরি প্রোফাইলে চলে যাবে এবং মডাল ওপেন হবে
+    if (data && (data.type === 'friend_request' || data.type === 'friend_request_accepted')) {
+      router.push('/profile');
+      // পেজটা লোড হওয়ার জন্য আধা সেকেন্ড সময় দিয়ে মডাল ওপেন করার কমান্ড পাঠাচ্ছি
+      setTimeout(() => {
+        DeviceEventEmitter.emit('open_friend_requests_modal', data.type);
+      }, 500);
+      return;
+    }
+
     if (data && (data.guideId || data.channelId)) {
       const targetId = data.guideId || data.channelId;
       try {
         const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'import_guide', code: targetId })
         });
         const result = await response.json();
@@ -182,7 +192,7 @@ export default function PushNotification({ onNotificationClick }) {
         headers: { 
           Accept: 'application/json',
           'Content-Type': 'application/json',
-          'x-api-key': 'Growshelby_MVP_Secret_2026' 
+          'x-api-key': process.env.EXPO_PUBLIC_API_KEY 
         },
         body: JSON.stringify({ action: 'save_push_token', token: token, email: userEmail }),
       });

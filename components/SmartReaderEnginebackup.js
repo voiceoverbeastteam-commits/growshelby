@@ -265,7 +265,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
     try {
       const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'import_community', code: community.channelId })
       });
       const result = await response.json();
@@ -326,8 +326,8 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
     const setupLiveReading = async () => {
       if (!visible || !guideData) return;
 
-      const guideId = guideData.channelId || guideData.id || guideData.shareCode;
-      if(!guideId) return;
+     const guideId = guideData.id || guideData.shareCode || guideData.channelId;
+if(!guideId) return;
 
       const uid = await AsyncStorage.getItem('@current_user_id') || 'guest_' + Date.now();
       const userName = await AsyncStorage.getItem(`@user_name_${uid}`) || await AsyncStorage.getItem('@user_name') || 'শিক্ষার্থী';
@@ -342,7 +342,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
         const targetChannelId = guideData.channelId || guideData.creatorEmail; 
         fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({
             action: 'notify_reading_started',
             guideId,
@@ -364,7 +364,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
             authorize: (socketId, callback) => {
               fetch('https://growshelby-api.vercel.app/api/update_coins', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+                headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
                 body: JSON.stringify({ action: 'pusher_auth', socket_id: socketId, channel_name: channel.name, userEmail: uid, userName, userAvatar })
               })
               .then(res => res.json())
@@ -415,32 +415,143 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
   // 🚀 বাটনে লাইট/লোডিং দেখানোর স্টেট
   const [isRevealLoading, setIsRevealLoading] = useState(false);
   const [isFilterLoading, setIsFilterLoading] = useState(false);
-  // 🚀 ফোকাস মোড এবং লাইভ রিয়্যাকশন স্টেট
- // 🚀 ফোকাস মোড এবং লাইভ রিয়্যাকশন স্টেট
-  const [isReactionVisible, setIsReactionVisible] = useState(true);
-  const [activeReaders, setActiveReaders] = useState([]);
+  // 🚀 ফোকাস মোড এবং লাইভ রিয়্যাকশন স্টেট
+ const [isReactionVisible, setIsReactionVisible] = useState(true);
+ 
+ // 🚀 ম্যাজিক ফিক্স ১: হাইড স্টেট ট্র্যাক করার জন্য এবং রানিং বাবল ক্লিয়ার করার জন্য
+ const isReactionVisibleRef = useRef(isReactionVisible);
+ useEffect(() => {
+   isReactionVisibleRef.current = isReactionVisible;
+   if (!isReactionVisible) {
+     reactionQueue.current = [];
+     setLiveReaction(null);
+   }
+ }, [isReactionVisible]);
+
+ const [activeReaders, setActiveReaders] = useState([]);
  const [membersModalVisible, setMembersModalVisible] = useState(false);
-  const [selectedLiveMember, setSelectedLiveMember] = useState(null);
-  const [selectedUserProfile, setSelectedUserProfile] = useState(null);
-  const [isProfileLoading, setIsProfileLoading] = useState(true);
-  const profileSlideAnim = useRef(new Animated.Value(Dimensions.get('window').width)).current;
+// 🚀 History Stack States (Rabbit Hole Effect)
+  const [profileStack, setProfileStack] = useState([]); 
+ const profileSlideAnim = useRef(new Animated.Value(Dimensions.get('window').width)).current;
+
+  // 🚀 ম্যাজিক ফিক্স: মডাল বন্ধ হলে হিস্ট্রি স্ট্যাক ও অ্যানিমেশন রিসেট করা
+  useEffect(() => {
+    if (!membersModalVisible) {
+      setProfileStack([]);
+      profileSlideAnim.setValue(Dimensions.get('window').width);
+    }
+  }, [membersModalVisible]);
+
+  // বর্তমান অ্যাক্টিভ অ্যাক্টিভ প্রোফাইল (স্ট্যাকের একদম শেষেরটা)
+  const currentProfileEntry = profileStack[profileStack.length - 1];
+  const selectedLiveMember = currentProfileEntry?.member || null;
+  const selectedUserProfile = currentProfileEntry?.profileData || null;
+  const isProfileLoading = currentProfileEntry ? currentProfileEntry.isLoading : true;
+
+ // 🚀 Inline Paginated Friends Logic (Stack Based for Rabbit Hole)
+  const fetchProfileFriends = async (type, reset = false, specificEmail = null) => {
+    const targetEmail = specificEmail || selectedLiveMember?.email || selectedLiveMember?.id;
+    if (!targetEmail) return;
+
+    setProfileStack(prev => {
+      const newStack = [...prev];
+      if (newStack.length === 0) return newStack;
+      const lastIdx = newStack.length - 1;
+      
+      if (!reset && (!newStack[lastIdx].hasMoreInlineFriends || newStack[lastIdx].isFetchingFriends)) return newStack;
+      
+      newStack[lastIdx] = { 
+        ...newStack[lastIdx], 
+        isFetchingFriends: true,
+        inlineFriendsType: type,
+        ...(reset ? { inlineFriends: [], inlineFriendsSkip: 0, hasMoreInlineFriends: true } : {})
+      };
+      return newStack;
+    });
+
+    try {
+      const currentUid = await AsyncStorage.getItem('@current_user_id') || 'guest';
+      let currentSkip = 0;
+      setProfileStack(prev => {
+        if(prev.length > 0) currentSkip = prev[prev.length - 1].inlineFriendsSkip;
+        return prev;
+      });
+
+      const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ 
+          action: 'get_profile_friends', 
+          targetEmail: targetEmail, 
+          viewerEmail: currentUid,
+          listType: type,
+          limit: 10,
+          skip: currentSkip
+        })
+      });
+      const result = await response.json();
+      
+      if (result.success) {
+        setProfileStack(prev => {
+          const newStack = [...prev];
+          if (newStack.length === 0) return newStack;
+          const lastIdx = newStack.length - 1;
+          
+          if ((newStack[lastIdx].member.email || newStack[lastIdx].member.id) !== targetEmail) return newStack;
+
+          newStack[lastIdx] = {
+            ...newStack[lastIdx],
+            inlineFriends: reset ? result.friends : [...newStack[lastIdx].inlineFriends, ...result.friends],
+            inlineFriendsSkip: currentSkip + 10,
+            hasMoreInlineFriends: result.friends.length >= 10,
+            isFetchingFriends: false
+          };
+          return newStack;
+        });
+      }
+    } catch (e) {
+      console.log("Fetch Inline Friends Error", e);
+      setProfileStack(prev => {
+        const newStack = [...prev];
+        if (newStack.length > 0) newStack[newStack.length - 1].isFetchingFriends = false;
+        return newStack;
+      });
+    }
+  };
 
   // 🚀 Duolingo Style Bouncy Profile Slide-in & Fetch Real Data
   const openMemberProfile = async (member) => {
-    setSelectedLiveMember(member);
-    setIsProfileLoading(true);
-    Animated.spring(profileSlideAnim, {
-      toValue: 0,
-      friction: 8,
-      tension: 50,
-      useNativeDriver: true
-    }).start();
+    // নতুন মেম্বারকে স্ট্যাকে পুশ করা (লোডিং ট্রু দিয়ে এবং ইনলাইন ফ্রেন্ডসের ইনিশিয়াল স্টেট সহ)
+    setProfileStack(prev => [...prev, { 
+      member, 
+      profileData: null, 
+      isLoading: true,
+      inlineFriends: [],
+      inlineFriendsSkip: 0,
+      hasMoreInlineFriends: true,
+      inlineFriendsType: 'all',
+      isFetchingFriends: false
+    }]);
+    
+    const targetEmail = member.email || member.id || member.name;
+    // 🚀 ব্যাকগ্রাউন্ডে প্রথম ১০ জন ফ্রেন্ডও ফেচ করে আনবো (অটোমেটিক)
+    fetchProfileFriends('all', true, targetEmail);
+    
+    // যদি স্ট্যাক ফাঁকা থাকে (মানে প্রথম প্রোফাইল), তাহলে স্লাইড অ্যানিমেশন হবে
+    if (profileStack.length === 0) {
+      Animated.spring(profileSlideAnim, {
+        toValue: 0,
+        friction: 8,
+        tension: 50,
+        useNativeDriver: true
+      }).start();
+    }
 
     try {
       const currentUid = await AsyncStorage.getItem('@current_user_id') || 'guest';
       const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ 
           action: 'get_user_social_profile', 
           targetEmail: member.email || member.id || member.name, 
@@ -448,24 +559,45 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
         })
       });
       const result = await response.json();
+      
       if (result.success) {
-        setSelectedUserProfile(result.data);
+        // স্ট্যাকের শেষের এন্ট্রিতে ডাটা বসানো এবং লোডিং ফলস করা
+        setProfileStack(prev => {
+          const newStack = [...prev];
+          const lastIndex = newStack.length - 1;
+          if (lastIndex >= 0 && (newStack[lastIndex].member.email || newStack[lastIndex].member.id) === (member.email || member.id)) {
+            newStack[lastIndex] = { ...newStack[lastIndex], profileData: result.data, isLoading: false };
+          }
+          return newStack;
+        });
       }
     } catch (error) {
       console.log("Profile fetch error:", error);
-    } finally {
-      setIsProfileLoading(false);
     }
   };
 
- // 🚀 Slide-out (স্টেট null করার দরকার নেই, জাস্ট বাইরে পাঠিয়ে দিব)
+  // 🚀 Back Button Logic (এক ধাপ পেছনে যাবে)
+  const goBackProfile = () => {
+    if (profileStack.length > 1) {
+      // স্ট্যাক থেকে শেষেরটা ফেলে দিয়ে আগেরটায় ফিরে যাবে (চোখের পলকে)
+      setProfileStack(prev => prev.slice(0, -1));
+    } else {
+      // যদি একটাই থাকে, তাহলে মডাল ক্লোজ করে দেবে
+      closeMemberProfile();
+    }
+  };
+
+  // 🚀 Close Modal Logic (একবারে সব বন্ধ করে লবিতে ফেরা)
   const closeMemberProfile = () => {
     Animated.spring(profileSlideAnim, {
       toValue: Dimensions.get('window').width,
       friction: 8,
       tension: 50,
       useNativeDriver: true
-    }).start(); // 🚀 ফিক্স: এখান থেকে setSelectedLiveMember(null) সরিয়ে দেওয়া হয়েছে
+    }).start(() => {
+      // অ্যানিমেশন শেষে পুরো স্ট্যাক ক্লিয়ার করে দেবে
+      setProfileStack([]);
+    });
   };
 
   // 🚀 Public Profile States (The Stacked Social Snapshot)
@@ -476,27 +608,48 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
   const [myEmail, setMyEmail] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [myFriends, setMyFriends] = useState([]);
+  const [suggestedFriends, setSuggestedFriends] = useState([]);
   const [searchResults, setSearchResults] = useState([]);
+  const [communityMembers, setCommunityMembers] = useState([]);
   const [invitedUsers, setInvitedUsers] = useState([]);
   const [sentRequests, setSentRequests] = useState([]); 
-  const [pendingRequests, setPendingRequests] = useState([]); // 🚀 যেগুলোতে অলরেডি রিকোয়েস্ট পাঠানো হয়েছে
+const [pendingRequests, setPendingRequests] = useState([]); // 🚀 যেগুলোতে অলরেডি রিকোয়েস্ট পাঠানো হয়েছে
+  const [receivedRequests, setReceivedRequests] = useState([]); // 🚀 যারা আমাকে রিকোয়েস্ট পাঠিয়েছে
   const [isMembersLoading, setIsMembersLoading] = useState(true);
+  const [lobbyTab, setLobbyTab] = useState('friends'); // 🚀 লবিতে ফ্রেন্ডস নাকি কমিউনিটি ট্যাব দেখাবে
 
- const fetchLobbyData = async (query = '') => {
+const fetchLobbyData = async (query = '') => {
     setIsMembersLoading(true);
     try {
       const currentUid = await AsyncStorage.getItem('@current_user_id') || 'guest';
-      setMyEmail(currentUid); // 🚀 নিজের ইমেইলটা স্টেটে সেভ করে নিলাম
-      const currentGuideId = guideData?.channelId || guideData?.id || guideData?.shareCode; // 🚀 বর্তমান কমিউনিটির আইডি
+    setMyEmail(currentUid);// 🚀 নিজের ইমেইলটা স্টেটে সেভ করে নিলাম
+     const currentGuideId = guideData?.channelId || guideData?.creatorEmail || 'default_channel';
       const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'get_lobby_data', userEmail: currentUid, searchQuery: query, guideId: currentGuideId })
       });
       const result = await response.json();
+      
+   // 🚀 ম্যাজিক ফিক্স: ডাটাগুলো সঠিকভাবে স্টেটে সেভ করে নিলাম!
       if (result.success) {
         setMyFriends(result.friends || []);
         setSearchResults(result.searchResults || []);
+        setPendingRequests(result.sentRequestEmails || []);
+        setReceivedRequests(result.receivedRequestEmails || []);
+      }
+
+    // 🚀 নতুন লজিক: যদি সার্চ বক্স ফাঁকা থাকে, তাহলে কমিউনিটি মেম্বারদের ফেচ করে আনবো
+      if (query === '' && currentGuideId) {
+        const memRes = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'get_community_members', guideId: currentGuideId, limit: 10, skip: 0 })
+        });
+        const memData = await memRes.json();
+        if (memData.success) {
+          setCommunityMembers(memData.members || []);
+        }
       }
     } catch (error) {
       console.log('Lobby fetch error:', error);
@@ -505,9 +658,35 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
     }
   };
 
-  // মডাল ওপেন হলে একবার ফ্রেন্ড লিস্ট কল হবে
+ // মডাল ওপেন হলে একবার ফ্রেন্ড লিস্ট কল হবে
   useEffect(() => {
     if (membersModalVisible) fetchLobbyData();
+  }, [membersModalVisible]);
+
+  // 🚀 Pusher Real-time Listener for Friend Network inside Lobby
+  useEffect(() => {
+    let pusher;
+    let channel;
+    
+    const setupPusher = async () => {
+      const uid = await AsyncStorage.getItem('@current_user_id');
+      if (!uid || uid === 'guest') return;
+      
+      pusher = new Pusher('94415a0ec2e09647c277', { cluster: 'mt1' });
+      const safeUserId = uid.replace(/[@.]/g, '_');
+      
+      channel = pusher.subscribe(`user_${safeUserId}`);
+      channel.bind('friend_network_update', () => {
+        // 🟢 রিয়েল-টাইমে কোনো ফ্রেন্ড রিকোয়েস্ট এক্সেপ্ট বা ক্যানসেল হলে লবি অটোমেটিক আপডেট হবে!
+        if (membersModalVisible) fetchLobbyData();
+      });
+    };
+    
+    setupPusher();
+    return () => {
+      if (channel) { channel.unbind_all(); channel.unsubscribe(); }
+      if (pusher) pusher.disconnect();
+    };
   }, [membersModalVisible]);
 
   // সার্চ বারে কিছু লিখলে ডিবাউন্স (হাফ সেকেন্ড পর) করে সার্চ হবে
@@ -528,7 +707,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
         const currentUid = await AsyncStorage.getItem('@current_user_id');
         await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'cancel_friend_request', senderEmail: currentUid, receiverEmail: targetEmail })
         });
       } catch(e) {}
@@ -539,18 +718,34 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
         const currentUid = await AsyncStorage.getItem('@current_user_id');
         await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'send_friend_request', senderEmail: currentUid, receiverEmail: targetEmail })
         });
       } catch(e) {}
     }
   };
 
-  const handleSendInvite = async (targetEmail) => {
-    if (invitedUsers.includes(targetEmail) || !guideData) return;
-    setInvitedUsers(prev => [...prev, targetEmail]); // সাথমে সাথে বাটন সবুজ করার জন্য
+ // 🚀 নতুন: লবি থেকে সরাসরি রিকোয়েস্ট এক্সেপ্ট করার ফাংশন
+  const handleAcceptRequest = async (targetEmail, targetName, targetAvatar) => {
+    // Optimistic UI: সাথে সাথে ফ্রেন্ড লিস্টে অ্যাড এবং রিসিভ লিস্ট থেকে রিমুভ
+    setReceivedRequests(prev => prev.filter(e => e !== targetEmail));
+    setMyFriends(prev => [{ email: targetEmail, name: targetName, avatar: targetAvatar }, ...prev]); 
+    
+    try {
+      const currentUid = await AsyncStorage.getItem('@current_user_id');
+      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: 'accept_friend_request_direct', senderEmail: targetEmail, receiverEmail: currentUid })
+      });
+    } catch(e) {}
+  };
 
-    const guideId = guideData.channelId || guideData.id || guideData.shareCode;
+ const handleSendInvite = async (targetEmail) => {
+  if (invitedUsers.includes(targetEmail) || !guideData) return;
+  setInvitedUsers(prev => [...prev, targetEmail]); // সাথমে সাথে বাটন সবুজ করার জন্য
+
+    const guideId = guideData.id || guideData.shareCode || guideData.channelId;
     const uid = await AsyncStorage.getItem('@current_user_id') || 'guest';
     const name = await AsyncStorage.getItem(`@user_name_${uid}`) || 'শিক্ষার্থী';
     const avatar = await AsyncStorage.getItem(`@user_avatar_${uid}`) || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
@@ -558,7 +753,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
     try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({
           action: 'send_reading_invite',
           guideId,
@@ -641,7 +836,10 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
     }, 3000);
   };
 
-  const enqueueReaction = (content, type, user) => {
+ const enqueueReaction = (content, type, user) => {
+    // 🚀 ম্যাজিক ফিক্স ২: হাইড করা থাকলে কোনো রিয়েকশন রিসিভই করবে না
+    if (!isReactionVisibleRef.current) return;
+    
     reactionQueue.current.push({ content, type, user });
     processReactionQueue();
   };
@@ -660,7 +858,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
     const uid = await AsyncStorage.getItem('@current_user_id') || 'guest_' + Date.now();
     const name = await AsyncStorage.getItem(`@user_name_${uid}`) || await AsyncStorage.getItem('@user_name') || 'শিক্ষার্থী';
     const avatar = await AsyncStorage.getItem(`@user_avatar_${uid}`) || await AsyncStorage.getItem('@user_avatar') || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-    const guideId = guideData?.channelId || guideData?.id || guideData?.shareCode;
+    const guideId = guideData?.id || guideData?.shareCode || guideData?.channelId;
 
     // ১. নিজের স্ক্রিনে কিউতে অ্যাড করা
     enqueueReaction(content, type, { name, avatar });
@@ -669,7 +867,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
     if(guideId) {
       fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'trigger_live_reaction', guideId, content, type, userEmail: uid, userName: name, userAvatar: avatar })
       }).catch(() => {});
     }
@@ -700,14 +898,15 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
     let pusher;
     let presenceChannel;
 
-    const setupLivePresence = async () => {
-      if (!visible || !guideData) return;
-      const guideId = guideData.channelId || guideData.id || guideData.shareCode;
-      if (!guideId) return;
+   const setupLivePresence = async () => {
+  if (!visible || !guideData) return;
+  // 🚀 ম্যাজিক ফিক্স: স্পেসিফিক বইয়ের (গাইডের) আইডি নিচ্ছি যাতে রুম আলাদা হয়
+  const guideId = guideData.id || guideData.shareCode || guideData.channelId;
+  if (!guideId) return;
 
       const uid = await AsyncStorage.getItem('@current_user_id') || 'guest_' + Date.now();
       const name = await AsyncStorage.getItem(`@user_name_${uid}`) || await AsyncStorage.getItem('@user_name') || 'শিক্ষার্থী';
-      const avatar = await AsyncStorage.getItem(`@user_avatar_${uid}`) || await AsyncStorage.getItem('@user_avatar') || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+    const avatar = await AsyncStorage.getItem(`@user_avatar_${uid}`) || await AsyncStorage.getItem('@user_avatar') || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
       
    
 
@@ -719,7 +918,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
             authorize: (socketId, callback) => {
               fetch('https://growshelby-api.vercel.app/api/update_coins', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+                headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
                 body: JSON.stringify({ action: 'pusher_auth', socket_id: socketId, channel_name: channel.name, userEmail: uid, userName: name, userAvatar: avatar })
               })
               .then(res => res.json())
@@ -913,10 +1112,10 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
                   </View>
                 </TouchableOpacity>
 
-                <TouchableOpacity activeOpacity={0.8} onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setIsReactionVisible(!isReactionVisible); }}>
+            <TouchableOpacity activeOpacity={0.8} onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setIsReactionVisible(!isReactionVisible); }}>
                   <View className={`rounded-[14px] pb-[4px] ${!isReactionVisible ? 'bg-[#1073A4]' : 'bg-[#E5E5E5]'}`}>
                     <View className={`w-[42px] h-[42px] rounded-[14px] items-center justify-center border-2 border-b-0 ${!isReactionVisible ? 'bg-[#1CB0F6] border-[#1899D6]' : 'bg-white border-[#E5E5E5]'}`}>
-                      <FontAwesome5 name={!isReactionVisible ? "moon" : "eye-slash"} size={16} color={!isReactionVisible ? "#FFFFFF" : "#777777"} solid={!isReactionVisible} />
+                      <FontAwesome5 name={!isReactionVisible ? "bell-slash" : "bell"} size={16} color={!isReactionVisible ? "#FFFFFF" : "#777777"} solid={!isReactionVisible} />
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -951,11 +1150,9 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
                   </View>
                   <View className="justify-center flex-shrink">
                     <Text className="text-[#3C3C3C] text-[12px] leading-[15px]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>
-                      {activeReaders.length > 0 ? 'লাই' : 'একা'}
+                      {activeReaders.length > 0 ? 'লাইভে পড়ছে' : 'একা'}
                     </Text>
-                    <Text className="text-[#777777] text-[9px] leading-[12px]" style={{ fontFamily: 'BanglaRegular' }} numberOfLines={1}>
-                      পড়ছে
-                    </Text>
+                    
                   </View>
                 </TouchableOpacity>
               </View>
@@ -1029,8 +1226,8 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
             />
        </View>
 
-     {/* 🚀 Live Reaction Bubble (Spotlight Zone) */}
-          {liveReaction && (
+   {/* 🚀 Live Reaction Bubble (Spotlight Zone) */}
+          {isReactionVisible && liveReaction && (
             <Animated.View 
               style={{ opacity: reactionFadeAnim, transform: [{ translateY: reactionSlideAnim }] }}
               className="absolute bottom-[110px] right-5 flex-row items-end justify-end z-40"
@@ -1272,10 +1469,14 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
                       <MemberSkeleton />
                     </>
                   ) : (() => {
-                   const renderUserCard = (user, type) => {
-                      const isLive = activeReaders.some(r => (r.email || r.id) === user.email);
-                      const isInvited = invitedUsers.includes(user.email);
-                      const isPending = pendingRequests.includes(user.email);
+               const renderUserCard = (user, type) => {
+                      const targetEmail = user.email || user.id;
+                      const isLive = activeReaders.some(r => (r.email || r.id) === targetEmail);
+                      const isInvited = invitedUsers.includes(targetEmail);
+                      const isPending = pendingRequests.includes(targetEmail);
+                      const isReceived = receivedRequests.includes(targetEmail);
+                      const isFriend = myFriends.some(f => f.email === targetEmail);
+                      const isMe = targetEmail === myEmail; // 🚀 নিজের প্রোফাইল চেক
 
                       return (
                         <View key={user.email} className="mb-4 bg-white rounded-[24px] border-2 border-[#EFE8D6] shadow-sm p-4">
@@ -1293,9 +1494,13 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
                               </View>
                             </TouchableOpacity>
                           </View>
-
-                          {/* ডুওলিঙ্গো স্টাইল ফুল উইডথ বাটন */}
-                          {type === 'friend' ? (
+{/* ডুওলিঙ্গো স্টাইল ফুল উইডথ বাটন */}
+                          {isMe ? (
+                            <View className="w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border bg-[#F9F9F9] border-[#E5E5E5]">
+                              <FontAwesome5 name="user-circle" size={14} color="#AFAFAF" />
+                              <Text className="text-[#AFAFAF] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>এটি আপনার প্রোফাইল</Text>
+                            </View>
+                          ) : type === 'friend' ? (
                             isLive ? (
                               <View className="w-full py-2.5 rounded-[16px] flex-row justify-center items-center bg-[#F2FDE6] border border-[#D7FFB8]">
                                 <View className="w-2 h-2 bg-[#58CC02] rounded-full mr-2" />
@@ -1316,22 +1521,29 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
                                 )}
                               </TouchableOpacity>
                             )
-                          ) : (
-                            <TouchableOpacity activeOpacity={0.8} onPress={() => handleAddFriend(user.email)} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isPending ? 'bg-[#FFF4E5] border-[#FFC800]' : 'bg-white border-[#20A090]'}`}>
-                              {isPending ? (
-                                <>
-                                  <FontAwesome5 name="times-circle" size={14} color="#D47B00" />
-                                  <Text className="text-[#D47B00] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>ক্যানসেল করুন</Text>
-                                </>
+                         ) : (
+                              isReceived ? (
+                                <TouchableOpacity activeOpacity={0.8} onPress={() => handleAcceptRequest(user.email, user.name, user.avatar)} className="w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border bg-[#1899D6] border-[#1899D6]">
+                                  <FontAwesome5 name="check" size={14} color="#FFF" />
+                                  <Text className="text-white text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>কনফার্ম করুন</Text>
+                                </TouchableOpacity>
                               ) : (
-                                <>
-                                  <FontAwesome5 name="user-plus" size={14} color="#20A090" />
-                                  <Text className="text-[#20A090] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>অ্যাড ফ্রেন্ড</Text>
-                                </>
-                              )}
-                            </TouchableOpacity>
-                          )}
-                        </View>
+                                <TouchableOpacity activeOpacity={0.8} onPress={() => handleAddFriend(user.email)} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isPending ? 'bg-[#FFF4E5] border-[#FFC800]' : 'bg-white border-[#20A090]'}`}>
+                                  {isPending ? (
+                                    <>
+                                      <FontAwesome5 name="times-circle" size={14} color="#D47B00" />
+                                      <Text className="text-[#D47B00] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>ক্যানসেল করুন</Text>
+                                    </>
+                                  ) : (
+                                    <>
+                                      <FontAwesome5 name="user-plus" size={14} color="#20A090" />
+                                      <Text className="text-[#20A090] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>অ্যাড ফ্রেন্ড</Text>
+                                    </>
+                                  )}
+                                </TouchableOpacity>
+                              )
+                            )}
+                          </View>
                       );
                     };
 
@@ -1354,39 +1566,90 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
                       );
                     }
 
-                  // 🚀 সার্চ না করা থাকলে দুইটা আলাদা সেকশন দেখাবে (নিজের আইডি বাদ দিয়ে)
+                 // 🚀 সার্চ না করা থাকলে ট্যাব অনুযায়ী মেম্বার দেখাবে
                     const otherLiveReaders = activeReaders.filter(r => 
                       (r.email || r.id) !== myEmail && 
                       !myFriends.some(f => f.email === (r.email || r.id))
                     );
 
+                    // কমিউনিটি মেম্বার থেকে নিজের, বন্ধুদের এবং লাইভ রিডারদের বাদ দেওয়া
+                    const exploreMembers = communityMembers.filter(m => 
+                      m.userEmail !== myEmail && 
+                      !myFriends.some(f => f.email === m.userEmail) &&
+                      !otherLiveReaders.some(r => (r.email || r.id) === m.userEmail)
+                    );
+
                     return (
                       <View>
-                        {/* সেকশন ১: তোমার বন্ধুরা */}
-                        <Text className="text-[#777777] text-[13px] mb-3" style={{ fontFamily: 'BanglaBold' }}>তোমার বন্ধুরা ({myFriends.length})</Text>
-                        {myFriends.length === 0 ? (
-                          <View className="items-center py-6 bg-white rounded-[20px] border border-[#EFE8D6] mb-6 shadow-sm border-dashed">
-                            <FontAwesome5 name="user-friends" size={24} color="#D7D7D7" />
-                            <Text className="text-[#AFAFAF] text-[13px] mt-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>তোমার কোনো বন্ধু নেই। নতুন বন্ধু খুঁজুন!</Text>
+                        {/* 🚀 লবি টগল বাটনস */}
+                        <View className="flex-row bg-[#EAE4D4] rounded-full p-1 mb-5">
+                          <TouchableOpacity onPress={() => setLobbyTab('friends')} className={`flex-1 py-2.5 rounded-full items-center ${lobbyTab === 'friends' ? 'bg-white shadow-sm' : ''}`}>
+                            <Text className={`text-[13px] pt-0.5 ${lobbyTab === 'friends' ? 'text-[#3D382F]' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaBold' }}>তোমার বন্ধুরা ({myFriends.length})</Text>
+                          </TouchableOpacity>
+                          <TouchableOpacity onPress={() => setLobbyTab('community')} className={`flex-1 py-2.5 rounded-full items-center ${lobbyTab === 'community' ? 'bg-white shadow-sm' : ''}`}>
+                            <Text className={`text-[13px] pt-0.5 ${lobbyTab === 'community' ? 'text-[#3D382F]' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaBold' }}>কমিউনিটি মেম্বারস</Text>
+                          </TouchableOpacity>
+                        </View>
+
+                        {lobbyTab === 'friends' ? (
+                          <View>
+                            {myFriends.length === 0 ? (
+                              <View className="items-center py-10 bg-white rounded-[20px] border border-[#EFE8D6] mb-6 shadow-sm border-dashed">
+                                <FontAwesome5 name="user-friends" size={32} color="#EAE4D4" className="mb-3" />
+                                <Text className="text-[#827B6E] text-[14px] pt-1" style={{ fontFamily: 'BanglaBold' }}>এখনো কোনো বন্ধু যোগ হয়নি</Text>
+                                <TouchableOpacity onPress={() => setLobbyTab('community')} className="mt-3 bg-[#FDF6E3] px-4 py-2 rounded-full border border-[#EFE8D6]">
+                                  <Text className="text-[#D47B00] text-[12px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>কমিউনিটি থেকে বন্ধু খুঁজুন</Text>
+                                </TouchableOpacity>
+                              </View>
+                            ) : (
+                              [...myFriends].sort((a, b) => {
+                                const aLive = activeReaders.some(r => (r.email || r.id) === a.email);
+                                const bLive = activeReaders.some(r => (r.email || r.id) === b.email);
+                                return (bLive === aLive) ? 0 : bLive ? 1 : -1;
+                              }).map(user => renderUserCard(user, 'friend'))
+                            )}
                           </View>
                         ) : (
-                          // যারা লাইভ আছে তারা উপরে থাকবে, অফলাইনরা নিচে
-                          [...myFriends].sort((a, b) => {
-                            const aLive = activeReaders.some(r => (r.email || r.id) === a.email);
-                            const bLive = activeReaders.some(r => (r.email || r.id) === b.email);
-                            return (bLive === aLive) ? 0 : bLive ? 1 : -1;
-                          }).map(user => renderUserCard(user, 'friend'))
-                        )}
-
-                        {/* সেকশন ২: অন্যান্য লাইভ রিডার */}
-                        {otherLiveReaders.length > 0 && (
-                          <View className="mt-4">
-                            <Text className="text-[#777777] text-[13px] mb-3" style={{ fontFamily: 'BanglaBold' }}>অন্যান্য লাইভ রিডার ({otherLiveReaders.length})</Text>
-                            {otherLiveReaders.map(user => renderUserCard({
-                              name: user.name,
-                              email: user.email || user.id,
-                              avatar: user.avatar
-                            }, 'explore'))}
+                          <View>
+                            {/* লাইভ রিডারস (যারা বন্ধু নয়) */}
+                            {otherLiveReaders.length > 0 && (
+                              <View className="mb-2">
+                                <View className="flex-row items-center mb-3 px-1">
+                                  <View className="w-2 h-2 bg-[#58CC02] rounded-full mr-2" />
+                                  <Text className="text-[#58CC02] text-[13px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>অন্যান্য লাইভ রিডার ({otherLiveReaders.length})</Text>
+                                </View>
+                                {otherLiveReaders.map(user => renderUserCard({
+                                  name: user.name,
+                                  email: user.email || user.id,
+                                  avatar: user.avatar
+                                }, 'explore'))}
+                              </View>
+                            )}
+                            
+                            {/* বাকি কমিউনিটি মেম্বারস */}
+                            <View className="mt-2">
+                              <View className="flex-row items-center mb-3 px-1">
+                                <FontAwesome5 name="users" size={13} color="#1899D6" />
+                                <Text className="text-[#1899D6] text-[13px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>সাজেস্টেড ফ্রেন্ডস</Text>
+                              </View>
+                              
+                              {exploreMembers.length > 0 ? (
+                                exploreMembers.map((member, index) => renderUserCard({
+                                  name: member.userName,
+                                  email: member.userEmail,
+                                  avatar: member.userAvatar
+                                }, 'explore'))
+                              ) : isMembersLoading ? (
+                                <View className="items-center py-6 bg-white rounded-[20px] border border-[#EFE8D6] mb-6 shadow-sm border-dashed">
+                                  <ActivityIndicator size="small" color="#AFAFAF" />
+                                  <Text className="text-[#AFAFAF] text-[12px] mt-3 pt-1" style={{ fontFamily: 'BanglaBold' }}>মেম্বার খোঁজা হচ্ছে...</Text>
+                                </View>
+                              ) : (
+                                <View className="items-center py-6 bg-white rounded-[20px] border border-[#EFE8D6] mb-6 shadow-sm border-dashed">
+                                  <Text className="text-[#AFAFAF] text-[13px] pt-1" style={{ fontFamily: 'BanglaBold' }}>নতুন কাউকে পাওয়া যায়নি।</Text>
+                                </View>
+                              )}
+                            </View>
                           </View>
                         )}
                       </View>
@@ -1403,19 +1666,28 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
                   left: 0,
                   right: 0,
                   bottom: 0,
-                  backgroundColor: '#FFFFFF', // 🚀 ক্লিন সাদা ব্যাকগ্রাউন্ড
-                  zIndex: 10
+                  backgroundColor: profileStack.length > 0 ? '#FFFFFF' : 'transparent', // 🚀 ফিক্স: স্ট্যাক ফাঁকা থাকলে ব্যাকগ্রাউন্ড ট্রান্সপারেন্ট!
+                  zIndex: 10,
+                  pointerEvents: profileStack.length > 0 ? 'auto' : 'none' // 🚀 ফিক্স: ইনভিজিবল অবস্থায় যেন টাচ ব্লক না করে
                 }}
               >
               {selectedLiveMember && (
                   <ScrollView className="flex-1" showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 60 }}>
                     
-                    {/* 🚀 ১. কভার ব্যানার ও ব্যাক বাটন */}
-                    <View className="h-[140px] bg-[#A8B3FF] w-full relative rounded-b-[20px]">
-                      <TouchableOpacity onPress={closeMemberProfile} className="absolute top-5 left-5 bg-black/20 w-9 h-9 rounded-full items-center justify-center z-20">
-                        <FontAwesome5 name="arrow-left" size={14} color="#FFFFFF" />
-                      </TouchableOpacity>
-                    </View>
+                    {/* 🚀 ১. কভার ব্যানার ও ব্যাক/ক্লোজ বাটন */}
+                            <View className="h-[140px] bg-[#A8B3FF] w-full relative rounded-b-[20px]">
+                              {/* ⬅️ ব্যাক বাটন (এক ধাপ পেছনে) */}
+                              <TouchableOpacity onPress={goBackProfile} className="absolute top-5 left-5 bg-black/20 w-9 h-9 rounded-full items-center justify-center z-20">
+                                <FontAwesome5 name="arrow-left" size={14} color="#FFFFFF" />
+                              </TouchableOpacity>
+                              
+                              {/* ✖️ ক্লোজ বাটন (একবারে লবিতে ফেরার জন্য - শুধু তখনই দেখাবে যখন প্রোফাইল স্ট্যাক ১ এর বেশি) */}
+                              {profileStack.length > 1 && (
+                                <TouchableOpacity onPress={closeMemberProfile} className="absolute top-5 right-5 bg-black/20 w-9 h-9 rounded-full items-center justify-center z-20">
+                                  <FontAwesome5 name="times" size={14} color="#FFFFFF" />
+                                </TouchableOpacity>
+                              )}
+                            </View>
 
                     {/* 🚀 ২. অ্যাভাটার ও বেসিক ইনফো */}
                     <View className="items-center -mt-16 px-5 relative z-10">
@@ -1433,14 +1705,26 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
                       </View>
                     ) : (
                       <>
-                     {/* 🚀 ৩. ডাইনামিক ফ্রেন্ড/ইনভাইট বাটন */}
+                    {/* 🚀 ৩. ডাইনামিক ফ্রেন্ড/ইনভাইট বাটন */}
                         <View className="px-5 mt-5">
                           {(() => {
                             const targetEmail = selectedLiveMember.email || selectedLiveMember.id;
                             const isFriend = myFriends.some(f => f.email === targetEmail);
-                            const isReqSent = sentRequests.includes(targetEmail);
+                            const isReqSent = pendingRequests.includes(targetEmail);
+                            const isReceived = receivedRequests.includes(targetEmail);
                             const isInvited = invitedUsers.includes(targetEmail);
                             const isLive = activeReaders.some(r => (r.email || r.id) === targetEmail);
+                            const isMe = targetEmail === myEmail; // 🚀 নিজের প্রোফাইল চেক
+
+                            // 🚀 যদি নিজের প্রোফাইল হয়
+                            if (isMe) {
+                              return (
+                                <View className="w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border bg-[#F9F9F9] border-[#E5E5E5]">
+                                  <FontAwesome5 name="user-circle" size={14} color="#AFAFAF" />
+                                  <Text className="text-[#AFAFAF] text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>এটি আপনার প্রোফাইল</Text>
+                                </View>
+                              );
+                            }
 
                             if (isFriend) {
                               if (isLive) {
@@ -1467,46 +1751,172 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
                                   </TouchableOpacity>
                                 );
                               }
-                            } else {
-                              return (
-                                <TouchableOpacity activeOpacity={0.7} onPress={() => handleAddFriend(targetEmail)} disabled={isReqSent} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isReqSent ? 'bg-[#FDF6E3] border-[#EFE8D6]' : 'bg-white border-[#20A090]'}`}>
-                                  {isReqSent ? (
-                                    <>
-                                      <FontAwesome5 name="clock" size={14} color="#D47B00" />
-                                      <Text className="text-[#D47B00] text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>রিকোয়েস্ট পাঠানো হয়েছে</Text>
-                                    </>
-                                  ) : (
-                                    <>
-                                      <FontAwesome5 name="user-plus" size={14} color="#20A090" />
-                                      <Text className="text-[#20A090] text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>বন্ধু হিসেবে যোগ করো</Text>
-                                    </>
-                                  )}
-                                </TouchableOpacity>
-                              );
+                         } else {
+                              if (isReceived) {
+                                return (
+                                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleAcceptRequest(targetEmail, selectedLiveMember.name, selectedLiveMember.avatar)} className="w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border bg-[#1899D6] border-[#1899D6]">
+                                    <FontAwesome5 name="check" size={14} color="#FFF" />
+                                    <Text className="text-white text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>ফ্রেন্ড রিকোয়েস্ট কনফার্ম করুন</Text>
+                                  </TouchableOpacity>
+                                );
+                              } else {
+                                return (
+                                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleAddFriend(targetEmail)} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isReqSent ? 'bg-[#FFF4E5] border-[#FFC800]' : 'bg-white border-[#20A090]'}`}>
+                                    {isReqSent ? (
+                                      <>
+                                        <FontAwesome5 name="times-circle" size={14} color="#D47B00" />
+                                        <Text className="text-[#D47B00] text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>ক্যানসেল করুন</Text>
+                                      </>
+                                    ) : (
+                                      <>
+                                        <FontAwesome5 name="user-plus" size={14} color="#20A090" />
+                                        <Text className="text-[#20A090] text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>বন্ধু হিসেবে যোগ করো</Text>
+                                      </>
+                                    )}
+                                  </TouchableOpacity>
+                                );
+                              }
                             }
                           })()}
                         </View>
 
-                        {/* 🚀 ৪. বন্ধুদের প্রিভিউ লিস্ট (ডাইনামিক ডেটা) */}
+                   {/* 🚀 ৪. বন্ধুদের লিস্ট (ইনলাইন ডাইনামিক কার্ড) */}
                         <View className="px-5 mt-8">
+                          
+                          {/* 🚀 ডাইনামিক হেডার বাটনসমূহ */}
                           <View className="flex-row justify-between items-center mb-4">
-                            <Text className="text-[#3C3C3C] text-[16px]" style={{ fontFamily: 'BanglaBold' }}>বন্ধুসমূহ ({selectedUserProfile?.friendsCount || 0})</Text>
-                            <TouchableOpacity activeOpacity={0.7}>
-                              <Text className="text-[#1899D6] text-[13px]" style={{ fontFamily: 'BanglaBold' }}>সব দেখুন</Text>
-                            </TouchableOpacity>
+                            <View className="flex-row space-x-2">
+                              {/* বন্ধুসমূহ বাটন */}
+                              <TouchableOpacity activeOpacity={0.7} onPress={() => fetchProfileFriends('all', true)} className={`px-3 py-1.5 rounded-full border ${currentProfileEntry?.inlineFriendsType === 'all' ? 'bg-[#E6F4FB] border-[#BCE3F5]' : 'bg-[#F9F9F9] border-[#E5E5E5]'}`}>
+                                <Text className={`text-[12px] pt-0.5 ${currentProfileEntry?.inlineFriendsType === 'all' ? 'text-[#1073A4]' : 'text-[#AFAFAF]'}`} style={{ fontFamily: 'BanglaBold' }}>
+                                  বন্ধুসমূহ ({selectedUserProfile?.friendsCount || 0})
+                                </Text>
+                              </TouchableOpacity>
+                              
+                              {/* মিউচুয়াল বন্ধু বাটন */}
+                              {selectedUserProfile?.mutualFriendsCount > 0 && (
+                                <TouchableOpacity activeOpacity={0.7} onPress={() => fetchProfileFriends('mutual', true)} className={`px-3 py-1.5 rounded-full border ${currentProfileEntry?.inlineFriendsType === 'mutual' ? 'bg-[#FFF4E5] border-[#FFDDAA]' : 'bg-[#F9F9F9] border-[#E5E5E5]'}`}>
+                                  <Text className={`text-[12px] pt-0.5 ${currentProfileEntry?.inlineFriendsType === 'mutual' ? 'text-[#D47B00]' : 'text-[#AFAFAF]'}`} style={{ fontFamily: 'BanglaBold' }}>
+                                    মিউচুয়াল ({selectedUserProfile?.mutualFriendsCount || 0})
+                                  </Text>
+                                </TouchableOpacity>
+                              )}
+                            </View>
                           </View>
                           
-                          <View className="flex-row items-center">
-                            <View className="flex-row -space-x-3">
-                              {[1, 2, 3].map((i) => (
-                                <Image key={i} source={{ uri: `https://i.pravatar.cc/150?img=${i + 10}` }} className="w-10 h-10 rounded-full border-2 border-white bg-[#EAE4D4]" style={{ zIndex: 5 - i }} />
-                              ))}
-                              <TouchableOpacity activeOpacity={0.7} className="w-10 h-10 rounded-full border-2 border-white bg-[#F0F0F0] items-center justify-center" style={{ zIndex: 1 }}>
-                                <Text className="text-[11px] text-[#777777]" style={{ fontFamily: 'BanglaBold' }}>+{selectedUserProfile?.friendsCount > 3 ? selectedUserProfile.friendsCount - 3 : 0}</Text>
-                              </TouchableOpacity>
-                            </View>
-                            <Text className="text-[#777777] text-[12px] ml-4 pt-1" style={{ fontFamily: 'BanglaRegular' }}>মিউচুয়াল বন্ধু: {selectedUserProfile?.mutualFriendsCount || 0} জন</Text>
+                          {/* 🚀 কার্ড রেন্ডার করা */}
+                          <View>
+                         {(currentProfileEntry?.inlineFriends || []).map((item, idx) => {
+                              const targetEmail = item.email || item.id;
+                              const isLive = activeReaders.some(r => (r.email || r.id) === targetEmail);
+                              const isInvited = invitedUsers.includes(targetEmail);
+                              const isPending = pendingRequests.includes(targetEmail);
+                              const isReceived = receivedRequests.includes(targetEmail);
+                              const isFriend = myFriends.some(f => f.email === targetEmail);
+                              const isMe = targetEmail === myEmail; // 🚀 নিজের প্রোফাইল কিনা চেক করা
+
+                              return (
+                                <View key={idx} className="mb-4 bg-white rounded-[24px] border-2 border-[#EFE8D6] shadow-sm p-4">
+                                  <View className="flex-row items-center justify-between mb-3">
+                                    <TouchableOpacity 
+                                      activeOpacity={0.7} 
+                                      onPress={() => openMemberProfile(item)} 
+                                      className="flex-row items-center flex-1"
+                                    >
+                                      <Image source={{ uri: item.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-12 h-12 rounded-full border-2 border-[#EFE8D6] bg-[#F9F9F9]" />
+                                      <View className="ml-3 flex-1 pr-2">
+                                        <Text className="text-[#3D382F] text-[15px]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>{item.name || 'শিক্ষার্থী'}</Text>
+                                        {isLive && (
+                                          <View className="flex-row items-center mt-0.5">
+                                            <View className="w-1.5 h-1.5 bg-[#58CC02] rounded-full mr-1.5" />
+                                            <Text className="text-[#58CC02] text-[10px]" style={{ fontFamily: 'BanglaBold' }}>লাইভ আছে</Text>
+                                          </View>
+                                        )}
+                                      </View>
+                                    </TouchableOpacity>
+                                  </View>
+
+                                 {/* 🚀 ডাইনামিক বাটন লজিক */}
+                                  {isMe ? (
+                                    <View className="w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border bg-[#F9F9F9] border-[#E5E5E5]">
+                                      <FontAwesome5 name="user-circle" size={14} color="#AFAFAF" />
+                                      <Text className="text-[#AFAFAF] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>এটি আপনার প্রোফাইল</Text>
+                                    </View>
+                                  ) : isFriend ? (
+                                    isLive ? (
+                                      <View className="w-full py-2.5 rounded-[16px] flex-row justify-center items-center bg-[#F2FDE6] border border-[#D7FFB8]">
+                                        <View className="w-2 h-2 bg-[#58CC02] rounded-full mr-2" />
+                                        <Text className="text-[#58CC02] text-[14px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>একসাথে পড়ছেন</Text>
+                                      </View>
+                                    ) : (
+                                      <TouchableOpacity activeOpacity={0.8} onPress={() => handleSendInvite(targetEmail)} disabled={isInvited} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isInvited ? 'bg-[#D7FFB8] border-[#58CC02]' : 'bg-[#1899D6] border-[#1899D6]'}`}>
+                                        {isInvited ? (
+                                          <>
+                                            <FontAwesome5 name="check" size={14} color="#58A700" />
+                                            <Text className="text-[#58A700] text-[14px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>ইনভাইট পাঠানো হয়েছে</Text>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <Text className="text-white text-[18px]">👋</Text>
+                                            <Text className="text-white text-[14px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>পড়ার জন্য ডাকুন</Text>
+                                          </>
+                                        )}
+                                      </TouchableOpacity>
+                                    )
+                                  ) : (
+                                    isReceived ? (
+                                      <TouchableOpacity activeOpacity={0.8} onPress={() => handleAcceptRequest(targetEmail, item.name, item.avatar)} className="w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border bg-[#1899D6] border-[#1899D6]">
+                                        <FontAwesome5 name="check" size={14} color="#FFF" />
+                                        <Text className="text-white text-[14px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>এক্সেপ্ট করুন</Text>
+                                      </TouchableOpacity>
+                                    ) : (
+                                      <TouchableOpacity activeOpacity={0.8} onPress={() => handleAddFriend(targetEmail)} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isPending ? 'bg-[#FFF4E5] border-[#FFC800]' : 'bg-white border-[#20A090]'}`}>
+                                        {isPending ? (
+                                          <>
+                                            <FontAwesome5 name="times-circle" size={14} color="#D47B00" />
+                                            <Text className="text-[#D47B00] text-[14px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>ক্যানসেল করুন</Text>
+                                          </>
+                                        ) : (
+                                          <>
+                                            <FontAwesome5 name="user-plus" size={14} color="#20A090" />
+                                            <Text className="text-[#20A090] text-[14px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>বন্ধু হিসেবে যোগ করো</Text>
+                                          </>
+                                        )}
+                                      </TouchableOpacity>
+                                    )
+                                  )}
+                                </View>
+                              );
+                            })}
                           </View>
+                          
+                          {/* 🚀 সি মোর (See More) বাটন */}
+                          {currentProfileEntry?.hasMoreInlineFriends && (currentProfileEntry?.inlineFriends || []).length > 0 && (
+                            <TouchableOpacity 
+                              activeOpacity={0.8} 
+                              onPress={() => fetchProfileFriends(currentProfileEntry?.inlineFriendsType, false)} 
+                              className="mt-2 mb-4 bg-[#F9F9F9] py-3.5 rounded-[16px] border border-[#EFE8D6] items-center"
+                            >
+                              {currentProfileEntry?.isFetchingFriends ? (
+                                <ActivityIndicator size="small" color="#AFAFAF" />
+                              ) : (
+                                <Text className="text-[#777777] text-[13px] pt-1" style={{ fontFamily: 'BanglaBold' }}>আরো দেখুন...</Text>
+                              )}
+                            </TouchableOpacity>
+                          )}
+                          
+                          {(currentProfileEntry?.inlineFriends || []).length === 0 && !currentProfileEntry?.isFetchingFriends && (
+                            <View className="bg-[#FDF6E3] p-4 rounded-xl border border-[#EFE8D6] border-dashed items-center justify-center mt-2 mb-4">
+                              <Text className="text-[#827B6E] text-[13px] text-center leading-[22px]" style={{ fontFamily: 'BanglaRegular' }}>
+                                কোনো বন্ধু পাওয়া যায়নি।
+                              </Text>
+                            </View>
+                          )}
+                          {(currentProfileEntry?.inlineFriends || []).length === 0 && currentProfileEntry?.isFetchingFriends && (
+                            <View className="py-6 items-center mb-4">
+                              <ActivityIndicator size="small" color="#D47B00" />
+                            </View>
+                          )}
                         </View>
 
                         <View className="w-full h-2 bg-[#F5F5F5] mt-8 mb-6" />
@@ -1566,10 +1976,11 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
         </View>
       </Modal>
 
+   
       <Discussion
         visible={discussionVisible} 
         onClose={() => setDiscussionVisible(false)} 
-        data={activeDiscussionData} 
+        data={activeDiscussionData}
         guideName={guideData?.creatorName}
         guideId={guideData?.channelId || 'default_channel'}
       />

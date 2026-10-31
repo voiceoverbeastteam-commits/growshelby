@@ -134,7 +134,7 @@ export default function Home() {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'x-api-key': 'Growshelby_MVP_Secret_2026'
+          'x-api-key': process.env.EXPO_PUBLIC_API_KEY
         },
         body: JSON.stringify({ email: uid })
       });
@@ -195,7 +195,7 @@ export default function Home() {
     try {
       const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': 'Growshelby_MVP_Secret_2026' },
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
         body: JSON.stringify({ action: 'fetch_explore_channels' })
       });
       const data = await response.json();
