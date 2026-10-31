@@ -1,6 +1,15 @@
 name: Build Android APK
 on:
   workflow_dispatch:
+    inputs:
+      build_type:
+        description: 'Choose Build Profile'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - development
 
 jobs:
   build:
@@ -27,12 +36,12 @@ jobs:
         run: npm install
 
       - name: Build APK (Local on Runner)
-        run: eas build -p android --profile preview --local --output app-build.apk
+        run: eas build -p android --profile ${{ inputs.build_type }} --local --output app-build.apk
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          name: app-release-apk
+          name: app-${{ inputs.build_type }}-apk
           path: app-build.apk
