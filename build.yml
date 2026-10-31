@@ -3,7 +3,7 @@ on:
   workflow_dispatch:
     inputs:
       build_type:
-        description: 'Choose Build Profile (Select what you want to build)'
+        description: 'Choose Build Profile'
         required: true
         default: 'preview'
         type: choice
@@ -36,13 +36,12 @@ jobs:
         run: npm install
 
       - name: Build APK (Local on Runner)
-        run: eas build -p android --profile ${{ github.event.inputs.build_type }} --local --output app-build.apk
+        run: eas build -p android --profile ${{ inputs.build_type }} --local --output app-build.apk
         env:
           EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
 
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:
-          # ডাউনলোড করার সময় যেন বুঝতে পারেন এটা কোন ফাইল, তাই নামটাও ডায়নামিক করে দিলাম
-          name: app-${{ github.event.inputs.build_type }}-apk 
+          name: app-${{ inputs.build_type }}-apk
           path: app-build.apk
