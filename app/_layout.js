@@ -16,6 +16,9 @@ import Autoupdate from '../components/Autoupdate';
 import * as TaskManager from 'expo-task-manager';
 import * as Notifications from 'expo-notifications';
 import notifee, { AndroidImportance, AndroidVisibility, AndroidStyle } from '@notifee/react-native';
+import { useRouter } from 'expo-router';
+import { DeviceEventEmitter } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
 
@@ -92,6 +95,80 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
 ExpoSplashScreen.preventAutoHideAsync();
 
 export default function Layout() {
+  const router = useRouter();
+
+  // 🚀 মেইন নেভিগেশন লজিক (টেলিগ্রাম স্টাইল রুট ইন্টারসেপশন)
+  const executeNotificationRouting = async (rawData) => {
+    if (!rawData) return;
+    let data = { ...rawData };
+    
+    if (data.body && typeof data.body === 'string' && data.body.startsWith('{')) {
+      try { data = { ...data, ...JSON.parse(data.body) }; } catch (e) {}
+    }
+
+    if (data.type === 'friend_request' || data.type === 'friend_request_accepted') {
+      await AsyncStorage.setItem('@pending_profile_action', data.type);
+      router.replace('/profile');
+      return;
+    }
+
+    if (data.guideId || data.channelId) {
+      const targetId = data.guideId || data.channelId;
+      try {
+        let response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'import_guide', code: targetId })
+        });
+        let result = await response.json();
+
+        if (result.success && result.guide) {
+          await AsyncStorage.setItem('@temp_reader_guide', JSON.stringify(result.guide));
+          router.replace('/reader');
+          if (data.title && (data.title.includes('নতুন নোটিস') || data.title.includes('রিপ্লাই'))) {
+            setTimeout(() => DeviceEventEmitter.emit('open_discussion_modal'), 800);
+          }
+          return;
+        }
+
+        response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'import_community', code: targetId })
+        });
+        result = await response.json();
+
+        if (result.success && result.community) {
+          await AsyncStorage.setItem('@temp_community_data', JSON.stringify({ ...result.community, isFromExplore: true }));
+          router.replace('/community');
+          if (data.title && (data.title.includes('নতুন নোটিস') || data.title.includes('রিপ্লাই'))) {
+            setTimeout(() => DeviceEventEmitter.emit('open_discussion_modal'), 800);
+          }
+        }
+      } catch (error) {
+        console.log("Error opening notification guide/community:", error);
+      }
+    }
+  };
+
+  // 🚀 ইনিশিয়াল চেক (কোল্ড বুট)
+  useEffect(() => {
+    const handleColdBoot = async () => {
+      const initialNotification = await notifee.getInitialNotification();
+      if (initialNotification && initialNotification.notification.data) {
+        await executeNotificationRouting(initialNotification.notification.data);
+      }
+      // 🚀 নেভিগেশন শেষ হলে বা নোটিফিকেশন না থাকলে স্প্ল্যাশ হাইড করবে
+      ExpoSplashScreen.hideAsync().catch(() => {});
+    };
+
+    handleColdBoot();
+
+    // 🚀 ফোরগ্রাউন্ডে থাকা অবস্থায় নোটিফিকেশনে ক্লিক করলে রাউটিং করবে
+    const routingSub = DeviceEventEmitter.addListener('HANDLE_NOTIFICATION_ROUTING', executeNotificationRouting);
+    return () => routingSub.remove();
+  }, []);
+
   const [loaded, error] = useFonts({
     ...FontAwesome5.font,
     'BanglaRegular': HindSiliguri_400Regular,

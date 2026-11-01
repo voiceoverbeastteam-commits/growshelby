@@ -6,9 +6,9 @@ import Constants from 'expo-constants';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance, EventType, AndroidVisibility, AndroidStyle } from '@notifee/react-native';
-import { useRouter } from 'expo-router'; 
+import { useRouter, useRootNavigationState } from 'expo-router';
 
-// 🚀 FIX 1: Expo-র ডিফল্ট পপআপ বন্ধ করা হলো যাতে ডাবল নোটিফিকেশন না আসে এবং Notifee ছবিসহ পপআপ দেখাতে পারে
+// 🚀 FIX 1: Expo-র ডিফল্ট পপআপ বন্ধ করা হলো যাতে ডাবল নোটিফিকেশন না আসে
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowAlert: false, 
@@ -17,29 +17,20 @@ Notifications.setNotificationHandler({
   }),
 });
 
-// 🚀 FIX 2: একদম নতুন Channel ID (যাতে অ্যান্ড্রয়েড ক্যাশ ক্লিয়ার হয়ে ফোর্স পপআপ হয়)
 export const NEW_CHANNEL_ID = 'study_squad_heads_up_v1';
 
 export default function PushNotification({ onNotificationClick }) {
   const [expoPushToken, setExpoPushToken] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   
-const notificationListener = useRef();
-  const router = useRouter(); 
+  const router = useRouter();
+  const navigationState = useRootNavigationState();
+  const notificationListener = useRef();
 
-  const isAppReady = useRef(false);
-  const pendingNotification = useRef(null);
-
- useEffect(() => {
-    const readySub = DeviceEventEmitter.addListener('APP_READY_FOR_NAVIGATION', () => {
-      isAppReady.current = true;
-    if (pendingNotification.current) {
-        handleNotificationTap(pendingNotification.current);
-        pendingNotification.current = null;
-      }
-    });
-    return () => readySub.remove();
-  }, []);
+  // 🚀 100% Guaranteed Routing - এর জন্য স্টেট
+  const [isAppReady, setIsAppReady] = useState(false);
+  const [pendingInitialData, setPendingInitialData] = useState(null);
+  const hasHandledInitial = useRef(false);
 
   const handleNotificationTap = async (rawData) => {
     if (!rawData) return;
@@ -104,35 +95,45 @@ const notificationListener = useRef();
     }
   };
 
+  // 🚀 ১. অ্যাপ রেডি হওয়া এবং নোটিফিকেশন ফেচ করা - ট্র্যাক করবে
   useEffect(() => {
-    checkAndRequestPermission();
+    const readySub = DeviceEventEmitter.addListener('APP_IS_READY_FOR_NAVIGATION', () => {
+      setIsAppReady(true);
+    });
 
-    const processColdBootNotification = (data) => {
-      if (isAppReady.current) {
-        handleNotificationTap(data);
-      } else {
-        pendingNotification.current = data; 
+    const checkInitialNotification = async () => {
+      const initial = await notifee.getInitialNotification();
+      if (initial?.notification?.data) {
+        setPendingInitialData(initial.notification.data);
       }
     };
 
-    notifee.getInitialNotification().then(initialNotification => {
-      if (initialNotification && initialNotification.notification.data) {
-        processColdBootNotification(initialNotification.notification.data);
-      }
-    });
+    checkInitialNotification();
 
-    Notifications.getLastNotificationResponseAsync().then(response => {
-      if (response) {
-        const data = response.notification?.request?.content?.data || response.notification?.request?.trigger?.remoteMessage?.data;
-        if (data && Object.keys(data).length > 0) {
-          processColdBootNotification(data);
-        }
-      }
+    return () => readySub.remove();
+  }, []);
+
+  // 🚀 ২. যখন অ্যাপ রেডি এবং ডেটা হাতে থাকবে - ঠিক তখনই রিডাইরেক্ট করবে (No Race Condition)
+  useEffect(() => {
+    if (isAppReady && pendingInitialData && !hasHandledInitial.current) {
+      hasHandledInitial.current = true; 
+      handleNotificationTap(pendingInitialData);
+      setPendingInitialData(null); 
+    }
+  }, [isAppReady, pendingInitialData]);
+
+  // 🚀 ৩. বাকি সব ইভেন্ট লিসেনার
+  useEffect(() => {
+    checkAndRequestPermission();
+
+    const loginSyncSub = DeviceEventEmitter.addListener('USER_LOGGED_IN_SYNC_TOKEN', () => {
+      checkAndRequestPermission();
     });
 
     const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
       const data = response.notification?.request?.content?.data || response.notification?.request?.trigger?.remoteMessage?.data;
       if (data && Object.keys(data).length > 0) {
+        DeviceEventEmitter.emit('HANDLE_NOTIFICATION_ROUTING', data);
         handleNotificationTap(data);
       }
     });
@@ -189,7 +190,8 @@ const notificationListener = useRef();
     const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS) {
         const data = detail.notification.data;
-        handleNotificationTap(data); 
+        DeviceEventEmitter.emit('HANDLE_NOTIFICATION_ROUTING', data);
+        handleNotificationTap(data);
         if (data && onNotificationClick) {
           onNotificationClick(data);
         }
@@ -197,6 +199,7 @@ const notificationListener = useRef();
     });
 
     return () => {
+      loginSyncSub.remove();
       if (notificationListener.current) {
         Notifications.removeNotificationSubscription(notificationListener.current);
       }
@@ -234,7 +237,6 @@ const notificationListener = useRef();
   const generateAndSendToken = async () => {
     try {
       if (Platform.OS === 'android') {
-        // এক্সপোর বিল্ট-ইন চ্যানেলও আপডেট করে দিলাম
         await Notifications.setNotificationChannelAsync(NEW_CHANNEL_ID, {
           name: 'Squad VIP Alerts',
           importance: Notifications.AndroidImportance.MAX,
