@@ -137,19 +137,30 @@ export default function ProfileScreen() {
   const [isReqModalVisible, setReqModalVisible] = useState(false);
   const [activeFriendTab, setActiveFriendTab] = useState('friends'); // Modal View Controller
 
- // 🚀 পুশ নোটিফিকেশন থেকে আসলে অটোমেটিক মডাল ওপেন করার লিসেনার
-  useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener('open_friend_requests_modal', (type) => {
-      // 🚀 স্মার্ট রাউটিং: এক্সেপ্ট হলে 'ফ্রেন্ডস' ট্যাবে, আর নতুন রিকোয়েস্ট হলে 'রিসিভড' ট্যাবে যাবে
-      if (type === 'friend_request_accepted') {
-        setActiveFriendTab('friends');
-      } else {
-        setActiveFriendTab('received');
-      }
-      setReqModalVisible(true);       // মডাল ওপেন করবে
-    });
-    return () => subscription.remove();
-  }, []);
+ // 🚀 FIX: Push Notification থেকে আসা একশন চেক করা হচ্ছে (AsyncStorage দিয়ে 100% গ্যারান্টিড)
+  useFocusEffect(
+    useCallback(() => {
+      const checkPendingActions = async () => {
+        try {
+          const pendingAction = await AsyncStorage.getItem('@pending_profile_action');
+          if (pendingAction) {
+            if (pendingAction === 'friend_request_accepted') {
+              setActiveFriendTab('friends');
+            } else {
+              setActiveFriendTab('received');
+            }
+            setReqModalVisible(true);
+            await AsyncStorage.removeItem('@pending_profile_action'); // ডাটা মুছে ফেলা হলো
+          }
+        } catch (e) {
+          console.log("Error checking pending actions:", e);
+        }
+      };
+      
+      // পেজ ট্রানজিশন স্মুথ হওয়ার জন্য 400 মিলি-সেকেন্ড পর মডাল ওপেন হবে
+      setTimeout(checkPendingActions, 400);
+    }, [])
+  );
 
   // 🚀 ডাটা ফেচ করার কমন ফাংশন (যাতে বারবার কল করা যায়)
   const fetchFriendsNetworkData = async (uid) => {

@@ -398,7 +398,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
   const [shareModalVisible, setShareModalVisible] = useState(false);
   const [shareModalType, setShareModalType] = useState('success');
 
-  // 🚀 Discussion Modal State
+ // 🚀 Discussion Modal State
   const [discussionVisible, setDiscussionVisible] = useState(false);
   const [activeDiscussionData, setActiveDiscussionData] = useState(null);
 
@@ -406,6 +406,14 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
     setActiveDiscussionData(questionData);
     setDiscussionVisible(true);
   };
+
+  // 🚀 FIX: পুশ নোটিফিকেশন থেকে সিগন্যাল পেলে সাথে সাথে গ্লোবাল ডিসকাশন মডাল ওপেন করবে
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('open_discussion_modal', () => {
+      openDiscussion(null); // null মানে জেনারেল কমিউনিটি চ্যাট ওপেন হবে
+    });
+    return () => subscription.remove();
+  }, []);
 
   // ==========================================================
   // 🚀 Community Members State (Smart Loading)

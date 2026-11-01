@@ -30,30 +30,54 @@ export default function PushNotification({ onNotificationClick }) {
 const handleNotificationTap = async (data) => {
     // 🚀 ফ্রেন্ড রিকোয়েস্ট বা এক্সেপ্ট নোটিফিকেশনে ক্লিক করলে সরাসরি প্রোফাইলে চলে যাবে এবং মডাল ওপেন হবে
     if (data && (data.type === 'friend_request' || data.type === 'friend_request_accepted')) {
-      router.push('/profile');
-      // পেজটা লোড হওয়ার জন্য আধা সেকেন্ড সময় দিয়ে মডাল ওপেন করার কমান্ড পাঠাচ্ছি
-      setTimeout(() => {
-        DeviceEventEmitter.emit('open_friend_requests_modal', data.type);
-      }, 500);
+      await AsyncStorage.setItem('@pending_profile_action', data.type);
+      router.navigate('/profile');
       return;
     }
 
-    if (data && (data.guideId || data.channelId)) {
+  if (data && (data.guideId || data.channelId)) {
       const targetId = data.guideId || data.channelId;
       try {
-        const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        let response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'import_guide', code: targetId })
         });
-        const result = await response.json();
+        let result = await response.json();
 
         if (result.success && result.guide) {
-          await AsyncStorage.setItem('@temp_community_data', JSON.stringify({ ...result.guide, isFromExplore: true }));
-          router.push('/community');
+          await AsyncStorage.setItem('@temp_reader_guide', JSON.stringify(result.guide));
+          router.navigate('/reader');
+          
+          // 🚀 FIX: যদি নোটিফিকেশনটি ডিসকাশন/মেসেজের হয়, তবে মডাল ওপেন করার সিগন্যাল পাঠাবো
+          if (data.title && (data.title.includes('নতুন নোটিস') || data.title.includes('রিপ্লাই'))) {
+            setTimeout(() => {
+               DeviceEventEmitter.emit('open_discussion_modal');
+            }, 800); // পেজ লোড হওয়ার জন্য একটু সময় দিলাম
+          }
+          return;
+        }
+
+        response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'import_community', code: targetId })
+        });
+        result = await response.json();
+
+        if (result.success && result.community) {
+          await AsyncStorage.setItem('@temp_community_data', JSON.stringify({ ...result.community, isFromExplore: true }));
+          router.navigate('/community');
+          
+          // 🚀 FIX: কমিউনিটি পেজে ল্যান্ড করার পর ডিসকাশন মডাল ওপেন করার সিগন্যাল
+          if (data.title && (data.title.includes('নতুন নোটিস') || data.title.includes('রিপ্লাই'))) {
+            setTimeout(() => {
+               DeviceEventEmitter.emit('open_discussion_modal');
+            }, 800);
+          }
         }
       } catch (error) {
-        console.log("Error opening notification guide:", error);
+        console.log("Error opening notification guide/community:", error);
       }
     }
   };
@@ -61,11 +85,11 @@ const handleNotificationTap = async (data) => {
   useEffect(() => {
     checkAndRequestPermission();
 
-    // অ্যাপ কিলড অবস্থা থেকে ওপেন করলে
+   // অ্যাপ কিলড অবস্থা থেকে ওপেন করলে
     notifee.getInitialNotification().then(initialNotification => {
       if (initialNotification && initialNotification.notification.data) {
         const data = initialNotification.notification.data;
-        setTimeout(() => handleNotificationTap(data), 1000); 
+        setTimeout(() => handleNotificationTap(data), 2000); 
       }
     });
 

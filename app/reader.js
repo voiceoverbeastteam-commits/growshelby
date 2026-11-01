@@ -206,8 +206,17 @@ export default function ReaderPage() {
   const [cqSubFilter, setCqSubFilter] = useState('সব');
   const [globalReveal, setGlobalReveal] = useState(false);
   
-  const [discussionVisible, setDiscussionVisible] = useState(false);
+ const [discussionVisible, setDiscussionVisible] = useState(false);
   const [activeDiscussionData, setActiveDiscussionData] = useState(null);
+
+  // 🚀 FIX: পুশ নোটিফিকেশন থেকে সিগন্যাল পেলে সাথে সাথে বইয়ের ভেতরের ডিসকাশন মডাল ওপেন করবে
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('open_discussion_modal', () => {
+      setActiveDiscussionData(null);
+      setDiscussionVisible(true);
+    });
+    return () => subscription.remove();
+  }, []);
 
   useEffect(() => {
     const loadGuide = async () => {
