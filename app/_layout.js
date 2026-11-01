@@ -88,8 +88,19 @@ Notifications.registerTaskAsync(BACKGROUND_NOTIFICATION_TASK);
 
 // 🚀 Notifee Background Event Handler (ম্যান্ডেটরি, না হলে অ্যাপ ক্র্যাশ বা ওয়ার্নিং দেয়)
 notifee.onBackgroundEvent(async ({ type, detail }) => {
-  // ব্যবহারকারী নোটিফিকেশনে ক্লিক করলে ডাটা ক্যাশ করে রাখতে পারেন
-  // তবে রাউটিং ফ্রন্টএন্ড ওপেন হওয়ার পর getInitialNotification() হ্যান্ডেল করবে।
+  // type 1 মানে ব্যবহারকারী নোটিফিকেশনে ক্লিক করেছে
+  if (type === 1) {
+    const rawData = detail.notification?.data || { error: 'no_data_found' };
+    
+    // ডিবাগিং ট্র্যাকার সেভ করা হচ্ছে
+    await AsyncStorage.setItem('@debug_bg_click', 'YES - Clicked!');
+    await AsyncStorage.setItem('@debug_bg_data', JSON.stringify(rawData));
+    
+    // আসল রিডাইরেক্ট ডেটা
+    if (detail.notification?.data) {
+      await AsyncStorage.setItem('@killed_app_notification', JSON.stringify(detail.notification.data));
+    }
+  }
 });
 
 ExpoSplashScreen.preventAutoHideAsync();
