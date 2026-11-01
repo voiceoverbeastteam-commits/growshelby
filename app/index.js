@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { View, ScrollView, RefreshControl, AppState, Modal, Alert, TextInput, TouchableOpacity, Text, KeyboardAvoidingView, Platform, Animated, Image, DeviceEventEmitter, InteractionManager } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
-import { Alert } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
 
