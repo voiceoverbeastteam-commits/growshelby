@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, ScrollView, RefreshControl, AppState, Modal, Alert, TextInput, TouchableOpacity, Text, KeyboardAvoidingView, Platform, Animated, Image } from 'react-native';
+import { View, ScrollView, RefreshControl, AppState, Modal, Alert, TextInput, TouchableOpacity, Text, KeyboardAvoidingView, Platform, Animated, Image, DeviceEventEmitter, InteractionManager } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from 'expo-router';
@@ -431,11 +431,22 @@ const handleStartReading = (lessonItem) => {
 
   const isReadyToEnter = isDataLoaded && isLoggedIn !== null && isMaintenanceChecked;
 
+ // 🚀 ম্যাজিক ফিক্স: স্প্ল্যাশ স্ক্রিন রিমুভ হওয়ার পর ফোনের প্রসেসর পুরোপুরি ফ্রি হলে (রেন্ডার শেষ হলে) তবেই সিগন্যাল যাবে, কোনো হার্ডকোডেড টাইমআউট নেই!
+  useEffect(() => {
+    if (!showSplash) {
+      InteractionManager.runAfterInteractions(() => {
+        DeviceEventEmitter.emit('APP_READY_FOR_NAVIGATION');
+      });
+    }
+  }, [showSplash]);
+
   if (showSplash) {
     return (
       <SplashScreen 
         isReady={isReadyToEnter} 
-        onFinish={() => setShowSplash(false)} 
+        onFinish={() => {
+          setShowSplash(false);
+        }} 
       />
     );
   }

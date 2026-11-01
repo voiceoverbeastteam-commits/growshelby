@@ -8,10 +8,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance, EventType, AndroidVisibility, AndroidStyle } from '@notifee/react-native';
 import { useRouter } from 'expo-router'; 
 
-// 🚀 FIX 1: ফোরগ্রাউন্ডে (অ্যাপ ওপেন থাকা অবস্থায়) পপআপ অ্যালাও করা হলো!
+// 🚀 FIX 1: Expo-র ডিফল্ট পপআপ বন্ধ করা হলো যাতে ডাবল নোটিফিকেশন না আসে এবং Notifee ছবিসহ পপআপ দেখাতে পারে
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: true, // 🟢 এটা আগে false ছিল, তাই পপআপ হতো না!
+    shouldShowAlert: false, 
     shouldPlaySound: true,
     shouldSetBadge: true,
   }),
@@ -24,18 +24,42 @@ export default function PushNotification({ onNotificationClick }) {
   const [expoPushToken, setExpoPushToken] = useState('');
   const [isModalVisible, setIsModalVisible] = useState(false);
   
-  const notificationListener = useRef();
+const notificationListener = useRef();
   const router = useRouter(); 
 
-const handleNotificationTap = async (data) => {
-    // 🚀 ফ্রেন্ড রিকোয়েস্ট বা এক্সেপ্ট নোটিফিকেশনে ক্লিক করলে সরাসরি প্রোফাইলে চলে যাবে এবং মডাল ওপেন হবে
-    if (data && (data.type === 'friend_request' || data.type === 'friend_request_accepted')) {
+  const isAppReady = useRef(false);
+  const pendingNotification = useRef(null);
+
+ useEffect(() => {
+    const readySub = DeviceEventEmitter.addListener('APP_READY_FOR_NAVIGATION', () => {
+      isAppReady.current = true;
+    if (pendingNotification.current) {
+        handleNotificationTap(pendingNotification.current);
+        pendingNotification.current = null;
+      }
+    });
+    return () => readySub.remove();
+  }, []);
+
+  const handleNotificationTap = async (rawData) => {
+    if (!rawData) return;
+    
+    let data = { ...rawData };
+    
+    if (data.body && typeof data.body === 'string' && data.body.startsWith('{')) {
+      try {
+        const parsed = JSON.parse(data.body);
+        data = { ...data, ...parsed };
+      } catch (e) {}
+    }
+
+    if (data.type === 'friend_request' || data.type === 'friend_request_accepted') {
       await AsyncStorage.setItem('@pending_profile_action', data.type);
       router.navigate('/profile');
       return;
     }
 
-  if (data && (data.guideId || data.channelId)) {
+    if (data.guideId || data.channelId) {
       const targetId = data.guideId || data.channelId;
       try {
         let response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
@@ -49,11 +73,10 @@ const handleNotificationTap = async (data) => {
           await AsyncStorage.setItem('@temp_reader_guide', JSON.stringify(result.guide));
           router.navigate('/reader');
           
-          // 🚀 FIX: যদি নোটিফিকেশনটি ডিসকাশন/মেসেজের হয়, তবে মডাল ওপেন করার সিগন্যাল পাঠাবো
           if (data.title && (data.title.includes('নতুন নোটিস') || data.title.includes('রিপ্লাই'))) {
             setTimeout(() => {
                DeviceEventEmitter.emit('open_discussion_modal');
-            }, 800); // পেজ লোড হওয়ার জন্য একটু সময় দিলাম
+            }, 800); 
           }
           return;
         }
@@ -69,7 +92,6 @@ const handleNotificationTap = async (data) => {
           await AsyncStorage.setItem('@temp_community_data', JSON.stringify({ ...result.community, isFromExplore: true }));
           router.navigate('/community');
           
-          // 🚀 FIX: কমিউনিটি পেজে ল্যান্ড করার পর ডিসকাশন মডাল ওপেন করার সিগন্যাল
           if (data.title && (data.title.includes('নতুন নোটিস') || data.title.includes('রিপ্লাই'))) {
             setTimeout(() => {
                DeviceEventEmitter.emit('open_discussion_modal');
@@ -85,53 +107,80 @@ const handleNotificationTap = async (data) => {
   useEffect(() => {
     checkAndRequestPermission();
 
-   // অ্যাপ কিলড অবস্থা থেকে ওপেন করলে
+    const processColdBootNotification = (data) => {
+      if (isAppReady.current) {
+        handleNotificationTap(data);
+      } else {
+        pendingNotification.current = data; 
+      }
+    };
+
     notifee.getInitialNotification().then(initialNotification => {
       if (initialNotification && initialNotification.notification.data) {
-        const data = initialNotification.notification.data;
-        setTimeout(() => handleNotificationTap(data), 2000); 
+        processColdBootNotification(initialNotification.notification.data);
       }
     });
 
-    // 🚀 অ্যাপ ওপেন থাকা অবস্থায় Notifee দিয়ে হাই-প্রায়োরিটি হেডস-আপ পপআপ
+    Notifications.getLastNotificationResponseAsync().then(response => {
+      if (response) {
+        const data = response.notification?.request?.content?.data || response.notification?.request?.trigger?.remoteMessage?.data;
+        if (data && Object.keys(data).length > 0) {
+          processColdBootNotification(data);
+        }
+      }
+    });
+
+    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
+      const data = response.notification?.request?.content?.data || response.notification?.request?.trigger?.remoteMessage?.data;
+      if (data && Object.keys(data).length > 0) {
+        handleNotificationTap(data);
+      }
+    });
+
     notificationListener.current = Notifications.addNotificationReceivedListener(async (notification) => {
-      const payload = notification.request.trigger.remoteMessage?.data || notification.request.content.data;
+      const rawPayload = notification.request.trigger.remoteMessage?.data || notification.request.content.data;
       
-      if (payload) {
-        // নতুন মেসেজ এলে লাইভ চ্যাটে সিগন্যাল পাঠানো
-        if (payload.guideId) {
-          DeviceEventEmitter.emit('new_unread_message', payload.guideId);
+      if (rawPayload) {
+        if (rawPayload.guideId) {
+          DeviceEventEmitter.emit('new_unread_message', rawPayload.guideId);
         }
 
-        // 🚀 চ্যানেলটি সাথে সাথে তৈরি করে নেওয়া
+        let finalTitle = rawPayload.title || rawPayload.userName || 'স্টাডি স্কোয়াড';
+        let finalBody = rawPayload.body || rawPayload.text || 'কমিউনিটিতে নতুন আপডেট এসেছে!';
+        let finalAvatar = rawPayload.senderAvatar || rawPayload.userAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+        let finalData = rawPayload;
+
+        if (rawPayload.body && typeof rawPayload.body === 'string' && rawPayload.body.startsWith('{')) {
+          try {
+            const parsed = JSON.parse(rawPayload.body);
+            finalTitle = parsed.title || finalTitle;
+            finalBody = parsed.body || parsed.text || 'কমিউনিটিতে নতুন আপডেট এসেছে!';
+            finalAvatar = parsed.senderAvatar || parsed.userAvatar || finalAvatar;
+            finalData = { ...rawPayload, ...parsed };
+          } catch (e) {}
+        }
+
         const channelId = await notifee.createChannel({
           id: NEW_CHANNEL_ID,
           name: 'Squad VIP Alerts',
           vibration: true,
           vibrationPattern: [300, 500],
-          importance: AndroidImportance.HIGH, // 🟢 100% Guaranteed Popup
+          importance: AndroidImportance.HIGH,
           visibility: AndroidVisibility.PUBLIC,
           sound: 'default',
         });
 
-        // 🚀 Notifee দিয়ে সরাসরি পপআপ (ডাটা পেইলড থেকে)
         await notifee.displayNotification({
-          title: payload.title || payload.userName || 'স্টাডি স্কোয়াড',
-          body: payload.body || payload.text || 'কমিউনিটিতে নতুন আপডেট এসেছে!',
-          data: payload,
+          title: finalTitle,
+          body: finalBody,
+          data: finalData,
           android: {
             channelId,
             importance: AndroidImportance.HIGH,
-            largeIcon: payload.senderAvatar || payload.userAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+            largeIcon: finalAvatar,
             circularLargeIcon: true, 
-            pressAction: {
-              id: 'default',
-              launchActivity: 'default', // ক্লিক করলে সরাসরি অ্যাপ খুলবে
-            },
-            style: {
-               type: AndroidStyle.BIGTEXT,
-               text: payload.body || payload.text || 'কমিউনিটিতে নতুন আপডেট এসেছে!'
-            }
+            pressAction: { id: 'default', launchActivity: 'default' },
+            style: { type: AndroidStyle.BIGTEXT, text: finalBody }
           },
         });
       }
@@ -150,6 +199,9 @@ const handleNotificationTap = async (data) => {
     return () => {
       if (notificationListener.current) {
         Notifications.removeNotificationSubscription(notificationListener.current);
+      }
+      if (responseListener) {
+        Notifications.removeNotificationSubscription(responseListener);
       }
       unsubscribe();
     };

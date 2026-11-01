@@ -19,15 +19,40 @@ import notifee, { AndroidImportance, AndroidVisibility, AndroidStyle } from '@no
 
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
 
-// 🚀 FIX 3: অ্যাপ কিলড/ব্যাকগ্রাউন্ড থাকা অবস্থায় 100% গ্যারান্টিড পপআপ
 TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {
   if (error) return;
   if (data && data.notification) {
-    const payload = data.notification.data || data.notification.request?.content?.data;
     
-    // 🟢 আগের সেই isSilentPush ভুলের ফাঁদ সরিয়ে দিয়েছি। এখন ডাটা থাকলেই পপআপ হবে!
-    if (payload) {
-      // Background এ Channel ID তৈরি করে নিচ্ছি যেন কোনো রিস্ক না থাকে
+    // 🚀 ম্যাজিক ট্রিক: Expo-এর ডিফল্ট নোটিফিকেশনটি সাথে সাথে রিমুভ করে Notifee-কে জায়গা ছেড়ে দেওয়া
+    try {
+      const expoNotifId = data.notification?.request?.identifier || data.notification?.messageId;
+      if (expoNotifId) {
+        await Notifications.dismissNotificationAsync(expoNotifId);
+      }
+    } catch (e) {
+      console.log("Expo Notification Clear Error:", e);
+    }
+
+    const rawPayload = data.notification.data || data.notification.request?.content?.data;
+    
+    if (rawPayload) {
+      // 🚀 ম্যাজিক পার্সার: Android/Expo বাগ ফিক্স (JSON String ব্রেকডাউন)
+      let finalTitle = rawPayload.title || rawPayload.userName || 'স্টাডি স্কোয়াড';
+      let finalBody = rawPayload.body || rawPayload.text || 'কমিউনিটিতে নতুন মেসেজ এসেছে!';
+      let finalAvatar = rawPayload.senderAvatar || rawPayload.userAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
+      let finalData = rawPayload;
+
+      // Expo ভুল করে পুরো ডেটাটাকে JSON String হিসেবে 'body' তে ঢুকিয়ে দিলে, সেটা ডিকোড করবো
+      if (rawPayload.body && typeof rawPayload.body === 'string' && rawPayload.body.startsWith('{')) {
+        try {
+          const parsed = JSON.parse(rawPayload.body);
+          finalTitle = parsed.title || finalTitle;
+          finalBody = parsed.body || parsed.text || 'কমিউনিটিতে নতুন মেসেজ এসেছে!';
+          finalAvatar = parsed.senderAvatar || parsed.userAvatar || finalAvatar;
+          finalData = { ...rawPayload, ...parsed };
+        } catch (e) {}
+      }
+
       const channelId = await notifee.createChannel({
         id: NEW_CHANNEL_ID,
         name: 'Squad VIP Alerts',
@@ -38,24 +63,18 @@ TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => 
         sound: 'default',
       });
 
-      // 🚀 Notifee দিয়ে হাই প্রায়োরিটি পপআপ
+      // 🚀 Notifee দিয়ে ফ্রেশ ও ক্লিন পপআপ
       await notifee.displayNotification({
-        title: payload.title || payload.userName || 'স্টাডি স্কোয়াড',
-        body: payload.body || payload.text || 'কমিউনিটিতে নতুন মেসেজ এসেছে!',
-        data: payload,
+        title: finalTitle,
+        body: finalBody,
+        data: finalData,
         android: {
           channelId,
           importance: AndroidImportance.HIGH, 
-          largeIcon: payload.senderAvatar || payload.userAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+          largeIcon: finalAvatar,
           circularLargeIcon: true,
-          pressAction: { 
-             id: 'default',
-             launchActivity: 'default' 
-          },
-          style: {
-             type: AndroidStyle.BIGTEXT,
-             text: payload.body || payload.text || 'কমিউনিটিতে নতুন মেসেজ এসেছে!'
-          }
+          pressAction: { id: 'default', launchActivity: 'default' },
+          style: { type: AndroidStyle.BIGTEXT, text: finalBody }
         },
       });
     }
