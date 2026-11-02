@@ -628,13 +628,14 @@ export default function ProfileScreen() {
           style: "destructive",
           onPress: async () => {
             // 🚀 FIX: Delete push token before logging out
-            try {
+          try {
               const uid = await AsyncStorage.getItem('@current_user_id');
+              const pushToken = await AsyncStorage.getItem('@device_push_token'); // 🚀 টোকেন নিয়ে আসা হলো
               if (uid) {
                 await fetch('https://growshelby-api.vercel.app/api/update_coins', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-                  body: JSON.stringify({ action: 'delete_push_token', email: uid })
+                  body: JSON.stringify({ action: 'delete_push_token', email: uid, token: pushToken }) // 🚀 টোকেন পাঠানো হলো
                 });
               }
             } catch(e) {}

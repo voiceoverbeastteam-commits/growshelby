@@ -314,6 +314,13 @@ useEffect(() => {
     }
   }, [userCoins, isDataLoaded, isLoggedIn]);
 
+  // 🚀 ম্যাজিক ফিক্স: অ্যাপ লোড হলে বা নতুন অ্যাকাউন্টে ঢুকলে ১০০% গ্যারান্টি দিয়ে পুশ টোকেন সিঙ্ক করবে!
+  useEffect(() => {
+    if (isDataLoaded && isLoggedIn) {
+      DeviceEventEmitter.emit('USER_LOGGED_IN_SYNC_TOKEN');
+    }
+  }, [isDataLoaded, isLoggedIn]);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
     setRefreshCount(prev => prev + 1); 

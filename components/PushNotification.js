@@ -207,9 +207,10 @@ export default function PushNotification({ onNotificationClick }) {
       const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
       const token = tokenResponse.data;
       
-      console.log('✅ EXPO PUSH TOKEN:', token); // Ei line ta token print korbe
+    console.log('✅ EXPO PUSH TOKEN:', token); // Ei line ta token print korbe
       
       setExpoPushToken(token);
+      await AsyncStorage.setItem('@device_push_token', token); // 🚀 ডিভাইসের টোকেন লোকালি সেভ করা হলো
       const userEmail = await AsyncStorage.getItem('@current_user_id');
       sendTokenToBackend(token, userEmail);
       
@@ -217,12 +218,19 @@ export default function PushNotification({ onNotificationClick }) {
       console.log('❌ Token generation error (catch block):', e);
     }
   };
-  const sendTokenToBackend = async (token, userEmail) => {
-    if(!userEmail || userEmail === 'guest') return; 
+ const sendTokenToBackend = async (token, userEmail) => {
+    if(!userEmail || userEmail === 'guest') {
+      console.log('🛑 [FRONTEND DEBUG]: No Email/Guest. Token not sent.');
+      return; 
+    }
+    
+    console.log(`🟢 [FRONTEND DEBUG]: Sending Token to DB...`);
+    console.log(`🟢 [FRONTEND DEBUG]: -> Email: ${userEmail}`);
+    console.log(`🟢 [FRONTEND DEBUG]: -> Token: ${token}`);
+
     try {
-     // 🚀 FIX 3: Changed end-point to unified API to bypass Vercel limits safely!
       const SERVER_URL = 'https://growshelby-api.vercel.app/api/update_coins';
-      await fetch(SERVER_URL, {
+      const res = await fetch(SERVER_URL, {
         method: 'POST',
         headers: { 
           Accept: 'application/json',
@@ -231,7 +239,11 @@ export default function PushNotification({ onNotificationClick }) {
         },
         body: JSON.stringify({ action: 'save_push_token', token: token, email: userEmail }),
       });
-    } catch (error) {}
+      const data = await res.json();
+      console.log(`🟢 [FRONTEND DEBUG]: Server Response:`, data);
+    } catch (error) {
+      console.log(`🔴 [FRONTEND DEBUG ERROR]:`, error);
+    }
   };
 
   return (

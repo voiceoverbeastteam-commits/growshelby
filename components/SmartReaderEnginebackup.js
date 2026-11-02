@@ -334,28 +334,7 @@ if(!guideId) return;
       const userName = await AsyncStorage.getItem(`@user_name_${uid}`) || await AsyncStorage.getItem('@user_name') || 'শিক্ষার্থী';
       const userAvatar = await AsyncStorage.getItem(`@user_avatar_${uid}`) || await AsyncStorage.getItem('@user_avatar') || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
 
-   // ১. পড়া শুরু করার নোটিফিকেশন পাঠানো (২ ঘণ্টার কুলডাউন সহ)
-      const cooldownKey = `@notify_cooldown_${guideId}`;
-      const lastNotified = await AsyncStorage.getItem(cooldownKey);
-      const now = Date.now();
-
-      if (!lastNotified || now - parseInt(lastNotified) > 2 * 60 * 60 * 1000) {
-        const targetChannelId = guideData.channelId || guideData.creatorEmail; 
-        fetch('https://growshelby-api.vercel.app/api/update_coins', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-          body: JSON.stringify({
-            action: 'notify_reading_started',
-            guideId,
-            channelId: targetChannelId,
-            notebookName: guideData.notebookName,
-          userEmail: uid,
-            userName: userName,
-            userAvatar: userAvatar
-          })
-        }).catch(()=>{});
-        await AsyncStorage.setItem(cooldownKey, now.toString());
-      }
+ // অটোমেটিক রিডিং নোটিফিকেশন বন্ধ করা হয়েছে। এখন শুধু ম্যানুয়ালি ইনভাইট করলেই নোটিফিকেশন যাবে।
 
       // ২. পুশার প্রেজেন্স চ্যানেলে জয়েন করা (রিয়েল-টাইম ট্র্যাকিং)
       pusher = new Pusher('94415a0ec2e09647c277', {
