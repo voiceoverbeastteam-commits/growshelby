@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image, ScrollView } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image, ScrollView, DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 // কালো আইকনটি সরিয়ে ৩টি ছেলে ও ৩টি মেয়ের সুন্দর অ্যাভাটার লিস্ট আপডেট করা হলো
@@ -37,10 +37,10 @@ export default function SignUpLoginPage({ onLoginSuccess }) {
   
   const [logoUrl, setLogoUrl] = useState('https://via.placeholder.com/260x100/ffffff/1CB0F6?text=LOGO');
 
-  const EMAILJS_SERVICE_ID = 'service_ru0vfzq'; 
-  const EMAILJS_TEMPLATE_ID = 'template_48fu1sr';
-  const EMAILJS_PUBLIC_KEY = 'Krk-Wza_hS8valzod';
-
+ const EMAILJS_SERVICE_ID = process.env.EXPO_PUBLIC_EMAILJS_SERVICE_ID;
+  const EMAILJS_TEMPLATE_ID = process.env.EXPO_PUBLIC_EMAILJS_TEMPLATE_ID;
+  const EMAILJS_PUBLIC_KEY = process.env.EXPO_PUBLIC_EMAILJS_PUBLIC_KEY;
+  
   useEffect(() => {
     const fetchLogo = () => {
       fetch('https://growshelby-api.vercel.app/api/get_settings')
@@ -236,9 +236,12 @@ export default function SignUpLoginPage({ onLoginSuccess }) {
         await AsyncStorage.setItem('@user_academic', userAcademic);
       }
 
-      await AsyncStorage.setItem('@user_email', userId);
+  await AsyncStorage.setItem('@user_email', userId);
       await AsyncStorage.setItem('@user_name', userName);
       await AsyncStorage.setItem('@user_coins', coinsStr);
+      
+      // 🚀 FIX: Trigger push token generation immediately after login
+      DeviceEventEmitter.emit('USER_LOGGED_IN_SYNC_TOKEN');
       
       if (onLoginSuccess) {
         onLoginSuccess();

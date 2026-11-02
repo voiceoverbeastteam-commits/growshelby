@@ -277,9 +277,9 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
         setMembersModalVisible(false);
         onClose(); 
         
-        // 🚀 ম্যাজিক ফিক্স: মডালগুলো বন্ধ হওয়ার জন্য ৩০০ মিলিসেকেন্ড সময় দিয়ে তারপর পেজ রিপ্লেস করবো
+     // 🚀 ম্যাজিক ফিক্স: মডালগুলো বন্ধ হওয়ার জন্য ৩০০ মিলিসেকেন্ড সময় দিয়ে তারপর পেজ রিপ্লেস করবো
         setTimeout(() => {
-          router.replace('/community');
+          router.replace({ pathname: '/community', params: { t: String(Date.now()) } }); // 🚀 ফিক্স: প্যারামিটার সহ রাউটিং
         }, 300);
       }
     } catch (error) {
@@ -326,7 +326,8 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
     const setupLiveReading = async () => {
       if (!visible || !guideData) return;
 
-     const guideId = guideData.id || guideData.shareCode || guideData.channelId;
+     // 🚀 ফিক্স: রাউটিং যেন মিস না হয় তাই shareCode কে ফার্স্ট প্রায়োরিটি দেওয়া হলো
+      const guideId = guideData.shareCode || guideData.channelId || guideData.id;
 if(!guideId) return;
 
       const uid = await AsyncStorage.getItem('@current_user_id') || 'guest_' + Date.now();
@@ -348,9 +349,9 @@ if(!guideId) return;
             guideId,
             channelId: targetChannelId,
             notebookName: guideData.notebookName,
-            userEmail: uid,
-            userName: name,
-            userAvatar: avatar
+          userEmail: uid,
+            userName: userName,
+            userAvatar: userAvatar
           })
         }).catch(()=>{});
         await AsyncStorage.setItem(cooldownKey, now.toString());
@@ -742,14 +743,13 @@ const fetchLobbyData = async (query = '') => {
   };
 
  const handleSendInvite = async (targetEmail) => {
-  if (invitedUsers.includes(targetEmail) || !guideData) return;
-  setInvitedUsers(prev => [...prev, targetEmail]); // সাথমে সাথে বাটন সবুজ করার জন্য
+    if (invitedUsers.includes(targetEmail) || !guideData) return;
+    setInvitedUsers(prev => [...prev, targetEmail]); // Sate sate button shobuj korar jonno
 
-    const guideId = guideData.id || guideData.shareCode || guideData.channelId;
+   // 🚀 ফিক্স: রাউটিং যেন মিস না হয় তাই shareCode কে ফার্স্ট প্রায়োরিটি দেওয়া হলো
+      const guideId = guideData.shareCode || guideData.channelId || guideData.id;
     const uid = await AsyncStorage.getItem('@current_user_id') || 'guest';
-    const name = await AsyncStorage.getItem(`@user_name_${uid}`) || 'শিক্ষার্থী';
-    const avatar = await AsyncStorage.getItem(`@user_avatar_${uid}`) || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-
+    
     try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
@@ -758,9 +758,8 @@ const fetchLobbyData = async (query = '') => {
           action: 'send_reading_invite',
           guideId,
           targetEmail,
-          notebookName: guideData.notebookName,
-          userName: name,
-          userAvatar: avatar
+          senderEmail: uid, // 🚀 sender track korar jonno
+          notebookName: guideData.notebookName
         })
       });
     } catch (error) {
@@ -901,7 +900,8 @@ const fetchLobbyData = async (query = '') => {
    const setupLivePresence = async () => {
   if (!visible || !guideData) return;
   // 🚀 ম্যাজিক ফিক্স: স্পেসিফিক বইয়ের (গাইডের) আইডি নিচ্ছি যাতে রুম আলাদা হয়
-  const guideId = guideData.id || guideData.shareCode || guideData.channelId;
+// 🚀 ফিক্স: রাউটিং যেন মিস না হয় তাই shareCode কে ফার্স্ট প্রায়োরিটি দেওয়া হলো
+      const guideId = guideData.shareCode || guideData.channelId || guideData.id;
   if (!guideId) return;
 
       const uid = await AsyncStorage.getItem('@current_user_id') || 'guest_' + Date.now();

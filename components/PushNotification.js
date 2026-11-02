@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { Platform, Modal, View, Text, TouchableOpacity, DeviceEventEmitter } from 'react-native';
+import { Platform, Modal, View, Text, TouchableOpacity, DeviceEventEmitter, AppState } from 'react-native';
 import * as Device from 'expo-device';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
@@ -8,12 +8,15 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import notifee, { AndroidImportance, EventType, AndroidVisibility, AndroidStyle } from '@notifee/react-native';
 import { useRouter, useRootNavigationState } from 'expo-router';
 
-// 🚀 FIX 1: Expo-র ডিফল্ট পপআপ বন্ধ করা হলো যাতে ডাবল নোটিফিকেশন না আসে
+
+
+// 🚀 FIX 2: Expo-র ডিফল্ট পপআপ বন্ধ করা হলো যাতে ডাবল নোটিফিকেশন না আসে
 Notifications.setNotificationHandler({
   handleNotification: async () => ({
-    shouldShowAlert: false, 
-    shouldPlaySound: true,
-    shouldSetBadge: true,
+    shouldShowBanner: false,
+    shouldShowList: false,
+    shouldPlaySound: false, 
+    shouldSetBadge: false,
   }),
 });
 
@@ -32,91 +35,42 @@ export default function PushNotification({ onNotificationClick }) {
   const [pendingInitialData, setPendingInitialData] = useState(null);
   const hasHandledInitial = useRef(false);
 
-  const handleNotificationTap = async (rawData) => {
-    if (!rawData) return;
-    
-    let data = { ...rawData };
-    
-    if (data.body && typeof data.body === 'string' && data.body.startsWith('{')) {
-      try {
-        const parsed = JSON.parse(data.body);
-        data = { ...data, ...parsed };
-      } catch (e) {}
-    }
-
-    if (data.type === 'friend_request' || data.type === 'friend_request_accepted') {
-      await AsyncStorage.setItem('@pending_profile_action', data.type);
-      router.navigate('/profile');
-      return;
-    }
-
-    if (data.guideId || data.channelId) {
-      const targetId = data.guideId || data.channelId;
-      try {
-        let response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-          body: JSON.stringify({ action: 'import_guide', code: targetId })
-        });
-        let result = await response.json();
-
-        if (result.success && result.guide) {
-          await AsyncStorage.setItem('@temp_reader_guide', JSON.stringify(result.guide));
-          router.navigate('/reader');
-          
-          if (data.title && (data.title.includes('নতুন নোটিস') || data.title.includes('রিপ্লাই'))) {
-            setTimeout(() => {
-               DeviceEventEmitter.emit('open_discussion_modal');
-            }, 800); 
-          }
-          return;
-        }
-
-        response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-          body: JSON.stringify({ action: 'import_community', code: targetId })
-        });
-        result = await response.json();
-
-        if (result.success && result.community) {
-          await AsyncStorage.setItem('@temp_community_data', JSON.stringify({ ...result.community, isFromExplore: true }));
-          router.navigate('/community');
-          
-          if (data.title && (data.title.includes('নতুন নোটিস') || data.title.includes('রিপ্লাই'))) {
-            setTimeout(() => {
-               DeviceEventEmitter.emit('open_discussion_modal');
-            }, 800);
-          }
-        }
-      } catch (error) {
-        console.log("Error opening notification guide/community:", error);
-      }
+ const handleNotificationTap = (rawData) => {
+    if (rawData) {
+      DeviceEventEmitter.emit('HANDLE_NOTIFICATION_ROUTING', rawData);
     }
   };
 
-  // 🚀 ১. অ্যাপ রেডি হওয়া এবং নোটিফিকেশন ফেচ করা - ট্র্যাক করবে
+  // 🚀 FIX: Use Expo's hook to catch Killed-State notifications properly
+  const lastResponse = Notifications.useLastNotificationResponse();
+  const handledId = useRef(null);
+
   useEffect(() => {
     const readySub = DeviceEventEmitter.addListener('APP_IS_READY_FOR_NAVIGATION', () => {
       setIsAppReady(true);
     });
-
-    const checkInitialNotification = async () => {
-      const initial = await notifee.getInitialNotification();
-      if (initial?.notification?.data) {
-        setPendingInitialData(initial.notification.data);
-      }
-    };
-
-    checkInitialNotification();
-
     return () => readySub.remove();
   }, []);
 
-  // 🚀 ২. যখন অ্যাপ রেডি এবং ডেটা হাতে থাকবে - ঠিক তখনই রিডাইরেক্ট করবে (No Race Condition)
   useEffect(() => {
-    if (isAppReady && pendingInitialData && !hasHandledInitial.current) {
-      hasHandledInitial.current = true; 
+    if (!lastResponse) return;
+    const id = lastResponse.notification.request.identifier;
+    
+    // Prevent handling the same notification twice
+    if (handledId.current === id) return;
+    handledId.current = id;
+    
+    const data = lastResponse.notification.request.content.data || 
+                 lastResponse.notification.request.trigger?.remoteMessage?.data;
+                 
+    if (data) {
+      setPendingInitialData(data);
+    }
+  }, [lastResponse]);
+
+ // 🚀 ২. যখন অ্যাপ রেডি এবং ডেটা হাতে থাকবে - ঠিক তখনই রিডাইরেক্ট করবে (No Race Condition)
+  useEffect(() => {
+    if (isAppReady && pendingInitialData) {
       handleNotificationTap(pendingInitialData);
       setPendingInitialData(null); 
     }
@@ -130,16 +84,17 @@ export default function PushNotification({ onNotificationClick }) {
       checkAndRequestPermission();
     });
 
-    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      const data = response.notification?.request?.content?.data || response.notification?.request?.trigger?.remoteMessage?.data;
-      if (data && Object.keys(data).length > 0) {
-        DeviceEventEmitter.emit('HANDLE_NOTIFICATION_ROUTING', data);
-        handleNotificationTap(data);
-      }
-    });
+   
 
-    notificationListener.current = Notifications.addNotificationReceivedListener(async (notification) => {
-      const rawPayload = notification.request.trigger.remoteMessage?.data || notification.request.content.data;
+   notificationListener.current = Notifications.addNotificationReceivedListener(async (notification) => {
+      
+      // 🚀 FIX: অ্যাপ ব্যাকগ্রাউন্ডে বা লক অবস্থায় থাকলে Notifee-কে দ্বিতীয় নোটিফিকেশন বানাতে বাধা দেওয়া হচ্ছে
+      if (AppState.currentState !== 'active') {
+        return; 
+      }
+
+      // 🚀 Optional Chaining দিয়ে ক্র্যাশ ফিক্স করা হলো
+      const rawPayload = notification.request.trigger?.remoteMessage?.data || notification.request.content?.data;
       
       if (rawPayload) {
         if (rawPayload.guideId) {
@@ -175,9 +130,11 @@ export default function PushNotification({ onNotificationClick }) {
           title: finalTitle,
           body: finalBody,
           data: finalData,
-          android: {
+        android: {
             channelId,
             importance: AndroidImportance.HIGH,
+            smallIcon: 'notification_icon', // 🚀 ছোট আইকন যুক্ত করা হলো
+            color: '#1899D6', // 🚀 ব্র্যান্ড কালার
             largeIcon: finalAvatar,
             circularLargeIcon: true, 
             pressAction: { id: 'default', launchActivity: 'default' },
@@ -187,34 +144,32 @@ export default function PushNotification({ onNotificationClick }) {
       }
     });
 
-    const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
+  const unsubscribe = notifee.onForegroundEvent(({ type, detail }) => {
       if (type === EventType.PRESS) {
         const data = detail.notification.data;
         DeviceEventEmitter.emit('HANDLE_NOTIFICATION_ROUTING', data);
-        handleNotificationTap(data);
         if (data && onNotificationClick) {
           onNotificationClick(data);
         }
       }
     });
 
-    return () => {
+   return () => {
       loginSyncSub.remove();
       if (notificationListener.current) {
         Notifications.removeNotificationSubscription(notificationListener.current);
-      }
-      if (responseListener) {
-        Notifications.removeNotificationSubscription(responseListener);
       }
       unsubscribe();
     };
   }, []);
 
-  const checkAndRequestPermission = async () => {
+ const checkAndRequestPermission = async () => {
     if (!Device.isDevice) {
       console.log('⚠️ Must use physical device for Push Notifications');
       return;
     }
+
+  // 🚀 Notifee চ্যানেল হ্যান্ডেল করছে, তাই Expo-এর ডুপ্লিকেট চ্যানেল রিমুভ করা হলো
 
     const { status: existingStatus, canAskAgain } = await Notifications.getPermissionsAsync();
 
@@ -234,37 +189,39 @@ export default function PushNotification({ onNotificationClick }) {
     }
   };
 
-  const generateAndSendToken = async () => {
+ const generateAndSendToken = async () => {
     try {
-      if (Platform.OS === 'android') {
-        await Notifications.setNotificationChannelAsync(NEW_CHANNEL_ID, {
-          name: 'Squad VIP Alerts',
-          importance: Notifications.AndroidImportance.MAX,
-          vibrationPattern: [0, 250, 250, 250],
-          lightColor: '#1899D6',
-          sound: 'default',
-        });
-      }
+      console.log('⏳ Token generation shuru hocche...');
+
+    // 🚀 Notifee চ্যানেল হ্যান্ডেল করছে, তাই Expo-এর ডুপ্লিকেট চ্যানেল রিমুভ করা হলো
 
       const projectId = Constants?.expoConfig?.extra?.eas?.projectId ?? Constants?.easConfig?.projectId;
-      if (!projectId) return;
+      console.log('🔍 Project ID Pawa Geche:', projectId);
 
+      if (!projectId) {
+        console.log('❌ Error: Project ID missing! app.json check korun.');
+        return;
+      }
+
+      console.log('📡 Expo theke token anar chesta cholche...');
       const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
       const token = tokenResponse.data;
+      
+      console.log('✅ EXPO PUSH TOKEN:', token); // Ei line ta token print korbe
       
       setExpoPushToken(token);
       const userEmail = await AsyncStorage.getItem('@current_user_id');
       sendTokenToBackend(token, userEmail);
       
     } catch (e) {
-      console.log('❌ Token generation error:', e);
+      console.log('❌ Token generation error (catch block):', e);
     }
   };
-
   const sendTokenToBackend = async (token, userEmail) => {
     if(!userEmail || userEmail === 'guest') return; 
     try {
-      const SERVER_URL = 'https://growshelby-api.vercel.app/api/save_token'; 
+     // 🚀 FIX 3: Changed end-point to unified API to bypass Vercel limits safely!
+      const SERVER_URL = 'https://growshelby-api.vercel.app/api/update_coins';
       await fetch(SERVER_URL, {
         method: 'POST',
         headers: { 

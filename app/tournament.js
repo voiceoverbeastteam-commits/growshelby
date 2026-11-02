@@ -8,8 +8,8 @@ export default function TournamentScreen() {
     <SafeAreaView className="flex-1 bg-white">
       {/* Top Bar */}
       <View className="items-center px-6 py-4 mt-8">
-        <Text className="text-2xl text-[#3C3C3C] pt-1" style={{ fontFamily: 'BanglaBold' }}>
-          টুর্নামেন্ট aaa
+       <Text className="text-2xl text-[#3C3C3C] pt-1" style={{ fontFamily: 'BanglaBold' }}>
+          টুর্নামেন্ট
         </Text>
       </View>
 

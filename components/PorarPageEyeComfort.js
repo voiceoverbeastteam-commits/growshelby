@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, Modal, LayoutAnimation, TextInput, UIManager, Platform, Image, Animated, Clipboard, Alert, FlatList, ActivityIndicator, Linking, DeviceEventEmitter, RefreshControl, Dimensions } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView, Modal, LayoutAnimation, TextInput, UIManager, Platform, Image, Animated, Alert, FlatList, ActivityIndicator, Linking, DeviceEventEmitter, RefreshControl, Dimensions } from 'react-native';
+import * as Clipboard from 'expo-clipboard'; // 🚀 ফিক্স: নতুন ক্লিপবোর্ড ইমপোর্ট
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -290,21 +291,24 @@ const MCQCard = ({ data, globalReveal, onOpenDiscussion }) => {
 const CQCard = ({ data, globalReveal, subFilter, onOpenDiscussion }) => {
   const [revealedAnswers, setRevealedAnswers] = useState({});
 
-  const filteredQuestions = data.questions?.filter(q => {
+ const filteredQuestions = data.questions?.filter(q => {
     if (subFilter === 'ক') return q.label.includes('ক');
     if (subFilter === 'খ') return q.label.includes('খ');
     if (subFilter === 'গ ও ঘ') return q.label.includes('গ') || q.label.includes('ঘ');
     return true; 
   }) || [];
 
-  if (filteredQuestions.length === 0) return null;
   const showStem = subFilter === 'সব' || subFilter === 'গ ও ঘ';
 
   useEffect(() => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); // 🚀 ম্যাজিক অ্যানিমেশন
     const newState = {};
     filteredQuestions.forEach((_, i) => newState[i] = globalReveal);
     setRevealedAnswers(newState);
   }, [globalReveal, subFilter, data.questions]);
+
+  // 🚀 ফিক্স: Hook এর পরে early return দিতে হয়, নাহলে অ্যাপ ক্র্যাশ করবে
+  if (filteredQuestions.length === 0) return null;
 
   const toggleAnswer = (index) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -535,7 +539,8 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
     try {
       let formData = new FormData();
       formData.append("image", base64String);
-      const res = await fetch(`https://api.imgbb.com/1/upload?key=266dc6accf170af21b0a679770bcd7bb`, { method: "POST", body: formData });
+     const imgbbKey = process.env.EXPO_PUBLIC_IMGBB_KEY;
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, { method: "POST", body: formData });
       const data = await res.json();
       return data.success ? data.data.url : null;
     } catch (e) { return null; }
@@ -1190,12 +1195,12 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
     }
   };
 
-  const handleShareCode = () => {
+ const handleShareCode = async () => { // 🚀 ফিক্স: async যুক্ত করা হলো
     // 🚀 কমিউনিটির কোড হিসেবে তার প্রথম গাইডের শেয়ার কোডটি ব্যবহার করা হবে
     const communityCode = channelGuides.length > 0 ? channelGuides[0].shareCode : null;
     
     if (communityCode) {
-      Clipboard.setString(communityCode);
+      await Clipboard.setStringAsync(communityCode); // 🚀 ফিক্স: setStringAsync ব্যবহার করা হলো
       setShareModalType('success');
       setShareModalVisible(true);
     } else {

@@ -2,7 +2,7 @@ import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { View, Text, TouchableOpacity, Image, SafeAreaView, Alert, Linking, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager, DeviceEventEmitter } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { useRouter, useFocusEffect } from 'expo-router';
+import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Pusher from 'pusher-js/react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
@@ -77,9 +77,9 @@ if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental
 
 export default function ProfileScreen() {
   const router = useRouter(); 
+  const { t } = useLocalSearchParams(); // 🚀 ফিক্স: প্যারামিটার রিসিভ করা হলো
   
   const [isProfileLoading, setIsProfileLoading] = useState(true); // 🚀 শিমার স্টেট
-
   // 🚀 User Personal States
   const [userName, setUserName] = useState("শিক্ষার্থী");
   const [userEmail, setUserEmail] = useState("guest");
@@ -158,8 +158,8 @@ export default function ProfileScreen() {
       };
       
       // পেজ ট্রানজিশন স্মুথ হওয়ার জন্য 400 মিলি-সেকেন্ড পর মডাল ওপেন হবে
-      setTimeout(checkPendingActions, 400);
-    }, [])
+   setTimeout(checkPendingActions, 400);
+    }, [t]) // 🚀 ফিক্স: [] এর জায়গায় [t] বসানো হলো
   );
 
   // 🚀 ডাটা ফেচ করার কমন ফাংশন (যাতে বারবার কল করা যায়)
@@ -269,7 +269,8 @@ export default function ProfileScreen() {
     try {
       let formData = new FormData();
       formData.append("image", base64String);
-      const res = await fetch(`https://api.imgbb.com/1/upload?key=266dc6accf170af21b0a679770bcd7bb`, { method: "POST", body: formData });
+   const imgbbKey = process.env.EXPO_PUBLIC_IMGBB_KEY;
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, { method: "POST", body: formData });
       const data = await res.json();
       return data.success ? data.data.url : null;
     } catch (e) { return null; }
@@ -491,8 +492,8 @@ export default function ProfileScreen() {
     if (setupStep === 2 && tempCommDesc.trim() === '') {
       return Alert.alert("সতর্কতা", "কমিউনিটির উদ্দেশ্যে কিছু লিখুন!");
     }
-    if (setupStep === 3 && !tempCommBanner) {
-      return Alert.alert("সতর্কতা", "কভার ছবি ছাড়া কমিউনিটি তৈরি করা যাবে করণ!");
+   if (setupStep === 3 && !tempCommBanner) {
+      return Alert.alert("সতর্কতা", "কভার ছবি ছাড়া কমিউনিটি তৈরি করা যাবে না!");
     }
     
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -616,7 +617,7 @@ export default function ProfileScreen() {
     );
   };
 
-  const handleLogout = () => {
+ const handleLogout = () => {
     Alert.alert(
       "লগআউট",
       "আপনি কি নিশ্চিত যে আপনি অ্যাকাউন্ট থেকে বের হতে চান?",
@@ -626,6 +627,18 @@ export default function ProfileScreen() {
           text: "হ্যাঁ", 
           style: "destructive",
           onPress: async () => {
+            // 🚀 FIX: Delete push token before logging out
+            try {
+              const uid = await AsyncStorage.getItem('@current_user_id');
+              if (uid) {
+                await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                  body: JSON.stringify({ action: 'delete_push_token', email: uid })
+                });
+              }
+            } catch(e) {}
+
             await AsyncStorage.setItem('@is_logged_in', 'false');
             await AsyncStorage.removeItem('@current_user_id'); 
             router.replace('/'); 

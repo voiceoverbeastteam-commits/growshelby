@@ -182,35 +182,6 @@ export default function Home() {
 
 useEffect(() => {
     runNetworkDiagnostic();
-    
-    // 🚀 ভিজ্যুয়াল ডিবাগিং ট্র্যাকার শুরু
-    const showDebugReport = async () => {
-      try {
-        const bgClick = await AsyncStorage.getItem('@debug_bg_click');
-        const bgData = await AsyncStorage.getItem('@debug_bg_data');
-        const killedData = await AsyncStorage.getItem('@killed_app_notification');
-        
-        // রিপোর্ট দেখানোর পর ক্লিয়ার করে দেওয়া হচ্ছে
-        await AsyncStorage.multiRemove(['@debug_bg_click', '@debug_bg_data']);
-
-        // যদি ক্লিক হয়ে থাকে, তবেই অ্যালার্ট দেখাবে
-        if (bgClick) {
-          Alert.alert(
-            "ডিবাগ রিপোর্ট 🛠️", 
-            `১. ব্যাকগ্রাউন্ডে ক্লিক পেয়েছে?: ${bgClick}\n\n` +
-            `২. ডেটা পেয়েছে?: ${bgData ? 'YES' : 'NO'}\n\n` +
-            `৩. রিডাইরেক্টের জন্য ডেটা রেডি?: ${killedData ? 'YES' : 'NO'}\n\n` +
-            `[রুট কজ ফাইন্ডার]: যদি ১ নম্বর 'YES' হয় কিন্তু ৩ নম্বর 'NO' হয়, তার মানে নোটিফিকেশন থেকে কোনো ডেটা (Payload) আসছে না।`
-          );
-        }
-      } catch (e) {
-        console.log("Debug error:", e);
-      }
-    };
-
-    // স্প্ল্যাশ স্ক্রিন শেষ হওয়ার জন্য ৩ সেকেন্ড অপেক্ষা করে রিপোর্ট দেখাবে
-    setTimeout(showDebugReport, 3000); 
-    // 🚀 ভিজ্যুয়াল ডিবাগিং ট্র্যাকার শেষ
   }, []);
 
  // 🚀 এক্সপ্লোর ফিড লোড করার ফাংশন (YouTube Style SWR)

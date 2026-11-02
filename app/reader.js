@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
-import { View, Text, TouchableOpacity, ScrollView, LayoutAnimation, UIManager, Platform, Image, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect, useCallback } from 'react';
+import { useFocusEffect } from 'expo-router';
+import { View, Text, TouchableOpacity, ScrollView, LayoutAnimation, UIManager, Platform, Image, ActivityIndicator, DeviceEventEmitter } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useRouter } from 'expo-router';
+import { useRouter, useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { StatusBar } from 'expo-status-bar';
 
@@ -132,21 +133,23 @@ const MCQCard = ({ data, globalReveal, onOpenDiscussion }) => {
 const CQCard = ({ data, globalReveal, subFilter, onOpenDiscussion }) => {
   const [revealedAnswers, setRevealedAnswers] = useState({});
 
-  const filteredQuestions = data.questions?.filter(q => {
+ const filteredQuestions = data.questions?.filter(q => {
     if (subFilter === 'ক') return q.label.includes('ক');
     if (subFilter === 'খ') return q.label.includes('খ');
     if (subFilter === 'গ ও ঘ') return q.label.includes('গ') || q.label.includes('ঘ');
     return true; 
   }) || [];
 
-  if (filteredQuestions.length === 0) return null;
   const showStem = subFilter === 'সব' || subFilter === 'গ ও ঘ';
 
-  useEffect(() => {
+ useEffect(() => {
     const newState = {};
     filteredQuestions.forEach((_, i) => newState[i] = globalReveal);
     setRevealedAnswers(newState);
   }, [globalReveal, subFilter, data.questions]);
+
+  // 🚀 ফিক্স: early return সবসময় useEffect এর পরে রাখতে হয়
+  if (filteredQuestions.length === 0) return null;
 
   const toggleAnswer = (index) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -197,6 +200,7 @@ const CQCard = ({ data, globalReveal, subFilter, onOpenDiscussion }) => {
 
 export default function ReaderPage() {
   const router = useRouter();
+  const { t } = useLocalSearchParams(); // 🚀 প্যারামিটার রিসিভ করা হলো
   const insets = useSafeAreaInsets();
   
   const [guideData, setGuideData] = useState(null);
@@ -218,21 +222,23 @@ export default function ReaderPage() {
     return () => subscription.remove();
   }, []);
 
-  useEffect(() => {
-    const loadGuide = async () => {
-      try {
-        const storedData = await AsyncStorage.getItem('@temp_reader_guide');
-        if (storedData) {
-          setGuideData(JSON.parse(storedData));
+ useFocusEffect(
+    useCallback(() => {
+      const loadGuide = async () => {
+        try {
+          const storedData = await AsyncStorage.getItem('@temp_reader_guide');
+          if (storedData) {
+            setGuideData(JSON.parse(storedData));
+          }
+        } catch (error) {
+          console.log("Error loading guide data:", error);
+        } finally {
+          setIsLoading(false);
         }
-      } catch (error) {
-        console.log("Error loading guide data:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    loadGuide();
-  }, []);
+      };
+      loadGuide();
+    }, [t]) // 👈 শুধু এখানে [] এর জায়গায় [t] বসেছে
+  );
 
   const openContextualDiscussion = (questionData) => {
     setActiveDiscussionData(questionData);
@@ -368,7 +374,7 @@ export default function ReaderPage() {
         onClose={() => setDiscussionVisible(false)} 
         data={activeDiscussionData} 
         guideName={guideData?.creatorName}
-        guideId={guideData?.safeChannelId || 'default_channel'} 
+      guideId={guideData?.channelId || guideData?.shareCode || 'default_channel'} // 🚀 ফিক্স: সঠিক চ্যানেল আইডি
       />
     </View>
   );
