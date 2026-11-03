@@ -276,7 +276,7 @@ const handleOpenGuide = (guide, isFromExplore = false) => {
     setEditModalVisible(false);
   };
 
- const pickEditThumbnail = async () => {
+const pickEditThumbnail = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true, aspect: [16, 9], quality: 0.3, base64: true
@@ -290,7 +290,11 @@ const handleOpenGuide = (guide, isFromExplore = false) => {
       try {
         let formData = new FormData();
         formData.append("image", result.assets[0].base64);
-        const res = await fetch(`https://api.imgbb.com/1/upload?key=266dc6accf170af21b0a679770bcd7bb`, { method: "POST", body: formData });
+        
+        // 🚀 ফিক্স: হার্ডকোড করা API Key সরিয়ে .env থেকে ডাইনামিক Key নেওয়া হচ্ছে
+        const imgbbKey = process.env.EXPO_PUBLIC_IMGBB_KEY;
+        const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, { method: "POST", body: formData });
+        
         const data = await res.json();
         if (data.success) {
           setEditingGuide(prev => ({ ...prev, thumbnail: data.data.url }));

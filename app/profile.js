@@ -298,7 +298,12 @@ export default function ProfileScreen() {
   };
 
   const handleSavePersonalProfile = async () => {
-    if (tempUserName.trim() === '') return Alert.alert("সতর্কতা", "নাম ফাঁকা রাখা যাবে না!");
+      if (tempUserName.trim() === '') return Alert.alert("সতর্কতা", "নাম ফাঁকা রাখা যাবে না!");
+
+    // 🚀 FIX: ImgBB আপলোড ফেইল করলে base64 ছবি সেভ হতে দেওয়া হবে না
+    if (tempAvatarUrl && !tempAvatarUrl.startsWith('http')) {
+      return Alert.alert("ছবি আপলোড হয়নি", "ছবিটা আপলোড করা যায়নি। ইন্টারনেট চেক করে আবার ছবি সিলেক্ট করুন।");
+    }
     
     setUserName(tempUserName.trim());
     if (tempAvatarUrl) setAvatarUrl(tempAvatarUrl);

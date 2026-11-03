@@ -165,17 +165,23 @@ export default function ToiriKorun({ onBack, onSave }) {
     setSelectedFiles(prev => prev.filter(file => file.id !== id));
   };
 
-  // 🚀 ImgBB Upload Helper
+ // 🚀 ImgBB Upload Helper
   const uploadImageToImgBB = async (base64String) => {
     try {
       let formData = new FormData();
       formData.append("image", base64String);
-      const res = await fetch(`https://api.imgbb.com/1/upload?key=266dc6accf170af21b0a679770bcd7bb`, {
+      
+      // 🚀 ফিক্স: হার্ডকোড করা API Key সরিয়ে .env থেকে ডাইনামিক Key নেওয়া হচ্ছে
+      const imgbbKey = process.env.EXPO_PUBLIC_IMGBB_KEY;
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, {
         method: "POST", body: formData
       });
+      
       const data = await res.json();
       return data.success ? data.data.url : null;
-    } catch (e) { return null; }
+    } catch (e) { 
+      return null; 
+    }
   };
 
   const pickThumbnail = async () => {
