@@ -634,7 +634,25 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
     fetchGuides();
   }, [visible, lessonItem]);
 
-  const router = useRouter();
+ const router = useRouter();
+
+  // 🚀 FIX 2: নোটিফিকেশন থেকে আসলে অটোমেটিক SmartReaderEngine ওপেন করার ম্যাজিক!
+  useEffect(() => {
+    if (visible && lessonItem?.autoOpenReader) {
+      const timer = setTimeout(() => {
+        openBookInReader(lessonItem);
+      }, 500); // লবি রেন্ডার হওয়ার আধা সেকেন্ড পর অটোমেটিক রিডার খুলে যাবে
+      return () => clearTimeout(timer);
+    }
+  }, [visible, lessonItem]);
+
+  // ব্যাকআপ ইভেন্ট লিসেনার (যদি রাউটিং ডিলে হয়)
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('auto_open_smart_reader', (guide) => {
+       if (visible) openBookInReader(guide);
+    });
+    return () => subscription.remove();
+  }, [visible]);
 
  const openBookInReader = async (guide) => {
     const guideWithChannelInfo = { ...guide, channelId: lessonItem?.channelId || lessonItem?.creatorEmail || 'default_channel' };

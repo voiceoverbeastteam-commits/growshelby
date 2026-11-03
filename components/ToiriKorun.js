@@ -5,6 +5,7 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import notifee, { AndroidImportance, AndroidVisibility } from '@notifee/react-native';
 
 import { processWithGuideEngine } from './AiGuideEngine';
 
@@ -42,12 +43,12 @@ export default function ToiriKorun({ onBack, onSave }) {
     "তোমার স্মার্ট গাইড প্রায় রেডি ⚡"
   ];
 
-  const progressAnim = useRef(new Animated.Value(0)).current;
+ const progressAnim = useRef(new Animated.Value(0)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(20)).current;
 
-  const [tapCount, setTapCount] = useState(0);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
+  // 🚀 Progressive Rendering Simulation State
+  const [simulatedQCount, setSimulatedQCount] = useState(0);
 
   useEffect(() => {
     const fetchUser = async () => {
@@ -98,14 +99,24 @@ export default function ToiriKorun({ onBack, onSave }) {
     ]).start();
   }, [currentStep]);
 
-  useEffect(() => {
-    let interval;
+ useEffect(() => {
+    let textInterval;
+    let qInterval;
     if (currentStep === 2) {
-      interval = setInterval(() => {
+      // মেসেজ চেঞ্জ হবে ৩ সেকেন্ড পরপর
+      textInterval = setInterval(() => {
         setLoadingTextIndex((prev) => (prev + 1) % loadingMessages.length);
       }, 3000);
+      
+      // 🚀 প্রতি ৪.৫ সেকেন্ডে ফেক প্রশ্ন অ্যাড হওয়ার কাউন্টার বাড়বে
+      qInterval = setInterval(() => {
+        setSimulatedQCount((prev) => prev < 18 ? prev + 1 : prev);
+      }, 4500); 
     }
-    return () => clearInterval(interval);
+    return () => {
+      clearInterval(textInterval);
+      clearInterval(qInterval);
+    };
   }, [currentStep]);
 
   const openCamera = async () => {
@@ -208,7 +219,7 @@ export default function ToiriKorun({ onBack, onSave }) {
     }
   };
 
-  const handleStartMagic = async () => {
+ const handleStartMagic = async () => {
     if (selectedFiles.length === 0) return;
 
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
@@ -221,6 +232,48 @@ export default function ToiriKorun({ onBack, onSave }) {
       useNativeDriver: false,
     }).start();
 
+  // 🚀 ১. Notifee চ্যানেল তৈরি এবং স্টিকি (Ongoing) নোটিফিকেশন শো করা
+      // নোটিফিকেশন ফেইল করলেও যেন এআই-এর মূল কাজ না থামে
+    const safeNotify = async (payload) => {
+      try { await notifee.displayNotification(payload); }
+      catch (e) { console.log('AI notification error:', e); }
+    };
+
+    let channelId = 'ai_processing_v2';
+    try {
+      await notifee.requestPermission();
+      // নতুন আইডি (v2), কারণ পুরোনো চ্যানেলের সেটিংস ফোনে আটকে থাকে
+      channelId = await notifee.createChannel({
+        id: 'ai_processing_v2',
+        name: 'AI Processing Task',
+        importance: AndroidImportance.HIGH,
+        visibility: AndroidVisibility.PUBLIC,
+        vibration: true,
+        vibrationPattern: [300, 500],
+        sound: 'default',
+      });
+    } catch (e) {
+      console.log('AI channel error:', e);
+    }
+
+    await safeNotify({
+      id: 'ai_processing_task',
+      title: '⚙️ স্মার্ট গাইড তৈরি হচ্ছে...',
+      body: 'ব্যাকগ্রাউন্ডে কাজ চলছে। অ্যাপটি পুরোপুরি কেটে (Kill) দেবেন না।',
+      android: {
+        channelId,
+        ongoing: true, // 🚀 সোয়াইপ করে কাটা যাবে না (স্টিকি)
+        autoCancel: false,
+        smallIcon: 'notification_icon',
+        color: '#1CB0F6',
+        pressAction: { id: 'default', launchActivity: 'default' },
+        progress: {
+          max: 100,
+          indeterminate: true, // 🚀 ক্যাপকাটের মতো ইনফিনিট ঘুরতে থাকবে
+        },
+      },
+    });
+
     try {
       const imagesList = selectedFiles.filter(f => f.type === 'image').map(f => ({ uri: f.uri, mimeType: f.mimeType || 'image/jpeg' }));
       const textList = selectedFiles.filter(f => f.type === 'text').map(f => f.text).join('\n\n');
@@ -228,7 +281,22 @@ export default function ToiriKorun({ onBack, onSave }) {
       const data = await processWithGuideEngine({
         images: imagesList,
         rawText: textList,
-        onStatusChange: setAiStatusText
+        onStatusChange: setAiStatusText,
+        userData: currentUser 
+      });
+
+      // 🚀 ২. কাজ শেষ হলে স্টিকি নোটিফিকেশন রিমুভ করে সাকসেস নোটিফিকেশন দেওয়া
+           await notifee.cancelNotification('ai_processing_task').catch(() => {});
+      if (data && data.length > 0) await safeNotify({
+        title: '🎉 এআইয়ের কাজ শেষ!',
+        body: 'অ্যাপে ফিরে এসে গাইডের নাম ও কভার দিয়ে পাবলিশ করো।',
+        android: {
+          channelId,
+          importance: AndroidImportance.HIGH,
+          smallIcon: 'notification_icon',
+          color: '#58CC02',
+          pressAction: { id: 'default', launchActivity: 'default' },
+        },
       });
 
       if (data && data.length > 0) {
@@ -238,9 +306,28 @@ export default function ToiriKorun({ onBack, onSave }) {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setCurrentStep(3); 
           }, 300);
-        });
+               });
+      } else {
+        await notifee.cancelNotification('ai_processing_task').catch(() => {});
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setCurrentStep(1);
+        Alert.alert('কিছু পাওয়া যায়নি', 'ছবি বা লেখা থেকে কোনো প্রশ্ন খুঁজে পাওয়া যায়নি। স্পষ্ট ছবি বা টেক্সট দিয়ে আবার চেষ্টা করো।');
       }
     } catch (error) {
+      // 🚀 ৩. এরর হলে স্টিকি নোটিফিকেশন রিমুভ করে ফেইল নোটিফিকেশন দেওয়া
+          await notifee.cancelNotification('ai_processing_task').catch(() => {});
+      await safeNotify({
+        title: '❌ ডিজিটাইজেশন ফেইল করেছে!',
+        body: 'সার্ভার ব্যস্ত থাকতে পারে। অ্যাপে ফিরে এসে আবার চেষ্টা করো।',
+        android: {
+          channelId,
+          importance: AndroidImportance.HIGH,
+          smallIcon: 'notification_icon',
+          color: '#FF4B4B',
+          pressAction: { id: 'default', launchActivity: 'default' },
+        },
+      });
+
       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       setCurrentStep(1); 
 
@@ -435,33 +522,50 @@ export default function ToiriKorun({ onBack, onSave }) {
             </View>
           )}
 
-          {currentStep === 2 && (
-            <View className="flex-1 items-center justify-center py-10">
-              <Text className="text-[18px] text-[#3C3C3C] text-center mb-10 px-4 leading-7" style={{fontFamily: 'BanglaBold'}}>
-                {aiStatusText.includes("বিজি") ? aiStatusText : loadingMessages[loadingTextIndex]}
-              </Text>
-
-              <TouchableOpacity activeOpacity={0.9} onPress={handleTapToBoost} className="items-center justify-center mb-6">
-                <Animated.View 
-                  style={{ transform: [{ scale: scaleAnim }] }}
-                  className="bg-[#EAF6FE] w-32 h-32 rounded-full border-4 border-[#1CB0F6] items-center justify-center shadow-lg"
-                >
-                  <FontAwesome5 name="brain" size={50} color="#1CB0F6" solid />
-                </Animated.View>
-                <View className="bg-[#FF9600] px-4 py-1.5 rounded-full absolute -bottom-3 border-2 border-white shadow-sm">
-                  <Text className="text-white text-[12px] pt-0.5" style={{fontFamily: 'BanglaBold'}}>TAP TO BOOST!</Text>
+      {currentStep === 2 && (
+            <View className="flex-1 py-2">
+              <View className="items-center mb-6 mt-2">
+                <View className="bg-[#EAF6FE] w-20 h-20 rounded-full items-center justify-center mb-4 border-4 border-[#1CB0F6]">
+                  <FontAwesome5 name="robot" size={32} color="#1CB0F6" />
                 </View>
-              </TouchableOpacity>
+                <Text className="text-[19px] text-[#3C3C3C] text-center mb-4 px-4 leading-8" style={{fontFamily: 'BanglaBold'}}>
+                  {aiStatusText.includes("বিজি") ? aiStatusText : loadingMessages[loadingTextIndex]}
+                </Text>
+                
+                {/* 🚀 Progressive Loading Simulation */}
+                <View className="bg-white px-5 py-3 rounded-2xl border border-[#E5E5E5] flex-row items-center shadow-sm">
+                  <ActivityIndicator size="small" color="#58CC02" className="mr-3" />
+                  <Text className="text-[#58A700] text-[15px] pt-1" style={{fontFamily: 'BanglaBold'}}>
+                    এপর্যন্ত {simulatedQCount} টি প্রশ্ন রেডি হয়েছে...
+                  </Text>
+                </View>
+              </View>
 
-              <Text className="text-[14px] text-[#AFAFAF] text-center mb-6 mt-2" style={{fontFamily: 'BanglaBold'}}>
-                AI-কে এনার্জি দাও! (পাওয়ার: {tapCount}⚡)
-              </Text>
-
-              <View className="w-full bg-[#E5E5E5] h-4 rounded-full overflow-hidden border border-[#D7D7D7] mb-2">
-                <Animated.View 
-                  className="h-full bg-[#58CC02] rounded-full"
-                  style={{ width: progressAnim.interpolate({ inputRange: [0, 100], outputRange: ['0%', '100%'] }) }}
-                />
+            {/* 🚀 Background / Sticky Notice */}
+              <View className="bg-[#FFFDF8] p-5 rounded-[24px] border border-[#FFDDAA] mx-1 mt-2 items-center shadow-sm">
+                <View className="bg-[#FFF4E5] w-14 h-14 rounded-full items-center justify-center mb-3">
+                  <FontAwesome5 name="bell" size={24} color="#FF9600" solid />
+                </View>
+                <Text className="text-[#3D382F] text-[16px] text-center leading-7 mb-2" style={{fontFamily: 'BanglaBold'}}>
+                  গাইড তৈরি হতে ২-৩ মিনিট সময় লাগতে পারে। তুমি চাইলে অ্যাপটি মিনিমাইজ করে রাখতে পারো। 
+                </Text>
+                <Text className="text-[#FF4B4B] text-[13px] text-center leading-5 mb-5 px-2" style={{fontFamily: 'BanglaBold'}}>
+                  ⚠️ সতর্কীকরণ: অ্যাপটি পুরোপুরি কেটে (Kill/Swipe) দিও না, তাহলে কাজ বন্ধ হয়ে যাবে!
+                </Text>
+                
+                <TouchableOpacity 
+                  activeOpacity={0.8} 
+                  onPress={() => {
+                     Alert.alert(
+                       "কাজ চলছে! 🚀", 
+                       "তোমার নোটিফিকেশন বারে খেয়াল করো, সেখানে প্রগ্রেস দেখাচ্ছে। অ্যাপটি মিনিমাইজ করতে তোমার ফোনের 'হোম বাটন' চাপো।"
+                     );
+                  }} 
+                  className="bg-[#1899D6] w-full py-3.5 rounded-[16px] items-center flex-row justify-center shadow-sm"
+                >
+                  <FontAwesome5 name="home" size={14} color="#FFF" />
+                  <Text className="text-white text-[15px] pt-1 ml-2" style={{fontFamily: 'BanglaBold'}}>মিনিমাইজ করতে হোম বাটন চাপো</Text>
+                </TouchableOpacity>
               </View>
             </View>
           )}

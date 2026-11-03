@@ -823,7 +823,7 @@ const fetchLobbyData = async (query = '') => {
   };
 
   // 🚀 রিয়েল ডেটা ফেস করে কুইক চ্যাট পাঠানোর ফাংশন (Cooldown সহ)
-  const triggerLiveReaction = async (content, type = 'emoji') => {
+ const triggerLiveReaction = async (content, type = 'emoji') => {
     if (isReactionCooldown) return; // 🔒 স্প্যামিং বন্ধ
     
     setIsQuickChatOpen(false);
@@ -836,7 +836,8 @@ const fetchLobbyData = async (query = '') => {
     const uid = await AsyncStorage.getItem('@current_user_id') || 'guest_' + Date.now();
     const name = await AsyncStorage.getItem(`@user_name_${uid}`) || await AsyncStorage.getItem('@user_name') || 'শিক্ষার্থী';
     const avatar = await AsyncStorage.getItem(`@user_avatar_${uid}`) || await AsyncStorage.getItem('@user_avatar') || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
-    const guideId = guideData?.id || guideData?.shareCode || guideData?.channelId;
+    // 🚀 ফিক্স: লিসেনারের সাথে সিঙ্ক রাখার জন্য shareCode কে ফার্স্ট প্রায়োরিটি দেওয়া হলো
+    const guideId = guideData?.shareCode || guideData?.channelId || guideData?.id;
 
     // ১. নিজের স্ক্রিনে কিউতে অ্যাড করা
     enqueueReaction(content, type, { name, avatar });
@@ -1074,9 +1075,9 @@ const fetchLobbyData = async (query = '') => {
 
 
  return (
-    <Modal visible={visible} animationType="none" transparent={true} onRequestClose={closeWithAnimation}>
+    <Modal visible={visible} animationType="none" transparent={true} onRequestClose={closeWithAnimation} statusBarTranslucent={true}>
       <View className="flex-1">
-        <Animated.View style={{ transform: [{ translateY: slideAnim }], height: SCREEN_HEIGHT }} className="bg-[#F2F6F9] flex-1 w-full overflow-hidden">
+        <Animated.View style={{ transform: [{ translateY: slideAnim }], flex: 1 }} className="bg-[#F2F6F9] w-full overflow-hidden">
           
 <View style={{ paddingTop: Math.max(insets.top, 20) }} className="px-5 pb-3 bg-white border-b-2 border-[#E5E5E5] z-50">
             <View className="flex-row items-center justify-between w-full">
@@ -1211,8 +1212,8 @@ const fetchLobbyData = async (query = '') => {
               style={{ opacity: reactionFadeAnim, transform: [{ translateY: reactionSlideAnim }] }}
               className="absolute bottom-[110px] right-5 flex-row items-end justify-end z-40"
             >
-              <View className="bg-white/95 px-4 py-2.5 rounded-2xl rounded-br-sm border border-[#E5E5E5] shadow-sm mr-2 max-w-[200px]">
-                <Text className={`${liveReaction.type === 'emoji' ? 'text-[24px]' : 'text-[13px] text-[#3D382F]'}`} style={{ fontFamily: liveReaction.type === 'message' ? 'BanglaBold' : undefined }}>
+           <View className="bg-white/95 px-4 py-2.5 rounded-2xl rounded-br-sm border border-[#E5E5E5] shadow-sm mr-2 max-w-[200px]">
+                <Text className={`${liveReaction.type === 'emoji' ? 'text-[24px]' : 'text-[13px] text-[#3D382F]'}`} style={liveReaction.type === 'message' ? { fontFamily: 'BanglaBold' } : {}}>
                   {liveReaction.content}
                 </Text>
               </View>

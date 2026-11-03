@@ -1,6 +1,8 @@
 import * as FileSystem from 'expo-file-system';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import notifee, { AndroidImportance } from '@notifee/react-native';
+import { DeviceEventEmitter } from 'react-native';
 
 
 const SMART_GUIDE_PROMPT = `
@@ -84,7 +86,7 @@ const readFileAsBase64 = async (uri) => {
   }
 };
 
-export const processWithGuideEngine = async ({ images = [], rawText = "", onStatusChange }) => {
+export const processWithGuideEngine = async ({ images = [], rawText = "", onStatusChange, userData = null }) => {
   let geminiKeys = [];
 
   try {
@@ -187,10 +189,84 @@ export const processWithGuideEngine = async ({ images = [], rawText = "", onStat
       if (generatedData) break; // 🚀 ডেটা পেয়ে গেলে API Key লুপও ভেঙে যাবে
     }
 
-    if (!generatedData) {
+  if (!generatedData) {
       throw new Error(`DETAILED ERROR:\n${lastErrorDetails}`);
     }
     
+    // 🚀 অটো-পাবলিশ এবং নোটিফিকেশন লজিক শুরু
+    if (userData) {
+      try {
+        const shareCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+        const guideTitle = `স্মার্ট গাইড - ${new Date().toLocaleDateString('bn-BD')}`;
+        const coverImage = 'https://images.unsplash.com/photo-1512820200502-9ed146a8960c?q=80&w=1000'; // ডিফল্ট কভার
+        
+        const newGuideData = {
+          id: 'guide_' + Date.now(),
+          shareCode: shareCode,
+          notebookName: guideTitle,
+          description: "এআই দ্বারা স্বয়ংক্রিয়ভাবে তৈরি করা স্মার্ট গাইড।",
+          target: userData.niche || "সাধারণ শিক্ষার্থী",
+          questionCount: generatedData.length, 
+          isPublic: true,
+          thumbnail: coverImage,
+          creatorName: userData.name, 
+          creatorAvatar: userData.avatar,
+          creatorEmail: userData.email,
+          channelId: userData.email,
+          banner: userData.banner,    
+          bio: userData.bio,          
+          views: 0,
+          failedItems: generatedData
+        };
+
+        // 1. লোকাল স্টোরেজে সেভ করা (যাতে সাথে সাথে লাইব্রেরিতে দেখায়)
+        const cachedSquads = await AsyncStorage.getItem(`@shelby_guides_${userData.email}`);
+        let parsedSquads = cachedSquads ? JSON.parse(cachedSquads) : [];
+        parsedSquads = [newGuideData, ...parsedSquads];
+        await AsyncStorage.setItem(`@shelby_guides_${userData.email}`, JSON.stringify(parsedSquads));
+
+        // 2. ব্যাকএন্ডে সেভ করা
+        fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'save_guide', guideData: newGuideData })
+        });
+        
+        // 3. রিয়েল-টাইম রিফ্রেশ ইভেন্ট ফায়ার করা (যাতে অন্য স্ক্রিন আপডেট হয়)
+        DeviceEventEmitter.emit('refresh_library');
+
+    // 4. Notifee দিয়ে লোকাল নোটিফিকেশন ফায়ার করা (যেহেতু Expo banner অফ করা আছে)
+        const channelId = await notifee.createChannel({
+          id: 'smart_guide_alerts',
+          name: 'Guide Auto Publish',
+          importance: AndroidImportance.HIGH,
+          vibration: true,
+        });
+
+        await notifee.displayNotification({
+          title: "🎉 তোমার গাইড রেডি!",
+          body: `এআই তোমার জন্য ${generatedData.length} টি প্রশ্ন দিয়ে নতুন গাইডটি তৈরি করেছে। ট্যাপ করে দেখে নাও।`,
+          data: { 
+            type: 'reader',
+            guideId: String(shareCode),
+            channelId: String(userData.email),
+            autoOpenReader: "true" // Notifee তে ডাটা ভ্যালু স্ট্রিং হিসেবে পাঠাতে হয়
+          },
+          android: {
+            channelId,
+            importance: AndroidImportance.HIGH,
+            smallIcon: 'notification_icon', // তোমার ডিফল্ট আইকন
+            color: '#1CB0F6',
+            pressAction: { id: 'default', launchActivity: 'default' },
+          },
+        });
+
+      } catch (err) {
+        console.log("Auto-Publish Error:", err);
+      }
+    }
+    // 🚀 অটো-পাবলিশ লজিক শেষ
+
     return generatedData;
 
   } catch (error) {

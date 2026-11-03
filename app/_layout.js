@@ -141,7 +141,7 @@ export default function Layout() {
     if (data.guideId || data.channelId) {
       const targetId = data.guideId || data.channelId;
       
-      // 🚀 সার্ভার টাইপ দিয়ে ডিরেক্ট রাউটিং
+     // 🚀 সার্ভার টাইপ দিয়ে ডিরেক্ট রাউটিং
       if (data.type === 'reader') {
         try {
           let response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
@@ -151,11 +151,16 @@ export default function Layout() {
           });
           let result = await response.json();
           if (result.success && result.guide) {
-            await AsyncStorage.setItem('@temp_reader_guide', JSON.stringify(result.guide));
-            router.replace({ pathname: '/reader', params: uniqueParam });
-            if (String(data.openDiscussion) === 'true') {
-              setTimeout(() => DeviceEventEmitter.emit('open_discussion_modal'), 800);
-            }
+            // 🚀 FIX 1: বোরিং reader.js পেইজের বদলে আসল community.js-এ পাঠাচ্ছি
+            // এবং autoOpenReader=true সিগন্যাল দিয়ে দিচ্ছি
+            const guideToOpen = { ...result.guide, isFromExplore: true, autoOpenReader: true };
+            await AsyncStorage.setItem('@temp_community_data', JSON.stringify(guideToOpen));
+            router.replace({ pathname: '/community', params: uniqueParam });
+            
+            // 🚀 UI লোড হওয়ার পর SmartReaderEngine ওপেন করার ইভেন্ট ফায়ার করা
+            setTimeout(() => {
+              DeviceEventEmitter.emit('auto_open_smart_reader', guideToOpen);
+            }, 600);
             return;
           }
         } catch (error) { console.log("Reader Open Error:", error); }
