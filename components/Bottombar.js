@@ -5,8 +5,6 @@ import { useRouter, usePathname, useFocusEffect } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import UserProfileButton from './UserProfileButton';
-import TournamentButton from './TournamentButton';
-import StudyButton from './StudyButton';
 import PorarPageEyeComfort from './PorarPageEyeComfort';
 
 // 🚀 ইমপোর্ট
@@ -109,8 +107,8 @@ export default function Bottombar({ translateY }) {
 
   return (
     <>
-      <Animated.View 
-        className="absolute bottom-6 self-center w-[92%] bg-white rounded-[32px] flex-row justify-between items-center px-6 py-4 border-2 border-[#E5E5E5] border-b-[6px] border-b-[#D7D7D7]"
+   <Animated.View 
+        className="absolute bottom-6 self-center bg-white rounded-full flex-row justify-center items-center px-10 py-3.5 border-2 border-[#E5E5E5] border-b-[6px] border-b-[#D7D7D7] space-x-12"
         style={{
           shadowColor: '#000', shadowOffset: { width: 0, height: 4 }, shadowOpacity: 0.1, shadowRadius: 10, elevation: 8, zIndex: 9999,
           transform: [{ translateY: translateY || 0 }] 
@@ -121,21 +119,6 @@ export default function Bottombar({ translateY }) {
           <TouchableOpacity activeOpacity={0.7} onPress={() => router.push('/')} className="items-center justify-center w-full h-full">
             <FontAwesome5 name="home" size={24} color={activeTab === 'home' ? '#1CB0F6' : '#AFAFAF'} solid={activeTab === 'home'} />
           </TouchableOpacity>
-        </View>
-
-        {/* Tournament Button */}
-        <View className="w-12 h-12 items-center justify-center z-50">
-          <TournamentButton isActive={activeTab === 'tournament'} />
-        </View>
-
-       {/* 🚀 Center Action Placeholder (ভবিষ্যতের জন্য ফাঁকা রাখা হলো) */}
-        <View className="w-12 h-12 items-center justify-center z-50">
-          {/* Placeholder */}
-        </View>
-
-    {/* Study Button Placeholder (ভবিষ্যতের জন্য ফাঁকা রাখা হলো) */}
-        <View className="w-12 h-12 items-center justify-center z-50 relative">
-          {/* Placeholder */}
         </View>
 
         {/* Profile Button */}

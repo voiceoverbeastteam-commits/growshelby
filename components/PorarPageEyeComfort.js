@@ -9,9 +9,57 @@ import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
 import { KeyboardAvoidingView } from 'react-native';
 import YoutubeIframe from 'react-native-youtube-iframe';
+import DateTimePicker from '@react-native-community/datetimepicker'; // 🚀 ডেট-পিকার
 
 // 🚀 Modular Discussion Component
 import Discussion from './Discussion';
+
+// 🚀 বাংলা ফরম্যাট হেল্পার
+const formatBnDate = (timestamp) => {
+  if (!timestamp) return 'তারিখ বাছুন';
+  const d = new Date(timestamp);
+  const months = ['জানুয়ারি', 'ফেব্রুয়ারি', 'মার্চ', 'এপ্রিল', 'মে', 'জুন', 'জুলাই', 'আগস্ট', 'সেপ্টেম্বর', 'অক্টোবর', 'নভেম্বর', 'ডিসেম্বর'];
+  return `${String(d.getDate()).replace(/[0-9]/g, w => '০১২৩৪৫৬৭৮৯'[w])} ${months[d.getMonth()]}`;
+};
+
+const formatBnTime = (timestamp) => {
+  if (!timestamp) return 'সময় বাছুন';
+  const d = new Date(timestamp);
+  let h = d.getHours();
+  const m = d.getMinutes();
+  const ampm = h >= 12 ? 'পিএম' : 'এএম';
+  h = h % 12; h = h ? h : 12; 
+  const bnNum = (num) => String(num).padStart(2, '0').replace(/[0-9]/g, w => '০১২৩৪৫৬৭৮৯'[w]);
+  return `${bnNum(h)}:${bnNum(m)} ${ampm}`;
+};
+
+// 🚀 রিয়েল-টাইম লাইভ কাউন্টডাউন কম্পোনেন্ট
+const LiveCountdown = ({ targetTimestamp }) => {
+  const [timeLeft, setTimeLeft] = useState('');
+
+  useEffect(() => {
+    if (!targetTimestamp) return;
+    const updateTimer = () => {
+      const diff = targetTimestamp - Date.now();
+      if (diff <= 0) {
+        setTimeLeft('কুইজ চলছে!');
+        return;
+      }
+      const d = Math.floor(diff / (1000 * 60 * 60 * 24));
+      const h = Math.floor((diff / (1000 * 60 * 60)) % 24);
+      const m = Math.floor((diff / 1000 / 60) % 60);
+      const s = Math.floor((diff / 1000) % 60);
+      const bn = (num) => String(num).padStart(2, '0').replace(/[0-9]/g, w => '০১২৩৪৫৬৭৮৯'[w]);
+      
+      setTimeLeft(`${bn(d)} দিন : ${bn(h)} ঘ : ${bn(m)} মি : ${bn(s)} সে`);
+    };
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    return () => clearInterval(interval);
+  }, [targetTimestamp]);
+
+  return <Text className="text-[#D47B00] text-[15px] ml-2 pt-0.5 tracking-wide" style={{ fontFamily: 'BanglaBold' }}>{timeLeft || 'হিসাব হচ্ছে...'}</Text>;
+};
 import SmartReaderEngine from './SmartReaderEnginebackup';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -31,16 +79,12 @@ const HeaderBadgeSkeleton = () => {
     ).start();
   }, []);
 
-  return (
-    <Animated.View style={{ opacity: shimmerAnim }} className="flex-row items-center bg-white pl-1.5 pr-4 py-1.5 rounded-full border border-[#EFE8D6] shadow-sm">
-      <View className="flex-row -space-x-3 mr-2.5">
+ return (
+    <Animated.View style={{ opacity: shimmerAnim }} className="flex-row items-center justify-center bg-white px-2 py-1.5 rounded-full border border-[#EFE8D6] shadow-sm">
+      <View className="flex-row -space-x-3">
         <View className="w-7 h-7 rounded-full bg-[#EAE4D4] border-2 border-white" />
         <View className="w-7 h-7 rounded-full bg-[#EAE4D4] border-2 border-white" />
         <View className="w-7 h-7 rounded-full bg-[#EAE4D4] border-2 border-white" />
-      </View>
-      <View>
-        <View className="w-16 h-3 bg-[#EAE4D4] rounded-full mb-1.5 mt-0.5" />
-        <View className="w-12 h-2 bg-[#EAE4D4] rounded-full" />
       </View>
     </Animated.View>
   );
@@ -147,19 +191,13 @@ const GuideSkeleton = () => {
   }, []);
 
   return (
-    <Animated.View style={{ opacity: shimmerAnim }} className="bg-white p-3 rounded-[16px] mb-4 border border-[#EFE8D6] flex-row items-center shadow-sm">
-      {/* থাম্বনেইল স্কেলেটন */}
-      <View className="w-16 h-16 rounded-xl bg-[#EAE4D4] mr-3" />
-      
-      {/* টেক্সট স্কেলেটন */}
-      <View className="flex-1 justify-center py-1">
-        <View className="w-3/4 h-4 bg-[#EAE4D4] rounded-full mb-2.5" />
-        <View className="w-1/2 h-3 bg-[#EAE4D4] rounded-full mb-2" />
-        <View className="w-1/3 h-2 bg-[#EAE4D4] rounded-full" />
+    <Animated.View style={{ opacity: shimmerAnim, width: '48%' }} className="bg-white rounded-[20px] mb-4 border border-[#EFE8D6] shadow-sm overflow-hidden">
+      <View className="w-full aspect-square bg-[#EAE4D4]" />
+      <View className="p-3">
+        <View className="w-full h-4 bg-[#EAE4D4] rounded-full mb-2" />
+        <View className="w-2/3 h-4 bg-[#EAE4D4] rounded-full mb-3" />
+        <View className="w-1/2 h-2 bg-[#EAE4D4] rounded-full" />
       </View>
-      
-      {/* ডানদিকের অ্যারো বাটন স্কেলেটন */}
-      <View className="w-8 h-8 bg-[#EAE4D4] rounded-full ml-2" />
     </Animated.View>
   );
 };
@@ -167,6 +205,17 @@ const GuideSkeleton = () => {
 const normalizeText = (text) => {
   if (text === null || text === undefined) return '';
   return String(text).replace(/[।.,;:'"()\-\s]/g, '').toLowerCase();
+};
+
+// 🚀 বাংলা নাম্বারকে ইংলিশ নাম্বারে কনভার্ট করার ফাংশন
+const toEnglishNumber = (numStr) => {
+  if (numStr === null || numStr === undefined) return '0';
+  const str = String(numStr);
+  const bengaliToEnglishMap = {
+    '০': '0', '১': '1', '২': '2', '৩': '3', '৪': '4',
+    '৫': '5', '৬': '6', '৭': '7', '৮': '8', '৯': '9'
+  };
+  return str.replace(/[০-৯]/g, match => bengaliToEnglishMap[match] || match);
 };
 
 // 💡 শর্ট অ্যানসার কার্ড
@@ -268,7 +317,7 @@ const MCQCard = ({ data, globalReveal, onOpenDiscussion }) => {
               <Text className="text-[#5C5549] text-[15px] leading-7" style={{ fontFamily: 'BanglaBold' }}>সঠিক উত্তর: {data.correctAnswer !== undefined ? data.correctAnswer : data.options?.[Number(data.answer)]}</Text>
             </View>
           )}
-          {data.explanation && (
+        {!!data.explanation && (
             <View className="bg-[#FDF6E3] p-4 rounded-xl border border-[#EFE8D6]">
               <Text className="text-[#5C5549] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>ব্যাখ্যা:</Text>
               <Text className="text-[#6B655B] text-[14px] mt-1 leading-6" style={{ fontFamily: 'BanglaRegular' }}>{data.explanation}</Text>
@@ -403,13 +452,85 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
   const [shareModalType, setShareModalType] = useState('success');
 
  // 🚀 Discussion Modal State
-  const [discussionVisible, setDiscussionVisible] = useState(false);
+ // 🚀 Custom Styled In-App Alert State
+  const [customAlert, setCustomAlert] = useState({ visible: false, title: '', message: '', type: 'error', showCancel: false, onConfirm: null });
+
+const [discussionVisible, setDiscussionVisible] = useState(false);
   const [activeDiscussionData, setActiveDiscussionData] = useState(null);
+  const [pendingJoinRequests, setPendingJoinRequests] = useState([]); // 🚀 পেন্ডিং জয়েন রিকোয়েস্ট রাখার স্টেট
 
   const openDiscussion = (questionData = null) => {
     setActiveDiscussionData(questionData);
     setDiscussionVisible(true);
   };
+
+  // 🚀 পুশ নোটিফিকেশন থেকে মেম্বার লিস্ট অটো-ওপেন করার লিসেনার
+  useEffect(() => {
+    const sub = DeviceEventEmitter.addListener('open_members_modal', () => {
+       handleMembersBadgeClick();
+    });
+    return () => sub.remove();
+  }, []);
+
+  // 🚀 জয়েন রিকোয়েস্ট অ্যাকসেপ্ট/রিজেক্ট করার ফাংশন
+  const handleJoinAction = async (targetUserEmail, actionType) => {
+    // 🚀 Optimistic UI: সাথে সাথে স্ক্রিন থেকে সরিয়ে ফেলা
+    setPendingJoinRequests(prev => prev.filter(req => req.userEmail !== targetUserEmail));
+    
+    try {
+      const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
+      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: actionType, guideId, userEmail: targetUserEmail })
+      });
+      
+      // 🚀 অ্যাকসেপ্ট করলে মেম্বার লিস্টটা রিফ্রেশ করে নতুন মেম্বারকে দেখানোর জন্য
+      if (actionType === 'accept_join_request') {
+         handleMembersBadgeClick();
+      }
+    } catch(e) {
+      console.log("Join Action Error", e);
+    }
+  };
+
+ // 🚀 কোশ্চেন ব্যাংক তৈরি হওয়ার পর ফ্রন্টএন্ডে রিয়েল-টাইম আপডেট করার লজিক
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('question_bank_added', ({ shareCode, newBankData }) => {
+      setChannelGuides(prevGuides => prevGuides.map(guide => {
+        if (guide.shareCode === shareCode) {
+          return {
+            ...guide,
+            failedItems: [...(guide.failedItems || []), newBankData]
+          };
+        }
+        return guide;
+      }));
+
+      // যদি সাবজেক্ট ভিউ ওপেন থাকে, তবে সেটাকেও আপডেট করতে হবে
+   // যদি সাবজেক্ট ভিউ ওপেন থাকে, তবে সেটাকেও আপডেট করতে হবে
+      setSelectedSubject(prevSubject => {
+        if (prevSubject && prevSubject.shareCode === shareCode) {
+          return {
+            ...prevSubject,
+            failedItems: [...(prevSubject.failedItems || []), newBankData]
+          };
+        }
+        return prevSubject;
+      });
+    });
+
+    // 🚀 নতুন: এক্সিস্টিং কোশ্চেন ব্যাংকে আপডেট হলে রিয়েল-টাইমে রিফ্রেশ করার ইভেন্ট
+    const updateSubscription = DeviceEventEmitter.addListener('question_bank_updated', ({ shareCode, updatedSubject }) => {
+      setChannelGuides(prevGuides => prevGuides.map(guide => guide.shareCode === shareCode ? updatedSubject : guide));
+      setSelectedSubject(prevSubject => (prevSubject && prevSubject.shareCode === shareCode) ? updatedSubject : prevSubject);
+    });
+
+    return () => {
+      subscription.remove();
+      updateSubscription.remove();
+    };
+  }, []);
 
   // 🚀 FIX: পুশ নোটিফিকেশন থেকে সিগন্যাল পেলে সাথে সাথে গ্লোবাল ডিসকাশন মডাল ওপেন করবে
   useEffect(() => {
@@ -477,9 +598,150 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
   const [channelGuides, setChannelGuides] = useState([]);
   const [isLoadingGuides, setIsLoadingGuides] = useState(false);
   const [readerVisible, setReaderVisible] = useState(false);
-  // 🚀 Refresh States
+ // 🚀 Refresh States
   const [refreshing, setRefreshing] = useState(false);
 
+ // 🚀 Quiz System States
+  const [activeQuizTab, setActiveQuizTab] = useState('upcoming');
+ const [isQuizCreateModalVisible, setIsQuizCreateModalVisible] = useState(false);
+  const [communityQuizzes, setCommunityQuizzes] = useState([]);
+  const [editingQuizId, setEditingQuizId] = useState(null); // 🚀 কুইজ এডিট ট্র্যাক করার স্টেট
+
+  // কুইজ তৈরির ফর্ম স্টেট
+  const [quizTitle, setQuizTitle] = useState('');
+  const [quizBanner, setQuizBanner] = useState('');
+ const [quizDate, setQuizDate] = useState('');
+  const [quizTime, setQuizTime] = useState('');
+  const [isQuizImageUploading, setIsQuizImageUploading] = useState(false);
+  
+  // 🚀 স্মার্ট টাইমার স্টেট
+  const [quizTimestamp, setQuizTimestamp] = useState(null);
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [showTimePicker, setShowTimePicker] = useState(false);
+  const [tempDate, setTempDate] = useState(new Date());
+  
+  // 🚀 Smart Resource Rules (টপিক ও টাইপ ফিল্টার সেভ রাখার জন্য)
+ const [quizSelectedRules, setquizSelectedRules] = useState([]);
+  const [isResourcePickerVisible, setIsResourcePickerVisible] = useState(false);
+  const [expandedResourceGuide, setExpandedResourceGuide] = useState(null); // Accordion State
+
+  // 🚀 ব্যানার আপলোডার (ImgBB)
+  const pickQuizBanner = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [16, 9], quality: 0.8
+    });
+    if (!result.canceled && result.assets[0].uri) {
+      const manipResult = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri, [{ resize: { width: 800 } }],
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      if (manipResult.base64) {
+        setQuizBanner(`data:image/jpeg;base64,${manipResult.base64}`);
+        setIsQuizImageUploading(true);
+        const imgUrl = await uploadToImgBB(manipResult.base64);
+        if (imgUrl) setQuizBanner(imgUrl);
+        setIsQuizImageUploading(false);
+      }
+    }
+  };
+
+  // 🚀 ইউজারের জন্য স্মার্ট কুইজ সিলেবাস ওপেন করা (Locked Mode)
+  const handleOpenQuizResources = (quiz) => {
+    let filteredQuestions = [];
+    
+    // ক্রিয়েটরের সেট করা রুলস অনুযায়ী প্রশ্ন ফিল্টার করা হচ্ছে
+    if (quiz.resources && quiz.resources.length > 0) {
+      quiz.resources.forEach(rule => {
+        const sourceGuide = channelGuides.find(g => g.id === rule.guideId);
+        if (sourceGuide && sourceGuide.failedItems) {
+          sourceGuide.failedItems.forEach(bank => {
+            if (bank.questions) {
+              bank.questions.forEach(q => {
+                const typeMatched = rule.allowedTypes.length === 0 || rule.allowedTypes.includes(q.type);
+                const topicMatched = rule.allowedTopics.length === 0 || rule.allowedTopics.includes(q.topic);
+                
+                if (typeMatched && topicMatched) {
+                  filteredQuestions.push(q);
+                }
+              });
+            }
+          });
+        }
+      });
+    }
+
+    if (filteredQuestions.length === 0) {
+      return Alert.alert("রিসোর্স খালি!", "এই কুইজের জন্য কোনো প্রশ্ন ফিল্টার করা যায়নি।");
+    }
+
+    const tempSyllabusGuide = {
+      id: 'quiz_syllabus_' + quiz.id,
+      notebookName: quiz.title + ' (সিলেবাস)',
+      failedItems: filteredQuestions, 
+      channelId: lessonItem?.channelId,
+      creatorName: lessonItem?.creatorName,
+      isQuizResourceMode: true 
+    };
+    
+    openBookInReader(tempSyllabusGuide);
+  };
+
+ // 🚀 2-Step Folder System States (Subject > Question Bank)
+  const [selectedSubject, setSelectedSubject] = useState(null);
+  const [isSubjectViewVisible, setIsSubjectViewVisible] = useState(false);
+
+  // 🚀 ট্র্যাক করবে কোন কোশ্চেন ব্যাংক কখন পড়া হয়েছে
+  const [bankReadTimestamps, setBankReadTimestamps] = useState({}); 
+
+  useEffect(() => {
+    const loadReadData = async () => {
+      try {
+        const data = await AsyncStorage.getItem('@bank_read_history');
+        if (data) setBankReadTimestamps(JSON.parse(data));
+      } catch(e) {}
+    };
+    loadReadData();
+  }, []);
+  // 🚀 Subject View (Study Pack) Bouncy Animations
+  const subjectSlideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
+  const subjectFadeAnim = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    if (isSubjectViewVisible) {
+      subjectSlideAnim.setValue(Dimensions.get('window').height); // অ্যানিমেশন যেন আটকে না যায়
+      Animated.parallel([
+        Animated.timing(subjectFadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+        Animated.spring(subjectSlideAnim, { toValue: 0, friction: 9, tension: 60, useNativeDriver: true })
+      ]).start();
+    }
+  }, [isSubjectViewVisible]);
+
+  const closeSubjectModalSmoothly = () => {
+    Animated.parallel([
+      Animated.timing(subjectFadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+      Animated.timing(subjectSlideAnim, { toValue: Dimensions.get('window').height, duration: 250, useNativeDriver: true })
+    ]).start(() => setIsSubjectViewVisible(false));
+  };
+
+const [isSubjectCreateVisible, setIsSubjectCreateVisible] = useState(false);
+  const [newSubjectTitle, setNewSubjectTitle] = useState('');
+  const [newSubjectThumbnail, setNewSubjectThumbnail] = useState('');
+  
+ // 🚀 Manage Question Bank States
+  const [isBankManageModalVisible, setIsBankManageModalVisible] = useState(false);
+  const [managingBank, setManagingBank] = useState(null);
+
+  // 🚀 New States for Smart Bulk Management[cite: 2]
+ const [isBankSelectionMode, setIsBankSelectionMode] = useState(false);
+  const [selectedBankQuestions, setSelectedBankQuestions] = useState({});
+  const [bankSearchQuery, setBankSearchQuery] = useState('');
+  const [activeBankFilter, setActiveBankFilter] = useState('সব');
+  const [activeBankTypeFilter, setActiveBankTypeFilter] = useState('সব'); // 🚀 নতুন যুক্ত করা হলো (Type Filter)
+  
+  // 🚀 Undo/Redo History States
+  const [bankHistory, setBankHistory] = useState([]);
+  const [historyStep, setHistoryStep] = useState(-1);
+  const saveTimeoutRef = useRef(null);
   // 🚀 মাস্টার রিফ্রেশ ফাংশন (সব ডাটা একসাথে আপডেট করবে)
   const onRefresh = React.useCallback(async () => {
     setRefreshing(true);
@@ -505,13 +767,33 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
           if (data.success) { setMembers(data.members); setTotalMemberCount(data.totalMembers !== null ? data.totalMembers : 0); } 
         }),
         
-        // ৩. রিভিউ ফেচ
+ // ৩. রিভিউ ফেচ
         fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
           body: JSON.stringify({ action: 'get_reviews', guideId })
-        }).then(res => res.json()).then(data => { if (data.success && data.reviews) setReviews(data.reviews); })
+        }).then(res => res.json()).then(data => { if (data.success && data.reviews) setReviews(data.reviews); }),
+
+        // ৪. কুইজ ফেচ
+        fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'fetch_community_quizzes', channelId: lessonItem?.channelId })
+        }).then(res => res.json()).then(data => { if (data.success && data.quizzes) setCommunityQuizzes(data.quizzes); })
       ]);
+
+      // 🚀 ৪. রিফ্রেশের সময় রিকোয়েস্ট স্ট্যাটাস হার্ড-চেক করা
+      const uid = await AsyncStorage.getItem('@current_user_id');
+      if (uid) {
+        const reqStatusRes = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'check_join_request', guideId, userEmail: uid })
+        });
+        const reqStatusData = await reqStatusRes.json();
+        setJoinRequestPending(!!reqStatusData.isPending);
+      }
+
     } catch (error) {
       console.log("Refresh Error:", error);
     } finally {
@@ -546,11 +828,11 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
     } catch (e) { return null; }
   };
 
- const pickGuideThumbnail = async () => {
+const pickGuideThumbnail = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
       mediaTypes: ImagePicker.MediaTypeOptions.Images,
       allowsEditing: true,
-      aspect: [16, 9],
+      aspect: [1, 1],
       quality: 0.8
     });
 
@@ -614,7 +896,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
     const fetchGuides = async () => {
       if (!visible) return;
       
-      if (lessonItem?.channelId) {
+    if (lessonItem?.channelId) {
         setIsLoadingGuides(true);
         try {
           const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
@@ -624,6 +906,16 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
           });
           const data = await res.json();
           if (data.success) setChannelGuides(data.guides);
+
+          // 🚀 কুইজ ফেচ করা হচ্ছে
+          const quizRes = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+            body: JSON.stringify({ action: 'fetch_community_quizzes', channelId: lessonItem.channelId })
+          });
+          const quizData = await quizRes.json();
+          if (quizData.success) setCommunityQuizzes(quizData.quizzes || []);
+
         } catch (e) { console.log(e); }
         finally { setIsLoadingGuides(false); }
       } else if (lessonItem && !lessonItem.channelId) {
@@ -692,8 +984,8 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
   const [isLoadingMembers, setIsLoadingMembers] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [hasMoreMembers, setHasMoreMembers] = useState(true);
-  // 🚀 অরিজিনাল কমিউনিটি বাউন্স অ্যানিমেশন 
-  const membersSlideAnim = useRef(new Animated.Value(1000)).current;
+ // 🚀 অরিজিনাল কমিউনিটি বাউন্স অ্যানিমেশন (ফুল স্ক্রিন সাপোর্ট)
+  const membersSlideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
   const membersFadeAnim = useRef(new Animated.Value(0)).current;
   // 🚀 Vibe Coder Magic: ফ্রেন্ড ও প্রোফাইল ট্র্যাকিং স্টেটস
  const [myFriends, setMyFriends] = useState([]);
@@ -748,7 +1040,16 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
     } catch (error) { console.log(error); }
   };
 
-  const handleAddFriend = async (targetEmail) => {
+ const handleAddFriend = async (targetEmail) => {
+    if (!isMember && lessonItem?.creatorEmail !== currentUserEmail) {
+      setCustomAlert({
+        visible: true,
+        title: "অ্যাক্সেস নেই!",
+        message: "শুধুমাত্র কমিউনিটি মেম্বাররাই একে অপরকে ফ্রেন্ড রিকোয়েস্ট পাঠাতে পারবে।",
+        type: "error"
+      });
+      return;
+    }
     const isAlreadyPending = pendingRequests.includes(targetEmail);
     if (isAlreadyPending) {
       setPendingRequests(prev => prev.filter(email => email !== targetEmail));
@@ -890,8 +1191,11 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
     Animated.spring(profileSlideAnim, { toValue: Dimensions.get('window').width, friction: 8, tension: 50, useNativeDriver: true }).start(() => setProfileStack([]));
   };
 
-  useEffect(() => {
+useEffect(() => {
     if (membersModalVisible) {
+      // 🚀 স্মার্ট লজিক: মডাল ওপেন হওয়ার ঠিক আগে পজিশন রিসেট, যাতে অ্যানিমেশন কখনো আটকে না যায়
+      membersSlideAnim.setValue(Dimensions.get('window').height);
+      
       Animated.parallel([
         Animated.timing(membersFadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
         Animated.spring(membersSlideAnim, { toValue: 0, friction: 9, tension: 60, useNativeDriver: true })
@@ -903,7 +1207,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
   const closeMembersModalSmoothly = () => {
     Animated.parallel([
       Animated.timing(membersFadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
-      Animated.timing(membersSlideAnim, { toValue: 1000, duration: 250, useNativeDriver: true })
+      Animated.timing(membersSlideAnim, { toValue: Dimensions.get('window').height, duration: 250, useNativeDriver: true })
     ]).start(() => setMembersModalVisible(false));
   };
 // 🚀 রেটিং ও রিভিউ বাউন্স অ্যানিমেশন লজিক
@@ -938,7 +1242,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
             setCurrentUserName(name);
           }
           
-          if (guideId) {
+       if (guideId) {
         try {
           const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
             method: 'POST',
@@ -949,13 +1253,40 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
           if (data.success) {
             setMembers(data.members);
             if (data.totalMembers !== null) setTotalMemberCount(data.totalMembers);
-            setIsMember(data.members.some(m => m.userEmail === uid));
+            
+            const isUserMember = data.members.some(m => m.userEmail === uid);
+            setIsMember(isUserMember);
             if (data.members.length < 10) setHasMoreMembers(false);
+
+            // 🚀 মেম্বার না হলে চেক করে দেখবে আগে থেকে রিকোয়েস্ট পেন্ডিং আছে কিনা
+          if (!isUserMember && uid) {
+              const reqStatusRes = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                body: JSON.stringify({ action: 'check_join_request', guideId, userEmail: uid })
+              });
+              const reqStatusData = await reqStatusRes.json();
+              if (reqStatusData.isPending) {
+                setJoinRequestPending(true);
+              }
+            }
+
+            // 🚀 ইউজার যদি অ্যাডমিন হয়, তবে পেন্ডিং রিকোয়েস্টগুলো ফেচ করবে
+            if (lessonItem?.creatorEmail === uid) {
+               fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                  body: JSON.stringify({ action: 'get_pending_join_requests', guideId })
+               }).then(res => res.json()).then(reqData => {
+                  if (reqData.success) setPendingJoinRequests(reqData.requests || []);
+               }).catch(e => console.log(e));
+            }
+
           }
         } catch (e) {} finally {
           setIsLoadingMembers(false); // 🚀 ডেটা লোড শেষ (আসল ছবি দেখাবে)
         }
-      } else {
+      }else {
         setIsLoadingMembers(false);
       }
     };
@@ -1037,34 +1368,72 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
     }
   };
 
-  const handleJoinCommunity = async () => {
+const [joinRequestPending, setJoinRequestPending] = useState(false);
+
+ const handleJoinCommunity = async () => {
     const uid = await AsyncStorage.getItem('@current_user_id');
     const name = await AsyncStorage.getItem(`@user_name_${uid}`) || 'শিক্ষার্থী';
     const avatar = await AsyncStorage.getItem(`@user_avatar_${uid}`) || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
     const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
 
-    // 🔴 ডিবাগিং কোড শুরু
-    console.log("\n🚀 === JOIN COMMUNITY DEBUG ===");
-    console.log("১. আমার ইউজার আইডি (UID):", uid);
-    console.log("২. যে কমিউনিটিতে জয়েন করছি তার আইডি (guideId):", guideId);
-    console.log("৩. লেসন আইটেমের ডেটা:", JSON.stringify(lessonItem));
-    console.log("=================================\n");
-    // 🔴 ডিবাগিং কোড শেষ
-
-    setIsMember(true);
-    setTotalMemberCount(prev => prev + 1);
-    setMembers(prev => [{ userEmail: uid, userName: name, userAvatar: avatar }, ...prev]); // নতুন মেম্বার শুরুতে
+    setJoinRequestPending(true); // 🚀 আগে অপ্টিমিস্টিক লোডিং দেখাবো
 
     try {
-      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+      const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-        body: JSON.stringify({ action: 'join_community', guideId, userEmail: uid, userName: name, userAvatar: avatar })
+        body: JSON.stringify({ action: 'send_join_request', guideId, userEmail: uid, userName: name, userAvatar: avatar })
       });
+      const result = await response.json();
 
-      DeviceEventEmitter.emit('refresh_library');
+      if (result.success) {
+        setCustomAlert({
+          visible: true,
+          title: "রিকোয়েস্ট পাঠানো হয়েছে! 🎉",
+          message: "অ্যাডমিন অ্যাপ্রুভ করলে আপনি এই কমিউনিটির মেম্বার হতে পারবেন।",
+          type: "success"
+        });
+      } else {
+        setJoinRequestPending(false); // 🚀 সার্ভার ফেইল করলে আগের অবস্থায় ফেরত যাবে
+        setCustomAlert({
+          visible: true,
+          title: "দুঃখিত!",
+          message: "রিকোয়েস্ট পাঠানো সম্ভব হয়নি। আবার চেষ্টা করুন।",
+          type: "error"
+        });
+      }
+    } catch (error) {
+      setJoinRequestPending(false); // 🚀 নেটওয়ার্ক এরর হলে আগের অবস্থায় ফেরত যাবে
+      setCustomAlert({
+        visible: true,
+        title: "কানেকশন এরর!",
+        message: "ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন।",
+        type: "error"
+      });
+    }
+  };
 
-    } catch (error) {}
+  const handleRemoveMember = (memberEmail, memberName) => {
+    setCustomAlert({
+      visible: true,
+      title: "মেম্বার রিমুভ",
+      message: `আপনি কি সত্যিই ${memberName}-কে কমিউনিটি থেকে রিমুভ করতে চান?`,
+      type: "error",
+      showCancel: true,
+      onConfirm: async () => {
+        setCustomAlert(prev => ({...prev, visible: false}));
+        setMembers(prev => prev.filter(m => (m.userEmail || m.email || m.id) !== memberEmail));
+        setTotalMemberCount(prev => prev - 1);
+        try {
+          const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
+          await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+            body: JSON.stringify({ action: 'remove_community_member', guideId, memberEmail })
+          });
+        } catch(e) {}
+      }
+    });
   };
   // ==========================================================
   
@@ -1197,7 +1566,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
       });
       const data = await res.json();
       
-      if (data.success) {
+    if (data.success) {
         setMembers(data.members);
         if (data.totalMembers !== null) setTotalMemberCount(data.totalMembers);
         
@@ -1205,6 +1574,17 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
         setIsMember(data.members.some(m => m.userEmail === uid));
         
         if (data.members.length < 10) setHasMoreMembers(false);
+
+        // 🚀 অ্যাডমিন হলে মেম্বার লিস্ট ওপেন করার সময় পেন্ডিং রিকোয়েস্টও ফেচ করবে
+        if (lessonItem?.creatorEmail === uid) {
+           fetch('https://growshelby-api.vercel.app/api/update_coins', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+              body: JSON.stringify({ action: 'get_pending_join_requests', guideId })
+           }).then(res => res.json()).then(reqData => {
+              if (reqData.success) setPendingJoinRequests(reqData.requests || []);
+           }).catch(e => console.log(e));
+        }
       }
     } catch (e) {
       console.log("Member Fetch Error:", e);
@@ -1245,14 +1625,15 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
   };
 
  // 🚀 ফিক্স: এটা নেটিভ স্ক্রিন হলে View হিসেবে রেন্ডার হবে, আর প্রোফাইল থেকে ওপেন হলে Modal হিসেবে!
-  const Wrapper = isNativeScreen ? View : Modal;
-  const wrapperProps = isNativeScreen 
-    ? { style: { flex: 1 } } 
-    : { animationType: "none", onRequestClose: closePageWithAnimation, transparent: true, visible: visible, statusBarTranslucent: true };
+ const Wrapper = isNativeScreen ? View : Modal;
+ const wrapperProps = isNativeScreen 
+   ? { style: { flex: 1 } } 
+   : { animationType: "none", onRequestClose: closePageWithAnimation, transparent: true, visible: visible, statusBarTranslucent: true };
 
-  return (
-    <Wrapper {...wrapperProps}>
-      <Animated.View style={{ flex: 1, transform: [{ translateY: pageSlideAnim }] }}>
+ return (
+   <Wrapper {...wrapperProps}>
+     <>
+       <Animated.View style={{ flex: 1, transform: [{ translateY: pageSlideAnim }] }}>
         <View className="flex-1 bg-[#FDF6E3]">
         
         {/* 🚀 Floating Zen Mode Header */}
@@ -1272,12 +1653,12 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
           {(isLoadingMembers && members.length === 0) || refreshing || isInitialLoading ? (
             <HeaderBadgeSkeleton />
           ) : (
-          <TouchableOpacity 
+       <TouchableOpacity 
               activeOpacity={0.7} 
               onPress={handleMembersBadgeClick} 
-              className="flex-row items-center bg-white pl-1.5 pr-4 py-1.5 rounded-full border border-[#EFE8D6] shadow-sm"
+              className="flex-row items-center justify-center bg-white px-2 py-1.5 rounded-full border border-[#EFE8D6] shadow-sm"
             >
-          <View className="flex-row -space-x-3 mr-2.5">
+              <View className="flex-row -space-x-3">
                 {members.slice(0, 3).map((m, i) => (
                   <Image 
                     key={m.userEmail || `avatar_${i}`} 
@@ -1285,28 +1666,19 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
                     className="w-7 h-7 rounded-full border-2 border-white bg-[#EAE4D4]" 
                   />
                 ))}
-                   {totalMemberCount > 3 && (
-                     <View className="w-7 h-7 rounded-full bg-[#F3F4F6] border-2 border-white items-center justify-center">
-                       <Text className="text-[10px] text-[#4B5563]" style={{ fontFamily: 'BanglaBold' }}>
-                         +{totalMemberCount > 99 ? '99' : totalMemberCount - 3}
-                       </Text>
-                     </View>
-                   )}
-                   {totalMemberCount === 0 && (
-                     <View className="w-7 h-7 rounded-full bg-[#F3F4F6] border-2 border-white items-center justify-center">
-                       <FontAwesome5 name="users" size={10} color="#9CA3AF" />
-                     </View>
-                   )}
-                 </View>
-                 
-                 <View>
-                    <Text className="text-[13px] text-[#1F2937]" style={{ fontFamily: 'BanglaBold', lineHeight: 18 }}>
-                      {totalMemberCount > 0 ? `${totalMemberCount} জন স্টুডেন্ট` : 'স্টাডি স্কোয়াড'}
+                {totalMemberCount > 3 && (
+                  <View className="w-7 h-7 rounded-full bg-[#F3F4F6] border-2 border-white items-center justify-center">
+                    <Text className="text-[10px] text-[#4B5563]" style={{ fontFamily: 'BanglaBold' }}>
+                      +{totalMemberCount > 99 ? '99' : totalMemberCount - 3}
                     </Text>
-                    <Text className="text-[10px] text-[#6B7280]" style={{ fontFamily: 'BanglaRegular', lineHeight: 12 }}>
-                      {totalMemberCount > 0 ? 'যুক্ত আছেন' : 'প্রথম মেম্বার হোন!'}
-                    </Text>
-                 </View>
+                  </View>
+                )}
+                {totalMemberCount === 0 && (
+                  <View className="w-7 h-7 rounded-full bg-[#F3F4F6] border-2 border-white items-center justify-center">
+                    <FontAwesome5 name="users" size={10} color="#9CA3AF" />
+                  </View>
+                )}
+              </View>
             </TouchableOpacity>
           )}
 
@@ -1374,25 +1746,51 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
                   </View>
                 </View>
 
-                {/* 🚀 রেটিং ও রিভিউ বাটন */}
+           {/* 🚀 রেটিং ও রিভিউ বাটন */}
                 <TouchableOpacity activeOpacity={0.8} onPress={() => setIsReviewModalVisible(true)} className="ml-2">
                   <View className="rounded-[16px] pb-[4px] bg-[#D47B00]">
                     <View className="px-4 py-2 rounded-[16px] flex-row items-center justify-center bg-[#FF9600]">
                       <FontAwesome5 name="star" size={13} color="#FFFFFF" solid />
-                      <Text className="text-white text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>
-                        {averageRating > 0 ? averageRating : '0.0'} ({reviews.length})
-                      </Text>
+                     <Text className="text-white text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>
+  {averageRating > 0 ? toEnglishNumber(averageRating) : '0.0'} ({toEnglishNumber(reviews.length)})
+</Text>
                     </View>
                   </View>
                 </TouchableOpacity>
                 
-                {/* 🚀 Join / Community Button */}
-                <TouchableOpacity activeOpacity={0.8} onPress={() => isMember ? openDiscussion(null) : handleJoinCommunity()} className="ml-2">
-                  <View className={`rounded-[16px] pb-[4px] ${isMember ? 'bg-[#1073A4]' : 'bg-[#D47B00]'}`}>
-                    <View className={`px-4 py-2 rounded-[16px] flex-row items-center justify-center ${isMember ? 'bg-[#1CB0F6]' : 'bg-[#FF9600]'}`}>
-                      <FontAwesome5 name={isMember ? "users" : "user-plus"} size={13} color="#FFFFFF" />
+         {/* 🚀 Join / Community Button */}
+                <TouchableOpacity 
+                  activeOpacity={0.8} 
+                  onPress={() => {
+                    if (isMember) {
+                      openDiscussion(null);
+                    } else if (joinRequestPending) {
+                      // 🚀 পেন্ডিং রিকোয়েস্ট ক্যানসেল করার অপশন
+                      Alert.alert("রিকোয়েস্ট বাতিল", "আপনি কি জয়েন রিকোয়েস্ট ক্যানসেল করতে চান?", [
+                        { text: "না", style: "cancel" },
+                        { text: "হ্যাঁ", style: "destructive", onPress: async () => {
+                           setJoinRequestPending(false); // Optimistic UI
+                           try {
+                             const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
+                             await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                               method: 'POST',
+                               headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                               body: JSON.stringify({ action: 'cancel_join_request', guideId, userEmail: currentUserEmail })
+                             });
+                           } catch(e) {}
+                        }}
+                      ]);
+                    } else {
+                      handleJoinCommunity();
+                    }
+                  }} 
+                  className="ml-2"
+                >
+                  <View className={`rounded-[16px] pb-[4px] ${isMember ? 'bg-[#1073A4]' : (joinRequestPending ? 'bg-[#D63939]' : 'bg-[#D47B00]')}`}>
+                    <View className={`px-4 py-2 rounded-[16px] flex-row items-center justify-center ${isMember ? 'bg-[#1CB0F6]' : (joinRequestPending ? 'bg-[#FF4B4B]' : 'bg-[#FF9600]')}`}>
+                      <FontAwesome5 name={isMember ? "users" : (joinRequestPending ? "times" : "user-plus")} size={13} color="#FFFFFF" />
                       <Text className="text-white text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>
-                        {isMember ? 'কমিউনিটি' : 'জয়েন করুন'}
+                        {isMember ? 'কমিউনিটি' : (joinRequestPending ? 'ক্যানসেল' : 'জয়েন করুন')}
                       </Text>
                     </View>
                   </View>
@@ -1427,67 +1825,77 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
             <View className="flex-row items-center justify-between mb-4">
               <Text className="text-[18px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>📚 স্টাডি প্যাক সমুহ ({channelGuides.length})</Text>
               
-              {/* 🚀 ক্রিয়েটর হলে আনলিমিটেড নতুন গাইড বানানোর বাটন দেখাবে */}
+         {/* 🚀 ক্রিয়েটর হলে নতুন সাবজেক্ট বানানোর বাটন দেখাবে */}
               {lessonItem?.creatorEmail === currentUserEmail && channelGuides.length > 0 && (
                 <TouchableOpacity 
                   activeOpacity={0.8}
-                  onPress={() => DeviceEventEmitter.emit('open_create_guide_modal')} 
+                  onPress={() => setIsSubjectCreateVisible(true)}
                   className="bg-[#1899D6]/10 px-3 py-1.5 rounded-full border border-[#1899D6]/30 flex-row items-center"
                 >
                   <FontAwesome5 name="plus" size={12} color="#1899D6" />
-                  <Text className="text-[#1899D6] text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>নতুন গাইড</Text>
+                  <Text className="text-[#1899D6] text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>নতুন সাবজেক্ট</Text>
                 </TouchableOpacity>
               )}
             </View>
             
-         {isLoadingGuides || refreshing || isInitialLoading ? (
-              <View className="mt-1">
+      {isLoadingGuides || refreshing || isInitialLoading ? (
+              <View className="flex-row flex-wrap justify-between mt-2">
+                <GuideSkeleton />
                 <GuideSkeleton />
                 <GuideSkeleton />
                 <GuideSkeleton />
               </View>
            ) : (
-               [...channelGuides].sort((a, b) => (b.views || 0) - (a.views || 0)).map((guide, idx) => (
-                  <View key={idx} className="bg-white p-3 rounded-[16px] mb-4 border border-[#EFE8D6] shadow-sm">
-                  {/* 🚀 বই ওপেন করার মেইন অংশ */}
-                  <TouchableOpacity activeOpacity={0.8} onPress={() => openBookInReader(guide)} className="flex-row items-center">
-                    <View className="w-16 h-16 rounded-xl overflow-hidden bg-[#F0F2F5] mr-3 border border-[#E5E5E5]">
+              <View className="flex-row flex-wrap justify-between mt-2">
+               {[...channelGuides].sort((a, b) => (b.views || 0) - (a.views || 0)).map((guide, idx) => (
+                  <View key={idx} className="bg-white rounded-[20px] mb-4 border border-[#EFE8D6] shadow-sm overflow-hidden" style={{ width: '48%' }}>
+              {/* 🚀 Pinterest Style Card (Two-Column) */}
+               <TouchableOpacity activeOpacity={0.9} onPress={() => {
+                    if (!isMember && lessonItem?.creatorEmail !== currentUserEmail) {
+                      setCustomAlert({
+                        visible: true,
+                        title: "অ্যাক্সেস নেই!",
+                        message: "এই স্টাডি প্যাকটি দেখতে হলে আপনাকে অবশ্যই এই কমিউনিটির মেম্বার হতে হবে।",
+                        type: "error"
+                      });
+                      return;
+                    }
+                    setSelectedSubject(guide); 
+                    setIsSubjectViewVisible(true); 
+                  }}>
+                    {/* কভার ইমেজ (Square aspect ratio 1:1) */}
+                    <View className="w-full aspect-square bg-[#F0F2F5] relative border-b border-[#EFE8D6]">
                       {guide.thumbnail ? (
                         <Image source={{ uri: guide.thumbnail }} className="w-full h-full" resizeMode="cover" />
                       ) : (
                         <View className="w-full h-full items-center justify-center bg-[#1899D6]/10">
-                          <FontAwesome5 name="book-open" size={20} color="#1899D6" />
+                          <FontAwesome5 name="book-open" size={32} color="#1899D6" />
                         </View>
                       )}
                     </View>
-
-                    <View className="flex-1 justify-center">
-                       <Text className="text-[#3D382F] text-[16px] mb-1 leading-6" style={{ fontFamily: 'BanglaBold' }} numberOfLines={2}>{guide.notebookName}</Text>
-                       <Text className="text-[#D47B00] text-[12px] mb-1" style={{ fontFamily: 'BanglaBold' }}>{guide.chapter || 'সাধারণ টপিক'}</Text>
-                      <Text className="text-[#827B6E] text-[11px]" style={{ fontFamily: 'BanglaRegular' }}>{guide.failedItems?.length || 0} টি প্রশ্ন • {guide.views || 0} জন পড়েছে</Text>
-                    </View>
                     
-                    <View className="w-8 h-8 bg-[#FDF6E3] rounded-full items-center justify-center ml-2 border border-[#EFE8D6]">
-                      <FontAwesome5 name="chevron-right" size={12} color="#D47B00" />
+                    {/* কার্ডের টেক্সট অংশ (ছবির নিচে ক্লিন ব্যাকগ্রাউন্ডে) */}
+                    <View className="p-3">
+                       <Text className="text-[#3D382F] text-[14px] leading-[20px] mb-1.5" style={{ fontFamily: 'BanglaBold' }} numberOfLines={2}>{guide.notebookName}</Text>
+                       <Text className="text-[#827B6E] text-[11px]" style={{ fontFamily: 'BanglaRegular' }}>{guide.failedItems?.length || 0} টি প্যাক • {guide.views || 0} ভিউ</Text>
                     </View>
                   </TouchableOpacity>
 
-                  {/* 🚀 শুধুমাত্র ক্রিয়েটরের জন্য এডিট ও ডিলিট অপশন */}
+                  {/* 🚀 শুধুমাত্র ক্রিয়েটরের জন্য এডিট ও ডিলিট অপশন (ছোট আইকন) */}
                   {lessonItem?.creatorEmail === currentUserEmail && (
-                    <View className="flex-row justify-end mt-3 pt-3 border-t border-[#EFE8D6] space-x-3">
-                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleEditGuideClick(guide)} className="flex-row items-center bg-[#FDF6E3] px-3 py-1.5 rounded-lg border border-[#EFE8D6]">
+                    <View className="flex-row justify-between px-3 pb-3">
+                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleEditGuideClick(guide)} className="w-8 h-8 rounded-full bg-[#FDF6E3] border border-[#EFE8D6] items-center justify-center">
                         <FontAwesome5 name="pen" size={10} color="#D47B00" />
-                        <Text className="text-[#D47B00] text-[12px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>এডিট</Text>
                       </TouchableOpacity>
                       
-                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleDeleteChannelGuide(guide)} className="flex-row items-center bg-[#FFF4E5] px-3 py-1.5 rounded-lg border border-[#FFDDAA]">
+                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleDeleteChannelGuide(guide)} className="w-8 h-8 rounded-full bg-[#FFF4E5] border border-[#FFDDAA] items-center justify-center">
                         <FontAwesome5 name="trash" size={10} color="#FF4B4B" />
-                        <Text className="text-[#FF4B4B] text-[12px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>ডিলিট</Text>
                       </TouchableOpacity>
                     </View>
                   )}
                 </View>
-              ))
+              ))}
+              </View>
             )}
             
            {channelGuides.length === 0 && !isLoadingGuides && (
@@ -1505,25 +1913,22 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
                         <FontAwesome5 name="play" size={16} color="#FFF" style={{ marginLeft: 3 }} />
                       </View>
                       <View className="flex-1 justify-center">
-                        <Text className="text-[17px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>যেভাবে নিজের কমিউনিটি বানাবে!</Text>
+                        <Text className="text-[17px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>যেভাবে নিজের কমিউনিটি সাজাবে!</Text>
                       </View>
                     </TouchableOpacity>
 
-                    {/* 🚀 প্রথম গাইড পাবলিশ করার কার্ড */}
+                 {/* 🚀 প্রথম সাবজেক্ট পাবলিশ করার কার্ড */}
                     <TouchableOpacity 
                       activeOpacity={0.8} 
-                    onPress={() => {
-                        // 🚀 কমিউনিটি পেজ বন্ধ না করেই সরাসরি গাইড তৈরির মোডাল ওপেন হবে
-                        DeviceEventEmitter.emit('open_create_guide_modal');
-                      }}
+                      onPress={() => setIsSubjectCreateVisible(true)}
                       className="bg-white p-6 rounded-[20px] border-2 border-[#1899D6]/30 border-dashed items-center justify-center shadow-sm"
                     >
                       <View className="w-16 h-16 bg-[#1899D6]/10 rounded-full items-center justify-center mb-4">
                         <FontAwesome5 name="plus" size={24} color="#1899D6" />
                       </View>
-                      <Text className="text-[18px] text-[#3D382F] mb-2" style={{ fontFamily: 'BanglaBold' }}>প্রথম গাইড পাবলিশ করুন</Text>
+                      <Text className="text-[18px] text-[#3D382F] mb-2" style={{ fontFamily: 'BanglaBold' }}>প্রথম সাবজেক্ট তৈরি করুন</Text>
                       <Text className="text-[13px] text-[#777777] text-center px-4 leading-5" style={{ fontFamily: 'BanglaRegular' }}>
-                        আপনার স্কোয়াড মেম্বারদের জন্য এমসিকিউ বা প্রশ্ন-উত্তরের স্মার্ট গাইড তৈরি করে শেয়ার করুন।
+                        আপনার স্কোয়াড মেম্বারদের জন্য নতুন সাবজেক্ট তৈরি করে তার ভেতরে কোশ্চেন ব্যাংক অ্যাড করুন।
                       </Text>
                     </TouchableOpacity>
                   </>
@@ -1534,6 +1939,163 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
                     <Text className="text-[#827B6E] text-[15px] mt-4" style={{ fontFamily: 'BanglaBold' }}>এখনো কোনো গাইড পাবলিশ করা হয়নি!</Text>
                   </View>
                 )}
+           </View>
+            )}
+          </View>
+
+        {/* ==========================================
+              🏆 কুইজ সেকশন (Pinterest & Duolingo Minimalist Style)
+              ========================================== */}
+          <View className="px-5 pt-8 pb-16">
+            
+            <View className="flex-row items-center justify-between mb-5 mt-2">
+              <Text className="text-[19px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>🏆 কুইজ প্রতিযোগিতা</Text>
+              
+          {/* ক্রিয়েটরের জন্য কুইজ অ্যাড করার বাটন */}
+              {lessonItem?.creatorEmail === currentUserEmail && (
+                <TouchableOpacity 
+                  activeOpacity={0.8}
+                  onPress={() => {
+                    // 🚀 নতুন কুইজের জন্য ফিল্ড ক্লিয়ার রাখা
+                  setEditingQuizId(null);
+                    setQuizTitle('');
+                    setQuizBanner('');
+                    setQuizDate('');
+                    setQuizTime('');
+                    setquizSelectedRules([]);
+                    setQuizTimestamp(null);
+                    setTempDate(new Date());
+                    setIsQuizCreateModalVisible(true);
+                  }}
+                  className="bg-[#D47B00]/10 px-3.5 py-1.5 rounded-full flex-row items-center"
+                >
+                  <FontAwesome5 name="plus" size={12} color="#D47B00" />
+                  <Text className="text-[#D47B00] text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>নতুন</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            {/* Quiz Tabs (Borderless, minimal pill indicator style) */}
+            <View className="flex-row mb-6">
+              <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveQuizTab('upcoming')} className="mr-5 relative pb-1">
+                <Text className={`text-[16px] pt-1 ${activeQuizTab === 'upcoming' ? 'text-[#3D382F]' : 'text-[#AFAFAF]'}`} style={{ fontFamily: 'BanglaBold' }}>আপকামিং</Text>
+                {activeQuizTab === 'upcoming' && <View className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#3D382F] rounded-t-full" />}
+              </TouchableOpacity>
+              <TouchableOpacity activeOpacity={0.8} onPress={() => setActiveQuizTab('past')} className="relative pb-1">
+                <Text className={`text-[16px] pt-1 ${activeQuizTab === 'past' ? 'text-[#3D382F]' : 'text-[#AFAFAF]'}`} style={{ fontFamily: 'BanglaBold' }}>অতীতের কুইজ</Text>
+                {activeQuizTab === 'past' && <View className="absolute bottom-0 left-0 right-0 h-[3px] bg-[#3D382F] rounded-t-full" />}
+              </TouchableOpacity>
+            </View>
+
+         {/* Live UI for Upcoming Quizzes (Mapped from State) */}
+            {activeQuizTab === 'upcoming' ? (
+              communityQuizzes.length > 0 ? communityQuizzes.map((quiz, idx) => (
+                <View key={idx} className="mb-8">
+            {/* Edge-to-edge rounded image (Pinterest style) */}
+                  <View className="w-full aspect-[16/9] bg-[#EAE4D4] rounded-[24px] overflow-hidden mb-4 shadow-sm relative">
+                    <Image source={{ uri: quiz.banner || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1000' }} className="w-full h-full" resizeMode="cover" />
+                    {/* রিসোর্সের পরিমাণ দেখানোর জন্য ছোট্ট একটি ব্যাজ */}
+                    <View className="absolute top-3 left-3 bg-black/60 px-3 py-1.5 rounded-full z-10 backdrop-blur-md">
+                       <Text className="text-white text-[11px]" style={{ fontFamily: 'BanglaBold' }}>
+                         {quiz.resources?.length || 0} টি প্যাক
+                       </Text>
+                    </View>
+                  </View>
+
+                  {/* Details Area */}
+                  <View className="px-1">
+                    <View className="flex-row items-start justify-between mb-2">
+                      <Text className="text-[#3D382F] text-[20px] leading-7 flex-1 pr-2" style={{ fontFamily: 'BanglaBold' }}>{quiz.title}</Text>
+                      
+                      {/* 🚀 ক্রিয়েটরের জন্য এডিট ও ডিলিট বাটন (টাইটেলের পাশে ক্লিন UI) */}
+                      {lessonItem?.creatorEmail === currentUserEmail && (
+                        <View className="flex-row space-x-2 mt-1">
+                          <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                            const currentQuizId = quiz._id || quiz.id;
+                            setEditingQuizId(currentQuizId);
+                            setQuizTitle(quiz.title || '');
+                            setQuizBanner(quiz.banner || '');
+                        setQuizDate(quiz.dateText !== 'শীঘ্রই' ? quiz.dateText : '');
+                            setQuizTime(quiz.timeText !== '--:--' ? quiz.timeText : '');
+                            setquizSelectedRules(quiz.resources || []);
+                            setQuizTimestamp(quiz.targetTimestamp || null);
+                            if (quiz.targetTimestamp) setTempDate(new Date(quiz.targetTimestamp));
+                            setIsQuizCreateModalVisible(true);
+                          }} className="w-8 h-8 rounded-full bg-[#FDF6E3] border border-[#EFE8D6] items-center justify-center shadow-sm">
+                            <FontAwesome5 name="pen" size={11} color="#D47B00" />
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                            Alert.alert("কুইজ ডিলিট", "আপনি কি সত্যিই এই কুইজটি ডিলিট করতে চান?", [
+                              { text: "না", style: "cancel" },
+                              { text: "হ্যাঁ, মুছুন", style: "destructive", onPress: async () => {
+                                  const currentQuizId = quiz._id || quiz.id;
+                                  setCommunityQuizzes(prev => prev.filter(q => (q._id || q.id) !== currentQuizId)); 
+                                  try {
+                                    await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                                      body: JSON.stringify({ action: 'delete_quiz', channelId: lessonItem?.channelId || currentUserEmail, quizId: currentQuizId })
+                                    });
+                                  } catch(e) {}
+                              }}
+                            ]);
+                          }} className="w-8 h-8 rounded-full bg-[#FFF4E5] border border-[#FFDDAA] items-center justify-center shadow-sm">
+                            <FontAwesome5 name="trash" size={11} color="#FF4B4B" />
+                          </TouchableOpacity>
+                        </View>
+                      )}
+                    </View>
+                    
+                    <View className="flex-row items-center mb-5">
+                      <FontAwesome5 name="calendar-alt" size={12} color="#827B6E" />
+                      <Text className="text-[#827B6E] text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaRegular' }}>{quiz.dateText || 'শীঘ্রই আসছে'}</Text>
+                      <Text className="text-[#D7D7D7] mx-2.5">•</Text>
+                      <FontAwesome5 name="clock" size={12} color="#827B6E" />
+                      <Text className="text-[#827B6E] text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaRegular' }}>{quiz.timeText || '--:--'}</Text>
+                    </View>
+                    
+                    {/* Action Buttons */}
+                    <View className="flex-row space-x-3">
+                      {/* 🚀 ওয়ার্কিং রিসোর্সেস বাটন */}
+                      <TouchableOpacity 
+                        activeOpacity={0.8} 
+                        onPress={() => handleOpenQuizResources(quiz)}
+                        className="bg-white px-6 py-3.5 rounded-[16px] border-2 border-[#EFE8D6] flex-row items-center justify-center shadow-sm"
+                      >
+                        <FontAwesome5 name="book-reader" size={16} color="#D47B00" />
+                      </TouchableOpacity>
+                      
+                      {/* ডাইনামিক টাইমার / কুইজ শুরু বাটন */}
+                  {quiz.isReady ? ( 
+                        <TouchableOpacity activeOpacity={0.8} className="flex-1 bg-[#58CC02] py-3.5 rounded-[16px] flex-row items-center justify-center border-b-[4px] border-[#58A700] active:border-b-0 active:mt-[4px] transition-all">
+                          <FontAwesome5 name="play-circle" size={16} color="#FFFFFF" />
+                          <Text className="text-white text-[16px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>কুইজ শুরু করুন</Text>
+                        </TouchableOpacity>
+                      ) : (
+                        <View className="flex-1 bg-[#FFF4E5] py-3.5 rounded-[16px] flex-row items-center justify-center border-2 border-[#FFDDAA]">
+                          <FontAwesome5 name="clock" size={14} color="#D47B00" />
+                          {quiz.targetTimestamp ? (
+                            <LiveCountdown targetTimestamp={quiz.targetTimestamp} />
+                          ) : (
+                            <Text className="text-[#D47B00] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>তারিখ ঠিক হয়নি</Text>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  </View>
+                </View>
+              )) : (
+                <View className="items-center justify-center py-10">
+                  <FontAwesome5 name="clock" size={32} color="#EAE4D4" />
+                  <Text className="text-[#AFAFAF] text-[14px] mt-4 pt-1" style={{ fontFamily: 'BanglaBold' }}>আপকামিং কোনো কুইজ নেই</Text>
+                </View>
+              )
+            ) : (
+              /* Empty state for Past Quizzes (Minimalist) */
+              <View className="items-center justify-center py-12 mt-2">
+                <FontAwesome5 name="trophy" size={36} color="#EAE4D4" />
+                <Text className="text-[#827B6E] text-[15px] mt-4 pt-1" style={{ fontFamily: 'BanglaBold' }}>কোনো অতীতের কুইজ নেই</Text>
               </View>
             )}
           </View>
@@ -1553,7 +2115,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
                 <View className="w-8 h-8 bg-[#FF9600]/10 rounded-full items-center justify-center mr-2">
                   <FontAwesome5 name="youtube" size={14} color="#FF9600" />
                 </View>
-                <Text className="text-[16px] text-[#3D382F] pt-1" style={{ fontFamily: 'BanglaBold' }}>যেভাবে নিজের কমিউনিটি বানাবে</Text>
+                <Text className="text-[16px] text-[#3D382F] pt-1" style={{ fontFamily: 'BanglaBold' }}>যেভাবে নিজের কমিউনিটি সাজাবে</Text>
               </View>
               
               <TouchableOpacity 
@@ -1585,6 +2147,50 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
         </View>
       </Modal>
       
+   {/* 🚀 Custom Alert Popup (In-App Styling) */}
+      <Modal visible={customAlert.visible} transparent={true} animationType="fade" onRequestClose={() => setCustomAlert(prev => ({...prev, visible: false}))}>
+        <View className="flex-1 bg-black/60 justify-center items-center px-5">
+          <View className="bg-[#FFFDF8] w-full max-w-[340px] rounded-[32px] p-6 items-center border-b-4 border-[#EFE8D6] shadow-lg">
+            
+            {customAlert.type === 'success' ? (
+              <View className="w-20 h-20 bg-[#D7FFB8] rounded-full items-center justify-center mb-5 border-4 border-[#8BA85E]">
+                <FontAwesome5 name="check" size={36} color="#58A700" solid />
+              </View>
+            ) : (
+              <View className="w-20 h-20 bg-[#FFF4E5] rounded-full items-center justify-center mb-5 border-4 border-[#FFC800]">
+                <FontAwesome5 name="exclamation" size={36} color="#D47B00" solid />
+              </View>
+            )}
+            
+            <Text className="text-[22px] text-[#3D382F] text-center mb-3" style={{ fontFamily: 'BanglaBold' }}>{customAlert.title}</Text>
+            <Text className="text-[14px] text-[#6B655B] text-center px-2 leading-6 mb-8" style={{ fontFamily: 'BanglaRegular' }}>{customAlert.message}</Text>
+            
+            <View className="flex-row w-full space-x-3">
+              {customAlert.showCancel && (
+                <TouchableOpacity activeOpacity={0.8} onPress={() => setCustomAlert(prev => ({...prev, visible: false}))} className="flex-1">
+                  <View className="bg-[#EAE4D4] rounded-[20px] pb-[6px]">
+                    <View className="bg-[#F5F5F5] rounded-[20px] py-3.5 flex-row justify-center items-center">
+                      <Text className="text-[#6B655B] text-[15px] pt-1" style={{ fontFamily: 'BanglaBold' }}>বাতিল</Text>
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              )}
+              <TouchableOpacity activeOpacity={0.8} onPress={() => {
+                if (customAlert.onConfirm) customAlert.onConfirm();
+                else setCustomAlert(prev => ({...prev, visible: false}));
+              }} className={customAlert.showCancel ? "flex-1" : "w-full"}>
+                <View className={`${customAlert.type === 'success' ? 'bg-[#58A700]' : 'bg-[#D47B00]'} rounded-[20px] pb-[6px]`}>
+                  <View className={`${customAlert.type === 'success' ? 'bg-[#58CC02]' : 'bg-[#FF9600]'} rounded-[20px] py-3.5 flex-row justify-center items-center`}>
+                    <Text className="text-white text-[15px] pt-1" style={{ fontFamily: 'BanglaBold' }}>{customAlert.showCancel ? 'হ্যাঁ' : 'ঠিক আছে'}</Text>
+                  </View>
+                </View>
+              </TouchableOpacity>
+            </View>
+
+          </View>
+        </View>
+      </Modal>
+
       {/* 🚀 Custom Share Modal UI */}
       <Modal visible={shareModalVisible} transparent={true} animationType="fade" onRequestClose={() => setShareModalVisible(false)}>
         <View className="flex-1 bg-black/60 justify-center items-center px-5">
@@ -1637,28 +2243,29 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
           
           {/* পেছনের ডার্ক ফেড অ্যানিমেশন */}
           <Animated.View style={{ opacity: membersFadeAnim }} className="absolute inset-0 bg-black/60" />
-          <TouchableOpacity className="flex-1" activeOpacity={1} onPress={closeMembersModalSmoothly} />
           
-          {/* 🚀 এই Animated.View টাই তোমার কমিউনিটি বাটনের মতো পারফেক্ট লাফ দিয়ে উঠবে! */}
+         {/* 🚀 এই Animated.View টাই রিভিউ মডালের মতো সেম সাইজ এবং স্টাইলে ওপেন হবে! */}
           <Animated.View 
             style={{ transform: [{ translateY: membersSlideAnim }] }}
-            className="bg-[#FFFDF8] rounded-t-[32px] h-[65%] p-6 pt-5"
+            className="bg-[#FFFDF8] rounded-t-[32px] h-[85%] overflow-hidden relative"
           >
-            <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mb-4" />
+            {/* Dragger */}
+            <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mt-5 mb-4" />
             
-          <View className="flex-row justify-between items-center mb-2 pb-3 border-b border-[#EFE8D6]">
+            {/* Header */}
+            <View className="flex-row justify-between items-center px-6 pb-3 border-b border-[#EFE8D6]">
                 <View>
                   <Text className="text-[18px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>স্টাডি স্কোয়াড 🎯</Text>
-                  <Text className="text-[13px] text-[#827B6E]" style={{ fontFamily: 'BanglaRegular' }}>মোট {totalMemberCount} জন মেম্বার যুক্ত আছেন</Text>
+                 <Text className="text-[13px] text-[#827B6E]" style={{ fontFamily: 'BanglaRegular' }}>মোট {toEnglishNumber(totalMemberCount)} জন মেম্বার যুক্ত আছেন</Text>
                 </View>
                 <TouchableOpacity onPress={closeMembersModalSmoothly} className="bg-[#FFF4E5] w-9 h-9 rounded-full items-center justify-center border border-[#FFDDAA]">
                   <FontAwesome5 name="times" size={14} color="#D47B00" />
                 </TouchableOpacity>
               </View>
 
-              {/* 🔍 Search Bar (Vibe Coder Fix) */}
-              <View className="pb-3 border-b border-[#EFE8D6] mb-2">
-                <View className="flex-row items-center bg-white rounded-[16px] border border-[#E5E5E5] px-4 py-1.5 shadow-sm">
+            {/* 🔍 Search Bar (Vibe Coder Fix) */}
+              <View className="pb-3 border-b border-[#EFE8D6] mb-2 px-6 mt-3">
+                <View className="flex-row items-center bg-white rounded-[16px] border border-[#EFE8D6] px-4 py-1.5 shadow-sm">
                   <FontAwesome5 name="search" size={14} color="#AFAFAF" />
                   <TextInput 
                     className="flex-1 ml-3 text-[15px] text-[#3D382F] pt-1" 
@@ -1675,9 +2282,39 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
                 data={members.filter(m => m.userName?.toLowerCase().includes(searchQuery.toLowerCase()))}
               keyExtractor={(item, index) => index.toString()}
               showsVerticalScrollIndicator={false}
-              contentContainerStyle={{ paddingBottom: 20, paddingTop: 10 }}
+              contentContainerStyle={{ paddingHorizontal: 24, paddingBottom: 60, paddingTop: 10 }}
               onEndReached={loadMoreMembers}
               onEndReachedThreshold={0.5}
+           ListHeaderComponent={
+                <View>
+                  {/* 🚀 অ্যাডমিনের জন্য পেন্ডিং রিকোয়েস্ট লিস্ট UI */}
+                  {lessonItem?.creatorEmail === currentUserEmail && pendingJoinRequests.length > 0 && (
+                    <View className="mb-4 pt-2 px-1">
+                      <Text className="text-[16px] text-[#3D382F] mb-3" style={{ fontFamily: 'BanglaBold' }}>পেন্ডিং রিকোয়েস্ট ({pendingJoinRequests.length})</Text>
+                      {pendingJoinRequests.map((req, idx) => (
+                        <View key={idx} className="flex-row items-center justify-between mb-3 bg-[#FFF4E5] p-3.5 rounded-[20px] border border-[#FFDDAA] shadow-sm">
+                          <View className="flex-row items-center flex-1">
+                            <Image source={{ uri: req.userAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-12 h-12 rounded-full border-2 border-white bg-[#EAE4D4]" />
+                            <View className="ml-3 flex-1 pr-2">
+                              <Text className="text-[#3D382F] text-[15px]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>{req.userName}</Text>
+                              <Text className="text-[#D47B00] text-[11px] mt-0.5" style={{ fontFamily: 'BanglaRegular' }}>কমিউনিটিতে জয়েন করতে চায়</Text>
+                            </View>
+                          </View>
+                          <View className="flex-row space-x-2">
+                            <TouchableOpacity onPress={() => handleJoinAction(req.userEmail, 'accept_join_request')} className="bg-[#1899D6] w-10 h-10 rounded-full items-center justify-center shadow-sm">
+                              <FontAwesome5 name="check" size={14} color="#FFF" />
+                            </TouchableOpacity>
+                            <TouchableOpacity onPress={() => handleJoinAction(req.userEmail, 'reject_join_request')} className="bg-[#FDF6E3] w-10 h-10 rounded-full items-center justify-center border border-[#EFE8D6]">
+                              <FontAwesome5 name="times" size={14} color="#FF4B4B" />
+                            </TouchableOpacity>
+                          </View>
+                        </View>
+                      ))}
+                      <View className="h-[1px] bg-[#EFE8D6] my-2" />
+                    </View>
+                  )}
+                </View>
+             }
              ListEmptyComponent={
                 <View className="pt-2">
                   <MemberSkeleton />
@@ -1698,7 +2335,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
 
               return (
                 <View className="mb-4 bg-white rounded-[24px] border-2 border-[#EFE8D6] shadow-sm p-4 mx-1">
-                  <View className="flex-row items-center justify-between mb-3">
+                <View className="flex-row items-center justify-between mb-3">
                     <TouchableOpacity 
                       activeOpacity={0.7} 
                       onPress={() => openMemberProfile(item)} 
@@ -1717,6 +2354,13 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
                         <Text className="text-[#827B6E] text-[11px] mt-0.5" style={{ fontFamily: 'BanglaRegular' }}>স্টাডি স্কোয়াড মেম্বার</Text>
                       </View>
                     </TouchableOpacity>
+                    
+                    {/* 🚀 অ্যাডমিন হলে রিমুভ করার অপশন */}
+                    {lessonItem?.creatorEmail === currentUserEmail && targetEmail !== currentUserEmail && (
+                      <TouchableOpacity activeOpacity={0.7} onPress={() => handleRemoveMember(targetEmail, item.userName || item.name)} className="bg-[#FFF4E5] w-8 h-8 rounded-full items-center justify-center border border-[#FFDDAA] ml-2">
+                        <FontAwesome5 name="user-minus" size={10} color="#FF4B4B" />
+                      </TouchableOpacity>
+                    )}
                   </View>
 
                   {/* 🚀 বটম সেকশন: ফুল-উইডথ ডাইনামিক বাটন */}
@@ -1861,7 +2505,7 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
                                       <FontAwesome5 name="check" size={14} color="#FFF" />
                                       <Text className="text-white text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>কনফার্ম করুন</Text>
                                     </TouchableOpacity>
-                                  ) : (
+                            ) : (
                                     <TouchableOpacity activeOpacity={0.8} onPress={() => handleAddFriend(targetEmail)} className={`w-full py-3 rounded-[16px] flex-row justify-center items-center shadow-sm border ${isPending ? 'bg-[#FFF4E5] border-[#FFC800]' : 'bg-white border-[#20A090]'}`}>
                                       {isPending ? (
                                         <>
@@ -1982,15 +2626,15 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
             {/* 🚀 কোর ফোকাস: রিভিউ সামারি (প্লে-স্টোরের মতো) */}
             <View className="flex-row items-center px-6 py-4 bg-white border-y border-[#EFE8D6] mb-2">
               <View className="items-center mr-6">
-                <Text className="text-[42px] text-[#3D382F] leading-[50px]" style={{ fontFamily: 'BanglaBold' }}>
-                  {averageRating > 0 ? averageRating : '0.0'}
-                </Text>
+               <Text className="text-[42px] text-[#3D382F] leading-[50px]" style={{ fontFamily: 'BanglaBold' }}>
+  {averageRating > 0 ? toEnglishNumber(averageRating) : '0.0'}
+</Text>
                 <View className="flex-row space-x-1 mt-1">
                   {[...Array(5)].map((_, i) => (
                     <FontAwesome5 key={i} name="star" size={12} color={i < Math.round(averageRating) ? "#FF9600" : "#EAE4D4"} solid={i < Math.round(averageRating)} />
                   ))}
                 </View>
-                <Text className="text-[12px] text-[#827B6E] mt-1" style={{ fontFamily: 'BanglaRegular' }}>{reviews.length} টি রিভিউ</Text>
+               <Text className="text-[12px] text-[#827B6E] mt-1" style={{ fontFamily: 'BanglaRegular' }}>{toEnglishNumber(reviews.length)} টি রিভিউ</Text>
               </View>
               <View className="flex-1">
                 <Text className="text-[14px] text-[#6B655B] leading-5" style={{ fontFamily: 'BanglaRegular' }}>
@@ -2034,12 +2678,21 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
             
      {/* 🚀 ফ্লোটিং অ্যাকশন এরিয়া (নিচে ফিক্সড থাকবে) */}
             <View className="absolute bottom-0 w-full bg-white px-6 py-4 border-t border-[#EFE8D6]">
-              {!hasUserReviewed ? (
+            {!hasUserReviewed ? (
                 !showReviewForm ? (
                   // 🚀 মতামত দেওয়ার বাটন
                   <TouchableOpacity 
                     activeOpacity={0.8} 
                     onPress={() => {
+                      if (!isMember && lessonItem?.creatorEmail !== currentUserEmail) {
+                        setCustomAlert({
+                          visible: true,
+                          title: "অ্যাক্সেস নেই!",
+                          message: "রেটিং দিতে হলে আপনাকে অবশ্যই এই কমিউনিটির মেম্বার হতে হবে।",
+                          type: "error"
+                        });
+                        return;
+                      }
                       LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
                       setUserRating(0);
                       setReviewText('');
@@ -2192,47 +2845,203 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>বইয়ের কভার ছবি</Text>
-              <TouchableOpacity activeOpacity={0.8} onPress={pickGuideThumbnail} className="mb-6">
-                <View className="w-full aspect-[16/9] rounded-[16px] border border-[#EFE8D6] overflow-hidden bg-[#F5F5F5] relative shadow-sm">
-                  {tempGuideThumbnail ? (
-                    <Image source={{ uri: tempGuideThumbnail }} className="w-full h-full" resizeMode="cover" />
-                  ) : (
-                    <View className="flex-1 items-center justify-center">
-                      <FontAwesome5 name="image" size={30} color="#D7D7D7" />
-                    </View>
-                  )}
-                  <View className="absolute inset-0 bg-black/40 items-center justify-center">
-                    <FontAwesome5 name="camera" size={24} color="#FFFFFF" />
-                    <Text className="text-white text-[12px] mt-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>কভার পরিবর্তন</Text>
-                  </View>
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>কুইজের ব্যানার (16:9)</Text>
+              <TouchableOpacity activeOpacity={0.8} className="mb-5">
+                <View className="w-full aspect-[16/9] rounded-[16px] overflow-hidden border-2 border-[#EFE8D6] border-dashed bg-[#F5F5F5] items-center justify-center relative">
+                  <FontAwesome5 name="image" size={32} color="#D7D7D7" />
+                  <Text className="text-[#AFAFAF] text-[12px] mt-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>ব্যানার সিলেক্ট করুন</Text>
                 </View>
               </TouchableOpacity>
 
-              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>বইয়ের নাম (টাইটেল)</Text>
+              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>কুইজের নাম</Text>
               <TextInput
                 className="bg-white p-4 rounded-[16px] text-[16px] text-[#3D382F] mb-5 border border-[#EFE8D6]"
                 style={{ fontFamily: 'BanglaBold' }}
-                value={tempGuideTitle}
-                onChangeText={setTempGuideTitle}
+                placeholder="যেমন: Weekly Model Test 1"
+                value={quizTitle}
+                onChangeText={setQuizTitle}
               />
+
+            <View className="flex-row space-x-3 mb-5">
+                <View className="flex-1">
+                  <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>তারিখ</Text>
+                  <TouchableOpacity activeOpacity={0.8} onPress={() => setShowDatePicker(true)} className="bg-white p-4 rounded-[16px] border border-[#EFE8D6] items-center">
+                    <Text className="text-[#3D382F] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>
+                      {quizTimestamp ? formatBnDate(quizTimestamp) : 'তারিখ বাছুন'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+                <View className="flex-1">
+                  <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>সময়</Text>
+                  <TouchableOpacity activeOpacity={0.8} onPress={() => setShowTimePicker(true)} className="bg-white p-4 rounded-[16px] border border-[#EFE8D6] items-center">
+                    <Text className="text-[#3D382F] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>
+                      {quizTimestamp ? formatBnTime(quizTimestamp) : 'সময় বাছুন'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              {/* 🚀 Date & Time Picker Triggers */}
+              {showDatePicker && (
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display="default"
+                  minimumDate={new Date()}
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(false);
+                    if (selectedDate) {
+                      const newTime = selectedDate;
+                      setTempDate(newTime);
+                      setQuizTimestamp(newTime.getTime());
+                    }
+                  }}
+                />
+              )}
+              {showTimePicker && (
+                <DateTimePicker
+                  value={tempDate}
+                  mode="time"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowTimePicker(false);
+                    if (selectedDate) {
+                      const newTime = selectedDate;
+                      setTempDate(newTime);
+                      setQuizTimestamp(newTime.getTime());
+                    }
+                  }}
+                />
+              )}
+
+              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>রিসোর্স ফিল্টার (সিলেবাস)</Text>
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => setIsResourcePickerVisible(true)}
+                className={`p-4 rounded-[16px] border flex-row justify-between items-center mb-5 border-dashed ${quizSelectedRules.length > 0 ? 'bg-[#EAF2D7] border-[#8BA85E]' : 'bg-[#FDF6E3] border-[#FFDDAA]'}`}
+              >
+                <Text className={`text-[14px] pt-1 ${quizSelectedRules.length > 0 ? 'text-[#4A632D]' : 'text-[#D47B00]'}`} style={{ fontFamily: 'BanglaBold' }}>
+                  {quizSelectedRules.length > 0 ? `${quizSelectedRules.length} টি স্টাডি প্যাক সিলেক্টেড` : 'কোশ্চেন ব্যাংক সিলেক্ট করুন'}
+                </Text>
+                <FontAwesome5 name={quizSelectedRules.length > 0 ? "check-circle" : "chevron-right"} size={14} color={quizSelectedRules.length > 0 ? "#58A700" : "#D47B00"} />
+              </TouchableOpacity>
             </ScrollView>
 
-        <TouchableOpacity 
-              className={`${isImageUploading ? 'bg-[#EAE4D4]' : 'bg-[#FF9600]'} py-3.5 rounded-[16px] mt-2 items-center shadow-sm`} 
-              onPress={saveGuideEdits}
-              disabled={isImageUploading}
+    <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={async () => {
+                if (!quizTitle) return Alert.alert("সতর্কতা", "কুইজের নাম দিন!");
+
+                const quizDataObj = {
+                  _id: editingQuizId || 'quiz_' + Date.now(), // 🚀 MongoDB _id সাপোর্ট
+                  id: editingQuizId || 'quiz_' + Date.now(),
+                  title: quizTitle,
+                  banner: quizBanner || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1000',
+                  dateText: quizDate || 'শীঘ্রই',
+                  timeText: quizTime || '--:--',
+                  isReady: false, 
+                  resources: quizSelectedRules
+                };
+
+                // 🚀 (q._id || q.id) চেক করে ১০০% রিপ্লেস করা হচ্ছে (আর ডুপ্লিকেট হবে না)
+                if (editingQuizId) {
+                  setCommunityQuizzes(prev => prev.map(q => (q._id || q.id) === editingQuizId ? quizDataObj : q));
+                } else {
+                  setCommunityQuizzes(prev => [quizDataObj, ...prev]);
+                }
+                
+                setIsQuizCreateModalVisible(false);
+                
+                // ফিল্ডগুলো রিসেট করা
+                setQuizTitle('');
+                setQuizBanner('');
+                setQuizDate('');
+                setQuizTime('');
+                setquizSelectedRules([]);
+                setEditingQuizId(null); 
+
+                try {
+                  await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                    body: JSON.stringify({ 
+                      action: editingQuizId ? 'update_quiz' : 'create_quiz', 
+                      channelId: lessonItem?.channelId || currentUserEmail,
+                      quizId: editingQuizId, // 🚀 আপডেটের জন্য রিয়েল আইডি পাঠানো হচ্ছে
+                      quizData: quizDataObj 
+                    })
+                  });
+                } catch(e) {}
+              }}
+              className="bg-[#1899D6] py-4 mt-2 rounded-[16px] items-center shadow-sm"
             >
-              <Text style={{ fontFamily: 'BanglaBold' }} className={`${isImageUploading ? 'text-[#827B6E]' : 'text-white'} text-[16px] pt-1`}>
-                {isImageUploading ? 'ছবি আপলোড হচ্ছে ⏳' : 'সেভ করুন'}
+              <Text style={{ fontFamily: 'BanglaBold' }} className="text-white text-[16px] pt-1">
+                {editingQuizId ? 'কুইজ আপডেট করুন' : 'কুইজ সেভ করুন'}
               </Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* 🚀 Discussion Modal */}
+      {/* 🚀 ৫. রিসোর্স (সিলেবাস) সিলেক্ট করার বটম শিট মডাল */}
+      <Modal visible={isResourcePickerVisible} animationType="fade" transparent={true} onRequestClose={() => setIsResourcePickerVisible(false)}>
+        <View className="flex-1 bg-black/60 justify-center px-4">
+          <View className="bg-[#FFFDF8] rounded-[24px] p-5 w-full max-h-[70%] shadow-lg border-b-4 border-[#EFE8D6]">
+            <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-[#EFE8D6]">
+              <Text className="text-[17px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>সিলেবাস সিলেক্ট করুন</Text>
+              <TouchableOpacity onPress={() => setIsResourcePickerVisible(false)} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
+                <FontAwesome5 name="times" size={14} color="#6B655B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {channelGuides.length > 0 ? (
+                channelGuides.map((guide, idx) => {
+                  const isSelected = quizSelectedRules.some(r => r.id === guide.id);
+                  return (
+                    <TouchableOpacity 
+                      key={idx}
+                      activeOpacity={0.8}
+                      onPress={() => {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        if (isSelected) {
+                          setquizSelectedRules(prev => prev.filter(r => r.id !== guide.id));
+                        } else {
+                          setquizSelectedRules(prev => [...prev, guide]);
+                        }
+                      }}
+                      className={`flex-row items-center p-3 rounded-[16px] mb-3 border ${isSelected ? 'bg-[#EAF2D7] border-[#8BA85E]' : 'bg-white border-[#EFE8D6]'}`}
+                    >
+                      <View className={`w-6 h-6 rounded-full border flex-row items-center justify-center mr-3 ${isSelected ? 'bg-[#58A700] border-[#58A700]' : 'bg-[#EAE4D4] border-[#EFE8D6]'}`}>
+                        {isSelected && <FontAwesome5 name="check" size={10} color="#FFF" />}
+                      </View>
+                      <View className="flex-1">
+                        <Text className="text-[#3D382F] text-[15px]" style={{ fontFamily: 'BanglaBold' }}>{guide.notebookName}</Text>
+                        <Text className="text-[#827B6E] text-[12px] mt-0.5" style={{ fontFamily: 'BanglaRegular' }}>{guide.failedItems?.length || 0} টি প্রশ্ন</Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })
+              ) : (
+                <View className="items-center py-6">
+                  <Text className="text-[#827B6E] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>কোনো স্টাডি প্যাক পাওয়া যায়নি</Text>
+                </View>
+              )}
+            </ScrollView>
+
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => setIsResourcePickerVisible(false)}
+              className="bg-[#58A700] py-3.5 rounded-[16px] items-center shadow-sm"
+            >
+           <Text style={{ fontFamily: 'BanglaBold' }} className="text-white text-[15px] pt-1">কনফার্ম করুন ({quizSelectedRules.length})</Text>
+         </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+   {/* 🚀 Discussion Modal */}
       <Discussion 
         key={activeDiscussionData ? activeDiscussionData.question : 'general_community'}
         visible={discussionVisible} 
@@ -2241,7 +3050,874 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
         guideName={lessonItem?.notebookName}
        guideId={lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode || 'default_guide'}
       />
-</Animated.View>
+
+      {/* 🚀 ১. নতুন সাবজেক্ট তৈরির মডাল (Instant Create) */}
+      <Modal visible={isSubjectCreateVisible} animationType="slide" transparent={true} onRequestClose={() => setIsSubjectCreateVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-black/60 justify-end">
+          <View className="bg-[#FFFDF8] rounded-t-[32px] p-6 pt-5 w-full">
+            <View className="flex-row justify-between items-center mb-4 border-b border-[#EFE8D6] pb-3">
+              <Text className="text-[18px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>নতুন সাবজেক্ট তৈরি করুন</Text>
+              <TouchableOpacity onPress={() => setIsSubjectCreateVisible(false)} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
+                <FontAwesome5 name="times" size={14} color="#6B655B" />
+              </TouchableOpacity>
+            </View>
+
+            <TouchableOpacity activeOpacity={0.85} onPress={pickGuideThumbnail} className="mb-6 items-center">
+              <View className="w-32 h-32 rounded-[20px] overflow-hidden border-2 border-[#EFE8D6] border-dashed bg-[#F5F5F5] items-center justify-center relative">
+                {tempGuideThumbnail ? (
+                  <Image source={{ uri: tempGuideThumbnail }} className="w-full h-full" resizeMode="cover" />
+                ) : (
+                  <FontAwesome5 name="image" size={32} color="#D7D7D7" />
+                )}
+              </View>
+            </TouchableOpacity>
+
+            <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>সাবজেক্টের নাম</Text>
+            <TextInput
+              className="bg-white p-4 rounded-[16px] text-[16px] text-[#3D382F] mb-5 border border-[#EFE8D6]"
+              style={{ fontFamily: 'BanglaBold' }}
+              placeholder="যেমন: HSC Physics"
+              value={newSubjectTitle}
+              onChangeText={setNewSubjectTitle}
+            />
+
+            <TouchableOpacity 
+              className="bg-[#1899D6] py-3.5 rounded-[16px] items-center shadow-sm" 
+              onPress={() => {
+                if(!newSubjectTitle) return Alert.alert("সতর্কতা", "নাম দিন!");
+                const newSubjectData = {
+                  id: 'guide_' + Date.now(),
+                  shareCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
+                  notebookName: newSubjectTitle,
+                  thumbnail: tempGuideThumbnail,
+                  isPublic: true,
+                  creatorEmail: currentUserEmail,
+                  channelId: lessonItem?.channelId,
+                  failedItems: [] 
+                };
+                setChannelGuides(prev => [newSubjectData, ...prev]);
+                setIsSubjectCreateVisible(false);
+                setNewSubjectTitle('');
+                setTempGuideThumbnail('');
+                
+                fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                  body: JSON.stringify({ action: 'save_guide', guideData: newSubjectData })
+                });
+              }}
+            >
+              <Text style={{ fontFamily: 'BanglaBold' }} className="text-white text-[16px] pt-1">সাবজেক্ট তৈরি করুন</Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+    {/* 🚀 ২. নেস্টেড কোশ্চেন ব্যাংক ভিউ মডাল (Review Modal Style) */}
+      <Modal visible={isSubjectViewVisible} transparent animationType="none" onRequestClose={closeSubjectModalSmoothly}>
+        <View className="flex-1 justify-end">
+          
+          {/* পেছনের ডার্ক ফেড অ্যানিমেশন */}
+          <Animated.View style={{ opacity: subjectFadeAnim }} className="absolute inset-0 bg-black/60" />
+          <TouchableOpacity className="flex-1" activeOpacity={1} onPress={closeSubjectModalSmoothly} />
+          
+          <Animated.View 
+            style={{ transform: [{ translateY: subjectSlideAnim }] }}
+            className="bg-[#FFFDF8] rounded-t-[32px] h-[85%] overflow-hidden relative"
+          >
+            {/* Dragger */}
+            <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mt-5 mb-4" />
+            
+            {/* Header */}
+            <View className="flex-row justify-between items-center px-6 pb-3 border-b border-[#EFE8D6]">
+              <Text className="text-[18px] text-[#3D382F] pt-1" style={{ fontFamily: 'BanglaBold' }}>{selectedSubject?.notebookName}</Text>
+              <TouchableOpacity onPress={closeSubjectModalSmoothly} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
+                <FontAwesome5 name="times" size={14} color="#6B655B" />
+              </TouchableOpacity>
+            </View>
+            
+            <ScrollView className="flex-1 px-6 pt-5" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+             <View className="flex-row justify-between items-center mb-4">
+               <Text className="text-[16px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>কোশ্চেন ব্যাংক সমূহ</Text>
+               {lessonItem?.creatorEmail === currentUserEmail && (
+                 <TouchableOpacity 
+                   activeOpacity={0.8}
+                   onPress={() => {
+                      AsyncStorage.setItem('@target_subject', JSON.stringify(selectedSubject));
+                      setIsSubjectViewVisible(false);
+                      DeviceEventEmitter.emit('open_create_guide_modal'); 
+                   }} 
+                   className="bg-[#58A700]/10 px-3 py-1.5 rounded-full border border-[#58CC02]/30 flex-row items-center"
+                 >
+                   <FontAwesome5 name="plus" size={12} color="#58A700" />
+                   <Text className="text-[#58A700] text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>অ্যাড কোশ্চেন ব্যাংক</Text>
+                 </TouchableOpacity>
+               )}
+             </View>
+
+   {selectedSubject?.failedItems?.length > 0 && selectedSubject.failedItems[0].isBank ? (
+                selectedSubject.failedItems.map((bank, idx) => (
+                  <View key={idx} className="bg-[#FFFDF8] p-4 rounded-[20px] mb-4 border-2 border-[#EFE8D6] shadow-sm flex-row items-center justify-between mx-1">
+                     <TouchableOpacity activeOpacity={0.8} onPress={() => {
+                        // 🚀 ব্যাংকে ক্লিক করলেই ওই ব্যাংকের রিড টাইমস্ট্যাম্প সেভ হয়ে যাবে (যাতে ব্যাজ গায়েব হয়ে যায়)
+                        const now = Date.now();
+                        const updatedTimestamps = { ...bankReadTimestamps, [bank.bankId]: now };
+                        setBankReadTimestamps(updatedTimestamps);
+                        AsyncStorage.setItem('@bank_read_history', JSON.stringify(updatedTimestamps)).catch(()=>{});
+
+                        const tempGuide = { ...selectedSubject, failedItems: bank.questions };
+                        openBookInReader(tempGuide);
+                     }} className="flex-row items-center flex-1">
+                       <View className="w-11 h-11 bg-[#FFF4E5] rounded-full items-center justify-center mr-3 border border-[#FFDDAA]">
+                         <FontAwesome5 name="folder-open" size={16} color="#D47B00" />
+                       </View>
+                  <View className="flex-1 pr-2">
+                         <Text className="text-[#3D382F] text-[16px]" style={{ fontFamily: 'BanglaBold' }}>{bank.bankName}</Text>
+                         <View className="flex-row items-center mt-0.5">
+                           <Text className="text-[#827B6E] text-[12px]" style={{ fontFamily: 'BanglaRegular' }}>{bank.questions?.length || 0} টি প্রশ্ন</Text>
+                           
+                           {/* 🚀 ফোল্ডার লেভেলে নতুন প্রশ্নের স্মার্ট ব্যাজ */}
+                           {(() => {
+                             const lastRead = bankReadTimestamps[bank.bankId] || 0;
+                             const newQCount = bank.questions?.filter(q => 
+                               q.addedAt && 
+                               (Date.now() - q.addedAt) < (7 * 24 * 60 * 60 * 1000) && 
+                               q.addedAt > lastRead // 🚀 যদি পড়ার সময়ের চেয়ে প্রশ্নটা নতুন হয়, তবেই দেখাবে
+                             ).length || 0;
+
+                             if (newQCount > 0) {
+                               return (
+                                 <View className="ml-2 bg-[#FF4B4B]/10 px-1.5 py-0.5 rounded border border-[#FF4B4B]/30">
+                                   <Text className="text-[9px] text-[#FF4B4B]" style={{ fontFamily: 'BanglaBold' }}>
+                                     {newQCount} টি নতুন 💥
+                                   </Text>
+                                 </View>
+                               );
+                             }
+                             return null;
+                           })()}
+                         </View>
+                       </View>
+                     </TouchableOpacity>
+                     
+                     {/* 🚀 ক্রিয়েটরের জন্য এডিট এবং ডিলিট বাটন, বাকিদের জন্য শুধু অ্যারো আইকন */}
+                     {lessonItem?.creatorEmail === currentUserEmail ? (
+                       <View className="flex-row items-center space-x-2">
+                     {/* 🚀 এডিট বাটন (হিস্ট্রি ট্র্যাকারসহ) */}
+                         <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                            setManagingBank(bank);
+                            setBankHistory([bank.questions || []]); // 🚀 আনডু/রিডু হিস্ট্রি শুরু
+                            setHistoryStep(0);
+                            setIsBankManageModalVisible(true);
+                         }} className="w-9 h-9 rounded-full bg-[#FDF6E3] border border-[#EFE8D6] items-center justify-center">
+                           <FontAwesome5 name="pen" size={12} color="#D47B00" />
+                         </TouchableOpacity>
+
+                         {/* 🚀 ডিলিট বাটন */}
+                         <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                            Alert.alert("ডিলিট করুন", "আপনি কি সত্যিই এই কোশ্চেন ব্যাংকটি ডিলিট করতে চান?", [
+                              { text: "না", style: "cancel" },
+                              { text: "হ্যাঁ, মুছুন", style: "destructive", onPress: async () => {
+                                  // ১. ব্যাংক রিমুভ করে লোকাল স্টেট আপডেট করা
+                                  const updatedFailedItems = selectedSubject.failedItems.filter(b => b.bankId !== bank.bankId);
+                                  const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
+                                  setSelectedSubject(updatedSubject);
+                                  setChannelGuides(prev => prev.map(g => g.id === updatedSubject.id ? updatedSubject : g));
+                                  
+                                  // ২. সার্ভারে আপডেট পাঠানো
+                                  try {
+                                    await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                                      body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
+                                    });
+                                    DeviceEventEmitter.emit('refresh_library');
+                                  } catch (e) { console.log("Delete Bank Error:", e); }
+                              }}
+                            ]);
+                         }} className="w-9 h-9 rounded-full bg-[#FFF4E5] border border-[#FFDDAA] items-center justify-center ml-1">
+                           <FontAwesome5 name="trash" size={12} color="#FF4B4B" />
+                         </TouchableOpacity>
+                       </View>
+                     ) : (
+                       <View className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
+                         <FontAwesome5 name="chevron-right" size={12} color="#827B6E" />
+                       </View>
+                     )}
+                  </View>
+                ))
+             ) : (
+                <View className="items-center justify-center py-10 bg-[#FFFDF8] rounded-[20px] border-2 border-[#EFE8D6] border-dashed mx-1">
+                  <FontAwesome5 name="folder-open" size={36} color="#EAE4D4" />
+                  <Text className="text-[#827B6E] text-[15px] mt-4" style={{ fontFamily: 'BanglaBold' }}>এখনো কোনো কোশ্চেন ব্যাংক নেই</Text>
+                </View>
+             )}
+            </ScrollView>
+          </Animated.View>
+        </View>
+      </Modal>
+
+     {/* 🚀 ৩. কোশ্চেন ব্যাংক ম্যানেজমেন্ট মডাল (Smart Bulk Management) */}
+    <Modal 
+        visible={isBankManageModalVisible} 
+        animationType="slide" 
+        transparent={true} 
+        onRequestClose={() => {
+          setIsBankManageModalVisible(false);
+          setIsBankSelectionMode(false);
+          setSelectedBankQuestions({});
+          setBankSearchQuery('');
+          setActiveBankFilter('সব');
+          setActiveBankTypeFilter('সব'); // 🚀 নতুন রিসেট যুক্ত করা হলো
+        }}
+      >
+        <View className="flex-1 bg-[#FDF6E3]">
+      {(() => {
+            const allQuestions = managingBank?.questions || [];
+            
+            // 🚀 ১. ডাইনামিক ফিল্টার টপিক ও টাইপ তৈরি (যে টপিক/টাইপগুলো এক্সিস্ট করে শুধু সেগুলোই চিপসে দেখাবে)
+            const uniqueTopics = ['সব', ...new Set(allQuestions.map(q => q.topic).filter(Boolean))];
+            const uniqueTypes = ['সব', ...new Set(allQuestions.map(q => q.type).filter(Boolean))]; // 🚀 টাইপ লিস্ট
+            
+            // 🚀 ২. আনডু/রিডু লজিক (আপডেট মেকানিজম)
+            const updateBankWithQuestions = async (questions) => {
+              const updatedBank = { ...managingBank, questions };
+              setManagingBank(updatedBank);
+              const updatedFailedItems = selectedSubject.failedItems.map(b => b.bankId === managingBank.bankId ? updatedBank : b);
+              const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
+              setSelectedSubject(updatedSubject);
+              setChannelGuides(prev => prev.map(g => g.shareCode === updatedSubject.shareCode ? updatedSubject : g));
+              try {
+                await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                  body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
+                });
+              } catch (e) {}
+            };
+
+            const handleUndo = () => {
+              if (historyStep > 0) {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                const prevStep = historyStep - 1;
+                setHistoryStep(prevStep);
+                updateBankWithQuestions(bankHistory[prevStep]);
+              }
+            };
+
+            const handleRedo = () => {
+              if (historyStep < bankHistory.length - 1) {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                const nextStep = historyStep + 1;
+                setHistoryStep(nextStep);
+                updateBankWithQuestions(bankHistory[nextStep]);
+              }
+            };
+
+            // 🚀 ৩. সার্চ ও ফিল্টার লজিক (ডাবল ফিল্টার)
+            const filteredQuestions = allQuestions.filter(q => {
+              const matchSearch = (q.question || q.stem || '').toLowerCase().includes(bankSearchQuery.toLowerCase());
+              const matchTopic = activeBankFilter === 'সব' || q.topic === activeBankFilter;
+              const matchType = activeBankTypeFilter === 'সব' || q.type === activeBankTypeFilter; // 🚀 টাইপ চেক
+              return matchSearch && matchTopic && matchType;
+            });
+
+            const selectedCount = Object.keys(selectedBankQuestions).length;
+            const isAllFilteredSelected = filteredQuestions.length > 0 && filteredQuestions.every(q => selectedBankQuestions[q.id]);
+
+            const toggleSelection = (id) => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              setSelectedBankQuestions(prev => {
+                const newSel = { ...prev };
+                if (newSel[id]) delete newSel[id];
+                else newSel[id] = true;
+                return newSel;
+              });
+            };
+
+            const toggleSelectAll = () => {
+              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+              if (isAllFilteredSelected) {
+                // ফিল্টার করা আইটেমগুলো আনসিলেক্ট করবে
+                setSelectedBankQuestions(prev => {
+                  const newSel = { ...prev };
+                  filteredQuestions.forEach(q => delete newSel[q.id]);
+                  return newSel;
+                });
+              } else {
+                // ফিল্টার করা আইটেমগুলো সিলেক্ট করবে
+                setSelectedBankQuestions(prev => {
+                  const newSel = { ...prev };
+                  filteredQuestions.forEach(q => newSel[q.id] = true);
+                  return newSel;
+                });
+              }
+            };
+
+         const handleBulkDelete = () => {
+              Alert.alert("বাল্ক ডিলিট", `আপনি কি সত্যিই সিলেক্ট করা ${selectedCount} টি প্রশ্ন ডিলিট করতে চান?`, [
+                { text: "না", style: "cancel" },
+                { text: "হ্যাঁ, মুছুন", style: "destructive", onPress: async () => {
+                    const updatedQuestions = allQuestions.filter(q => !selectedBankQuestions[q.id]);
+                    
+                    // 🚀 হিস্ট্রি সেভ করা হচ্ছে (যাতে আনডু করা যায়)
+                    const newHistory = bankHistory.slice(0, historyStep + 1);
+                    newHistory.push(updatedQuestions);
+                    setBankHistory(newHistory);
+                    setHistoryStep(newHistory.length - 1);
+
+                    // Optimistic UI Update: জিরো ল্যাগ এক্সপেরিয়েন্সের জন্য সাথে সাথে স্ক্রিন থেকে মুছে ফেলা
+                    const updatedBank = { ...managingBank, questions: updatedQuestions };
+                    setManagingBank(updatedBank);
+
+                    const updatedFailedItems = selectedSubject.failedItems.map(b => b.bankId === managingBank.bankId ? updatedBank : b);
+                    const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
+                    setSelectedSubject(updatedSubject);
+                    setChannelGuides(prev => prev.map(g => g.shareCode === updatedSubject.shareCode ? updatedSubject : g));
+                    
+                    setIsBankSelectionMode(false);
+                    setSelectedBankQuestions({});
+
+                    // ব্যাকগ্রাউন্ডে সার্ভার সিঙ্ক[cite: 2]
+                    try {
+                      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                        body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
+                      });
+                    } catch (e) { console.log(e); }
+                }}
+              ]);
+            };
+
+            return (
+              <>
+                {/* 🚀 টপ বার, সার্চ এবং ফিল্টার চিপস */}
+                <View style={{ paddingTop: Math.max(insets.top, 15) }} className="px-5 pb-3 bg-[#FFFDF8] border-b border-[#EFE8D6]">
+                  <View className="flex-row items-center justify-between mb-3">
+                    <TouchableOpacity onPress={() => {
+                      setIsBankManageModalVisible(false);
+                      setIsBankSelectionMode(false);
+                      setSelectedBankQuestions({});
+                    }} className="bg-[#EAE4D4] w-10 h-10 rounded-full items-center justify-center">
+                      <FontAwesome5 name="arrow-left" size={16} color="#6B655B" />
+                    </TouchableOpacity>
+                    <Text className="text-[18px] text-[#3D382F] pt-1 flex-1 text-center px-3" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>
+                      {managingBank?.bankName}
+                    </Text>
+                    
+                    {/* 🚀 প্লাস আইকন (নতুন প্রশ্ন অ্যাড করার জন্য) */}
+                    <TouchableOpacity activeOpacity={0.8} onPress={async () => {
+                        await AsyncStorage.setItem('@target_subject', JSON.stringify(selectedSubject));
+                        await AsyncStorage.setItem('@target_bank_to_update', JSON.stringify(managingBank));
+                        setIsBankManageModalVisible(false);
+                        setIsSubjectViewVisible(false);
+                        DeviceEventEmitter.emit('open_create_guide_modal'); 
+                    }} className="bg-[#EAF6FE] w-10 h-10 rounded-full items-center justify-center border border-[#1CB0F6]/30">
+                        <FontAwesome5 name="plus" size={14} color="#1899D6" />
+                    </TouchableOpacity>
+                  </View>
+
+              <View className="flex-row items-center bg-white rounded-[16px] border border-[#EFE8D6] px-4 py-1.5 shadow-sm mb-3">
+                    <FontAwesome5 name="search" size={14} color="#AFAFAF" />
+                    <TextInput 
+                      className="flex-1 ml-3 text-[15px] text-[#3D382F] pt-1" 
+                      style={{ fontFamily: 'BanglaRegular' }} 
+                      placeholder="প্রশ্ন খুঁজুন..." 
+                      placeholderTextColor="#AFAFAF"
+                      value={bankSearchQuery}
+                      onChangeText={setBankSearchQuery}
+                    />
+                  </View>
+
+                  {/* 🚀 ডাবল ফিল্টার চিপস: টাইপ এবং টপিক */}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-2">
+                    <Text className="text-[#AFAFAF] text-[12px] pt-1.5 mr-2" style={{ fontFamily: 'BanglaBold' }}>টাইপ:</Text>
+                    {uniqueTypes.map((type, index) => {
+                      const isActive = activeBankTypeFilter === type;
+                      return (
+                        <TouchableOpacity 
+                          key={`type_${index}`} 
+                          activeOpacity={0.8} 
+                          onPress={() => {
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setActiveBankTypeFilter(type);
+                          }} 
+                          className={`mr-2 px-4 py-1.5 rounded-full border ${isActive ? 'bg-[#1899D6] border-[#1899D6]' : 'bg-white border-[#EFE8D6]'}`}
+                        >
+                          <Text className={`text-[13px] pt-1 ${isActive ? 'text-white' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaBold' }}>
+                            {type}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+                    <Text className="text-[#AFAFAF] text-[12px] pt-1.5 mr-2" style={{ fontFamily: 'BanglaBold' }}>টপিক:</Text>
+                    {uniqueTopics.map((topic, index) => {
+                      const isActive = activeBankFilter === topic;
+                      return (
+                        <TouchableOpacity 
+                          key={`topic_${index}`} 
+                          activeOpacity={0.8} 
+                          onPress={() => {
+                            LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                            setActiveBankFilter(topic);
+                          }} 
+                          className={`mr-2 px-4 py-1.5 rounded-full border ${isActive ? 'bg-[#FF9600] border-[#FF9600]' : 'bg-white border-[#EFE8D6]'}`}
+                        >
+                          <Text className={`text-[13px] pt-1 ${isActive ? 'text-white' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaBold' }}>
+                            {topic}
+                          </Text>
+                        </TouchableOpacity>
+                      );
+                    })}
+                  </ScrollView>
+                </View>
+
+                {/* 🚀 সিলেক্ট মোড, আনডু/রিডু টগল ও সিলেক্ট অল */}
+                <View className="flex-row items-center justify-between px-5 py-3 border-b border-[#EFE8D6] bg-[#FFFDF8]">
+                {isBankSelectionMode ? (
+                    <TouchableOpacity activeOpacity={0.7} onPress={toggleSelectAll} className="flex-row items-center">
+                      <View className={`w-5 h-5 rounded border items-center justify-center mr-2 ${isAllFilteredSelected ? 'bg-[#58A700] border-[#58A700]' : 'bg-white border-[#D7D7D7]'}`}>
+                        {isAllFilteredSelected && <FontAwesome5 name="check" size={10} color="#FFF" />}
+                      </View>
+                      <Text className="text-[#3D382F] text-[14px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>সব সিলেক্ট করুন</Text>
+                    </TouchableOpacity>
+                  ) : (
+                    <View className="flex-row items-center space-x-3">
+                      <Text className="text-[#827B6E] text-[13px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{filteredQuestions.length} টি প্রশ্ন</Text>
+                      
+                      {/* 🚀 আনডু/রিডু বাটন */}
+                      <View className="flex-row space-x-1 border-l border-[#EFE8D6] pl-3 ml-1">
+                        <TouchableOpacity 
+                          activeOpacity={0.7} 
+                          onPress={handleUndo} 
+                          disabled={historyStep <= 0}
+                          className={`w-8 h-8 rounded-full items-center justify-center ${historyStep > 0 ? 'bg-[#FFF4E5] border border-[#FFDDAA]' : 'bg-[#F9F9F9]'}`}
+                        >
+                          <FontAwesome5 name="undo-alt" size={12} color={historyStep > 0 ? "#D47B00" : "#D7D7D7"} />
+                        </TouchableOpacity>
+                        
+                        <TouchableOpacity 
+                          activeOpacity={0.7} 
+                          onPress={handleRedo} 
+                          disabled={historyStep >= bankHistory.length - 1}
+                          className={`w-8 h-8 rounded-full items-center justify-center ${historyStep < bankHistory.length - 1 ? 'bg-[#FFF4E5] border border-[#FFDDAA]' : 'bg-[#F9F9F9]'}`}
+                        >
+                          <FontAwesome5 name="redo-alt" size={12} color={historyStep < bankHistory.length - 1 ? "#D47B00" : "#D7D7D7"} />
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+                  )}
+
+                  <TouchableOpacity 
+                    activeOpacity={0.7} 
+                    onPress={() => {
+                      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                      setIsBankSelectionMode(!isBankSelectionMode);
+                      if (isBankSelectionMode) setSelectedBankQuestions({}); 
+                    }}
+                    className={`px-3 py-1.5 rounded-full border flex-row items-center ${isBankSelectionMode ? 'bg-[#FFF4E5] border-[#FFDDAA]' : 'bg-white border-[#EFE8D6]'}`}
+                  >
+                    <FontAwesome5 name={isBankSelectionMode ? "times" : "tasks"} size={12} color={isBankSelectionMode ? "#FF4B4B" : "#D47B00"} />
+                    <Text className={`text-[12px] ml-1.5 pt-0.5 ${isBankSelectionMode ? 'text-[#FF4B4B]' : 'text-[#D47B00]'}`} style={{ fontFamily: 'BanglaBold' }}>
+                      {isBankSelectionMode ? 'ক্যানসেল' : 'সিলেক্ট করুন'}
+                    </Text>
+                  </TouchableOpacity>
+                </View>
+
+                {/* 🚀 FlatList দিয়ে পারফরম্যান্স অপ্টিমাইজড রেন্ডারিং (Map এর বদলে)[cite: 2] */}
+                <FlatList
+                  data={filteredQuestions}
+                  keyExtractor={(item) => item.id.toString()}
+                  contentContainerStyle={{ padding: 20, paddingBottom: 120 }}
+                  showsVerticalScrollIndicator={false}
+                  initialNumToRender={10}
+                  ListEmptyComponent={
+                    <View className="items-center justify-center py-10 mt-10">
+                      <FontAwesome5 name="search-minus" size={40} color="#EAE4D4" />
+                      <Text className="text-[#827B6E] text-[15px] mt-4" style={{ fontFamily: 'BanglaBold' }}>কোনো প্রশ্ন পাওয়া যায়নি</Text>
+                    </View>
+                  }
+                  renderItem={({ item: q }) => {
+                    const isSelected = selectedBankQuestions[q.id];
+                    return (
+                      <TouchableOpacity 
+                        activeOpacity={isBankSelectionMode ? 0.7 : 1}
+                        onPress={() => isBankSelectionMode && toggleSelection(q.id)}
+                        className={`bg-white p-4 rounded-[16px] mb-3 border shadow-sm flex-row items-center justify-between ${isSelected ? 'border-[#58A700] bg-[#EAF2D7]' : 'border-[#EFE8D6]'}`}
+                      >
+                        {isBankSelectionMode && (
+                          <View className={`w-5 h-5 rounded border items-center justify-center mr-3 ${isSelected ? 'bg-[#58A700] border-[#58A700]' : 'bg-white border-[#D7D7D7]'}`}>
+                            {isSelected && <FontAwesome5 name="check" size={10} color="#FFF" />}
+                          </View>
+                        )}
+                        
+                        <View className="flex-1 pr-3">
+                          <View className="bg-[#1CB0F6]/10 self-start px-2 py-0.5 rounded border border-[#1CB0F6]/30 mb-1.5">
+                            <Text className="text-[10px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{q.type} • {q.topic}</Text>
+                          </View>
+                          <Text className="text-[#3D382F] text-[14px]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={2}>
+                            {q.question || q.stem}
+                          </Text>
+                        </View>
+                        
+                        {/* 🚀 সিঙ্গেল ডিলিট বাটন (যদি সিলেক্ট মোড অফ থাকে)[cite: 1, 2] */}
+                      {!isBankSelectionMode && (
+                          <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                            Alert.alert("মুছে ফেলুন", "এই প্রশ্নটি কি মুছে ফেলতে চান?", [
+                              { text: "না", style: "cancel" },
+                              { text: "হ্যাঁ", style: "destructive", onPress: async () => {
+                                  const updatedQuestions = allQuestions.filter(item => item.id !== q.id);
+                                  
+                                  // 🚀 হিস্ট্রি সেভ করা হচ্ছে (যাতে আনডু করা যায়)
+                                  const newHistory = bankHistory.slice(0, historyStep + 1);
+                                  newHistory.push(updatedQuestions);
+                                  setBankHistory(newHistory);
+                                  setHistoryStep(newHistory.length - 1);
+
+                                  const updatedBank = { ...managingBank, questions: updatedQuestions };
+                                  setManagingBank(updatedBank);
+
+                                  const updatedFailedItems = selectedSubject.failedItems.map(b => b.bankId === managingBank.bankId ? updatedBank : b);
+                                  const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
+                                  setSelectedSubject(updatedSubject);
+                                  setChannelGuides(prev => prev.map(g => g.shareCode === updatedSubject.shareCode ? updatedSubject : g));
+                                  
+                                  try {
+                                    await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                                      body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
+                                    });
+                                  } catch (e) { console.log(e); }
+                              }}
+                            ]);
+                          }} className="w-8 h-8 rounded-full bg-[#FFF4E5] border border-[#FFDDAA] items-center justify-center">
+                            <FontAwesome5 name="trash" size={10} color="#FF4B4B" />
+                          </TouchableOpacity>
+                        )}
+                      </TouchableOpacity>
+                    );
+                  }}
+                />
+
+                {/* 🚀 ফ্লোটিং বাল্ক ডিলিট বাটন (শুধুমাত্র যদি কোনো আইটেম সিলেক্ট করা থাকে) */}
+                {selectedCount > 0 && (
+                  <View className="absolute bottom-6 left-5 right-5">
+                    <TouchableOpacity 
+                      activeOpacity={0.9} 
+                      onPress={handleBulkDelete}
+                      className="bg-[#FF4B4B] w-full py-4 rounded-[16px] items-center flex-row justify-center shadow-lg border-2 border-[#D63939]"
+                    >
+                      <FontAwesome5 name="trash-alt" size={16} color="#FFF" />
+                      <Text className="text-white text-[16px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>
+                        {selectedCount} টি প্রশ্ন ডিলিট করুন
+                      </Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+             </>
+            );
+          })()}
+        </View>
+      </Modal>
+
+ {/* 🚀 ৪. নতুন কুইজ তৈরির মডাল (Creator Only) */}
+      <Modal visible={isQuizCreateModalVisible} animationType="slide" transparent={true} onRequestClose={() => setIsQuizCreateModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-black/60 justify-end">
+          <View className="bg-[#FFFDF8] rounded-t-[32px] p-6 pt-5 w-full max-h-[85%]">
+            <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mb-5" />
+            <View className="flex-row justify-between items-center mb-4 border-b border-[#EFE8D6] pb-3">
+              <Text className="text-[18px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>নতুন কুইজ সেটআপ</Text>
+              <TouchableOpacity onPress={() => setIsQuizCreateModalVisible(false)} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
+                <FontAwesome5 name="times" size={14} color="#6B655B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>কুইজের ব্যানার (16:9)</Text>
+              <TouchableOpacity activeOpacity={0.8} onPress={pickQuizBanner} className="mb-5">
+                <View className="w-full aspect-[16/9] rounded-[16px] overflow-hidden border-2 border-[#EFE8D6] border-dashed bg-[#F5F5F5] items-center justify-center relative shadow-sm">
+                  {quizBanner ? (
+                    <Image source={{ uri: quizBanner }} className="w-full h-full" resizeMode="cover" />
+                  ) : (
+                    <View className="items-center">
+                      <FontAwesome5 name="image" size={32} color="#D7D7D7" />
+                      <Text className="text-[#AFAFAF] text-[12px] mt-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>ব্যানার সিলেক্ট করুন</Text>
+                    </View>
+                  )}
+                  {isQuizImageUploading && (
+                    <View className="absolute inset-0 bg-black/50 items-center justify-center">
+                      <ActivityIndicator size="large" color="#FF9600" />
+                    </View>
+                  )}
+                </View>
+              </TouchableOpacity>
+
+              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>কুইজের নাম</Text>
+              <TextInput
+                className="bg-white p-4 rounded-[16px] text-[16px] text-[#3D382F] mb-5 border border-[#EFE8D6]"
+                style={{ fontFamily: 'BanglaBold' }}
+                placeholder="যেমন: Weekly Model Test 1"
+                value={quizTitle}
+                onChangeText={setQuizTitle}
+              />
+
+              <View className="flex-row space-x-3 mb-5">
+                <View className="flex-1">
+                  <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>তারিখ</Text>
+                  <TextInput
+                    className="bg-white p-4 rounded-[16px] border border-[#EFE8D6] text-[#3D382F] text-[14px]"
+                    style={{ fontFamily: 'BanglaBold' }}
+                    placeholder="যেমন: ১৫ নভেম্বর"
+                    value={quizDate}
+                    onChangeText={setQuizDate}
+                  />
+                </View>
+                <View className="flex-1">
+                  <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>সময়</Text>
+                  <TextInput
+                    className="bg-white p-4 rounded-[16px] border border-[#EFE8D6] text-[#3D382F] text-[14px]"
+                    style={{ fontFamily: 'BanglaBold' }}
+                    placeholder="যেমন: রাত ৮:০০ টা"
+                    value={quizTime}
+                    onChangeText={setQuizTime}
+                  />
+                </View>
+              </View>
+
+              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>রিসোর্স ফিল্টার (সিলেবাস)</Text>
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                onPress={() => setIsResourcePickerVisible(true)}
+                className={`p-4 rounded-[16px] border flex-row justify-between items-center mb-5 border-dashed ${quizSelectedRules.length > 0 ? 'bg-[#EAF2D7] border-[#8BA85E]' : 'bg-[#FDF6E3] border-[#FFDDAA]'}`}
+              >
+                <Text className={`text-[14px] pt-1 ${quizSelectedRules.length > 0 ? 'text-[#4A632D]' : 'text-[#D47B00]'}`} style={{ fontFamily: 'BanglaBold' }}>
+                  {quizSelectedRules.length > 0 ? `${quizSelectedRules.length} টি প্যাক থেকে ফিল্টারড` : 'সিলেবাস ও ফিল্টার সিলেক্ট করুন'}
+                </Text>
+                <FontAwesome5 name={quizSelectedRules.length > 0 ? "check-circle" : "chevron-right"} size={14} color={quizSelectedRules.length > 0 ? "#58A700" : "#D47B00"} />
+              </TouchableOpacity>
+            </ScrollView>
+
+        <TouchableOpacity 
+              activeOpacity={0.8}
+              disabled={isQuizImageUploading}
+              onPress={async () => {
+                if (!quizTitle) return Alert.alert("সতর্কতা", "কুইজের নাম দিন!");
+
+             const quizDataObj = {
+                  _id: editingQuizId || 'quiz_' + Date.now(),
+                  id: editingQuizId || 'quiz_' + Date.now(),
+                  title: quizTitle,
+                  banner: quizBanner || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1000',
+                  dateText: quizTimestamp ? formatBnDate(quizTimestamp) : 'শীঘ্রই',
+                  timeText: quizTimestamp ? formatBnTime(quizTimestamp) : '--:--',
+                  targetTimestamp: quizTimestamp || null,
+                  isReady: false,
+                  resources: quizSelectedRules 
+                };
+
+                // 🚀 এডিট নাকি নতুন কুইজ সেটা চেক করে স্টেটে আপডেট করা
+                if (editingQuizId) {
+                  setCommunityQuizzes(prev => prev.map(q => (q._id || q.id) === editingQuizId ? quizDataObj : q));
+                } else {
+                  setCommunityQuizzes(prev => [quizDataObj, ...prev]);
+                }
+                
+                setIsQuizCreateModalVisible(false);
+                
+                // 🚀 স্টেট রিসেট
+                setQuizTitle('');
+                setQuizBanner('');
+                setQuizDate('');
+                setQuizTime('');
+                setquizSelectedRules([]);
+                setEditingQuizId(null); // 🚀 আইডি ক্লিয়ার করা হলো
+
+                try {
+                  await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                    body: JSON.stringify({ 
+                      action: editingQuizId ? 'update_quiz' : 'create_quiz', 
+                      channelId: lessonItem?.channelId || currentUserEmail,
+                      quizId: editingQuizId, // 🚀 আপডেটের জন্য আইডি পাস করা
+                      quizData: quizDataObj 
+                    })
+                  });
+                } catch(e) { console.log(e); }
+              }}
+              className={`${isQuizImageUploading ? 'bg-[#EAE4D4]' : 'bg-[#1899D6]'} py-4 mt-2 rounded-[16px] items-center shadow-sm`}
+            >
+              <Text style={{ fontFamily: 'BanglaBold' }} className={`${isQuizImageUploading ? 'text-[#827B6E]' : 'text-white'} text-[16px] pt-1`}>
+                {isQuizImageUploading ? 'ব্যানার আপলোড হচ্ছে...' : (editingQuizId ? 'কুইজ আপডেট করুন' : 'কুইজ সেভ করুন')}
+              </Text>
+            </TouchableOpacity>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* 🚀 ৫. Smart Resource Picker (Accordion Style) */}
+      <Modal visible={isResourcePickerVisible} animationType="fade" transparent={true} onRequestClose={() => setIsResourcePickerVisible(false)}>
+        <View className="flex-1 bg-black/60 justify-end">
+          <View className="bg-[#FFFDF8] rounded-t-[32px] p-5 pt-3 w-full h-[80%] shadow-lg border-t-4 border-[#EFE8D6]">
+            <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mb-5" />
+            <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-[#EFE8D6]">
+              <Text className="text-[17px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>সিলেবাস ও ফিল্টার</Text>
+              <TouchableOpacity onPress={() => setIsResourcePickerVisible(false)} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
+                <FontAwesome5 name="times" size={14} color="#6B655B" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
+              {channelGuides.length > 0 ? (
+                channelGuides.map((guide, idx) => {
+                  // ডাইনামিক্যালি টাইপ এবং টপিক বের করা হচ্ছে
+                  let uniqueTypes = new Set();
+                  let uniqueTopics = new Set();
+                  if (guide.failedItems) {
+                    guide.failedItems.forEach(bank => {
+                      if (bank.questions) {
+                        bank.questions.forEach(q => {
+                          if (q.type) uniqueTypes.add(q.type);
+                          if (q.topic) uniqueTopics.add(q.topic);
+                        });
+                      }
+                    });
+                  }
+                  
+                  const typesArr = Array.from(uniqueTypes);
+                  const topicsArr = Array.from(uniqueTopics);
+                  
+                  const isExpanded = expandedResourceGuide === guide.id;
+                  
+                  // এই গাইডের জন্য কোনো রুল সেভ আছে কিনা চেক করা
+                  let currentRule = quizSelectedRules.find(r => r.guideId === guide.id);
+                  const isSelected = !!currentRule;
+                  
+                  // রুলস টগল করার হেল্পার ফাংশন
+                  const toggleRuleArray = (arrayName, value) => {
+                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                    setquizSelectedRules(prev => {
+                      let newRules = [...prev];
+                      let ruleIdx = newRules.findIndex(r => r.guideId === guide.id);
+                      
+                      if (ruleIdx === -1) {
+                        // নতুন রুল অ্যাড করা
+                        newRules.push({ guideId: guide.id, allowedTypes: arrayName === 'types' ? [value] : [], allowedTopics: arrayName === 'topics' ? [value] : [] });
+                      } else {
+                        // এক্সিস্টিং রুল আপডেট করা
+                        let targetArray = [...newRules[ruleIdx][arrayName === 'types' ? 'allowedTypes' : 'allowedTopics']];
+                        if (targetArray.includes(value)) {
+                          targetArray = targetArray.filter(v => v !== value);
+                        } else {
+                          targetArray.push(value);
+                        }
+                        newRules[ruleIdx] = { ...newRules[ruleIdx], [arrayName === 'types' ? 'allowedTypes' : 'allowedTopics']: targetArray };
+                        
+                        // যদি দুটো অ্যারে-ই ফাঁকা হয়ে যায়, তার মানে সে পুরো প্যাকটাই রিমুভ করতে চাচ্ছে (বা সব সিলেক্ট করেছে)
+                        if (newRules[ruleIdx].allowedTypes.length === 0 && newRules[ruleIdx].allowedTopics.length === 0) {
+                           newRules.splice(ruleIdx, 1);
+                        }
+                      }
+                      return newRules;
+                    });
+                  };
+
+                  return (
+                    <View key={idx} className={`mb-3 rounded-[20px] border overflow-hidden ${isSelected ? 'border-[#8BA85E]' : 'border-[#EFE8D6]'}`}>
+                      <TouchableOpacity 
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                          setExpandedResourceGuide(isExpanded ? null : guide.id);
+                        }}
+                        className={`flex-row items-center p-4 ${isSelected ? 'bg-[#EAF2D7]' : 'bg-white'}`}
+                      >
+                        <View className="flex-1">
+                          <Text className={`text-[16px] ${isSelected ? 'text-[#4A632D]' : 'text-[#3D382F]'}`} style={{ fontFamily: 'BanglaBold' }}>{guide.notebookName}</Text>
+                          <Text className={`text-[12px] mt-0.5 ${isSelected ? 'text-[#6B8544]' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaRegular' }}>ট্যাপ করে নির্দিষ্ট টপিক ফিল্টার করুন</Text>
+                        </View>
+                        <FontAwesome5 name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color={isSelected ? "#58A700" : "#AFAFAF"} />
+                      </TouchableOpacity>
+
+                      {/* 🚀 Accordion Expanded View (Duolingo Style Chunky Chips) */}
+                      {isExpanded && (
+                        <View className="bg-[#FFFDF8] p-4 border-t border-[#EFE8D6]">
+                          
+                          {typesArr.length > 0 && (
+                            <>
+                              <Text className="text-[#AFAFAF] text-[12px] mb-2" style={{ fontFamily: 'BanglaBold' }}>প্রশ্নের ধরন:</Text>
+                              <View className="flex-row flex-wrap mb-4">
+                                {typesArr.map(type => {
+                                  const isActive = currentRule?.allowedTypes.includes(type);
+                                  return (
+                                    <TouchableOpacity 
+                                      key={type}
+                                      activeOpacity={0.7}
+                                      onPress={() => toggleRuleArray('types', type)}
+                                      className={`mr-2 mb-2 px-4 py-2 rounded-full border-2 ${isActive ? 'bg-[#1899D6] border-[#1073A4]' : 'bg-white border-[#EFE8D6]'}`}
+                                    >
+                                      <Text className={`text-[13px] pt-0.5 ${isActive ? 'text-white' : 'text-[#6B655B]'}`} style={{ fontFamily: 'BanglaBold' }}>{type}</Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                            </>
+                          )}
+
+                          {topicsArr.length > 0 && (
+                            <>
+                              <Text className="text-[#AFAFAF] text-[12px] mb-2" style={{ fontFamily: 'BanglaBold' }}>অধ্যায় / টপিক:</Text>
+                              <View className="flex-row flex-wrap">
+                                {topicsArr.map(topic => {
+                                  const isActive = currentRule?.allowedTopics.includes(topic);
+                                  return (
+                                    <TouchableOpacity 
+                                      key={topic}
+                                      activeOpacity={0.7}
+                                      onPress={() => toggleRuleArray('topics', topic)}
+                                      className={`mr-2 mb-2 px-4 py-2 rounded-full border-2 ${isActive ? 'bg-[#FF9600] border-[#D47B00]' : 'bg-white border-[#EFE8D6]'}`}
+                                    >
+                                      <Text className={`text-[13px] pt-0.5 ${isActive ? 'text-white' : 'text-[#6B655B]'}`} style={{ fontFamily: 'BanglaBold' }}>{topic}</Text>
+                                    </TouchableOpacity>
+                                  );
+                                })}
+                              </View>
+                            </>
+                          )}
+                          
+                          {(typesArr.length === 0 && topicsArr.length === 0) && (
+                            <Text className="text-[#AFAFAF] text-[13px]" style={{ fontFamily: 'BanglaRegular' }}>এই প্যাকে ফিল্টার করার মতো কোনো টপিক নেই।</Text>
+                          )}
+                        </View>
+                      )}
+                    </View>
+                  );
+                })
+              ) : (
+                <View className="items-center py-10">
+                  <Text className="text-[#827B6E] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>কোনো স্টাডি প্যাক পাওয়া যায়নি</Text>
+                </View>
+              )}
+            </ScrollView>
+
+            <TouchableOpacity 
+              activeOpacity={0.8}
+              onPress={() => setIsResourcePickerVisible(false)}
+              className="bg-[#58A700] py-4 rounded-[16px] items-center shadow-sm"
+            >
+              <Text style={{ fontFamily: 'BanglaBold' }} className="text-white text-[16px] pt-1">কনফার্ম করুন ({quizSelectedRules.length} টি প্যাক)</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
+
+      </Animated.View>
+     </>
     </Wrapper>
   );
 }

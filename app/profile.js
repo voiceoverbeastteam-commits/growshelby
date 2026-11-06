@@ -550,15 +550,18 @@ export default function ProfileScreen() {
   const handleSaveCommunity = async () => {
     if (tempCommName.trim() === '') return Alert.alert("সতর্কতা", "কমিউনিটির নাম ফাঁকা রাখা যাবে না!");
     
+    // 🚀 ক্যাশ বাইপাস করার জন্য টাইমস্ট্যাম্প যুক্ত করা হলো
+    const freshBanner = tempCommBanner ? `${tempCommBanner.split('?')[0]}?t=${Date.now()}` : commBanner;
+
     setCommName(tempCommName.trim());
-    if (tempCommBanner) setCommBanner(tempCommBanner);
+    if (freshBanner) setCommBanner(freshBanner);
     setCommDesc(tempCommDesc.trim());
-    setCommNiche(tempCommNiche); // 🔥 লোকাল স্টেটে ক্যাটাগরি সেভ
+    setCommNiche(tempCommNiche); 
     
     await AsyncStorage.setItem(`@comm_name_${userEmail}`, tempCommName.trim());
     await AsyncStorage.setItem(`@comm_desc_${userEmail}`, tempCommDesc.trim());
-    await AsyncStorage.setItem(`@comm_niche_${userEmail}`, tempCommNiche); // 🔥 লোকাল স্টোরেজে ক্যাটাগরি সেভ
-    
+    await AsyncStorage.setItem(`@comm_banner_${userEmail}`, freshBanner); // 🚀 ফ্রেশ ব্যানার সেভ
+    await AsyncStorage.setItem(`@comm_niche_${userEmail}`, tempCommNiche);
     // 🚀 ROOT CAUSE FIX: Syncing Immediately to Backend to wipe out old cache
     try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
@@ -731,7 +734,7 @@ export default function ProfileScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-[#F7F9FA]">
-      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 130 }} showsVerticalScrollIndicator={false}>
+     <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 130 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
          
        {/* ==========================================
              PERSONAL PROFILE SECTION (Always Visible)
@@ -860,8 +863,9 @@ export default function ProfileScreen() {
                     
                     {/* Action Buttons */}
                     <View className="flex-row space-x-3">
-                      <TouchableOpacity 
+                   <TouchableOpacity 
                           activeOpacity={0.8} 
+                          delayPressIn={0}
                           onPress={handleEnterCommunity}
                           className="flex-1 bg-[#1899D6] py-3 rounded-[12px] items-center flex-row justify-center shadow-sm"
                        >

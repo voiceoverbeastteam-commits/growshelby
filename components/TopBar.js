@@ -76,10 +76,9 @@ export default function TopBar({ refreshTrigger }) {
           )}
         </View>
 
-    {/* Right Action: Community Members Counter */}
-        <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/study')} className="flex-row items-center justify-center bg-white px-4 py-2 rounded-2xl border-2 border-[#E5E5E5] border-b-[4px] border-b-[#CECECE]">
-          <FontAwesome5 name="users" size={15} color="#1899D6" solid />
-          <Text className="text-[#4B4B4B] ml-2 text-xs pt-0.5" style={{ fontFamily: 'BanglaBold' }}>কমিউনিটি</Text>
+  {/* Right Action: Community Button */}
+        <TouchableOpacity activeOpacity={0.8} onPress={() => router.push('/study')} className="flex-row items-center justify-center bg-white w-11 h-11 rounded-2xl border-2 border-[#E5E5E5] border-b-[4px] border-b-[#CECECE]">
+          <FontAwesome5 name="users" size={18} color="#1899D6" solid />
         </TouchableOpacity>
 
       </View>

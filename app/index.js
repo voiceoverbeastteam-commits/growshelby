@@ -35,8 +35,8 @@ const SkeletonCard = () => {
     ).start();
   }, []);
 
- return (
-    <Animated.View style={{ opacity: shimmerAnim }} className="mb-8">
+return (
+    <Animated.View style={{ opacity: shimmerAnim }} className="mb-8" pointerEvents="none">
       <View className="w-full aspect-[16/9] bg-[#E5E5E5] rounded-xl" />
       <View className="flex-row mt-3 px-1">
         <View className="w-11 h-11 rounded-full bg-[#E5E5E5] mr-3" />
@@ -355,10 +355,8 @@ useEffect(() => {
   }, []);
 
 const handleStartReading = (lessonItem) => {
-    setTimeout(() => {
-      setSelectedLesson({ ...lessonItem, isFromExplore: true });
-      setLessonVisible(true);
-    }, 50);
+    setSelectedLesson({ ...lessonItem, isFromExplore: true });
+    setLessonVisible(true);
   };
 
   // 🚀 Push Notification এ ক্লিক করলে নির্দিষ্ট কমিউনিটি ওপেন করার ম্যাজিক ফাংশন
@@ -504,11 +502,13 @@ return (
 
       <TopBar refreshTrigger={refreshCount} />
 
-      <ScrollView 
+   <ScrollView 
         className="flex-1"
         contentContainerStyle={{ paddingTop: 10, paddingBottom: 110 }} 
         onScroll={handleScroll}
         scrollEventThrottle={16}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl 
             refreshing={refreshing} 
@@ -524,9 +524,9 @@ return (
 
  {/* 🚀 হট টপিকস (ডাইনামিক ক্যাটাগরি চিপস) */}
         <View className="px-5 mt-4 mb-4">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row">
+         <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row" keyboardShouldPersistTaps="handled">
             {dynamicCategories.map((cat, index) => (
-              <TouchableOpacity key={index} activeOpacity={0.8} onPress={() => setExploreCategory(cat)} className={`px-4 py-2 rounded-full border mr-2 ${exploreCategory === cat ? 'bg-[#1899D6] border-[#1899D6]' : 'bg-[#F9F9F9] border-[#E5E5E5]'}`}>
+            <TouchableOpacity key={index} activeOpacity={0.8} onPress={() => setExploreCategory(cat)} delayPressIn={0} className={`px-4 py-2 rounded-full border mr-2 ${exploreCategory === cat ? 'bg-[#1899D6] border-[#1899D6]' : 'bg-[#F9F9F9] border-[#E5E5E5]'}`}>
                 <Text className={`text-[13px] pt-0.5 ${exploreCategory === cat ? 'text-white' : 'text-[#777777]'}`} style={{ fontFamily: 'BanglaBold' }}>{cat}</Text>
               </TouchableOpacity>
             ))}
@@ -549,7 +549,7 @@ return (
                   .filter(guide => exploreCategory === 'সব' || (guide.niche && guide.niche.includes(exploreCategory)) || (guide.notebookName && guide.notebookName.includes(exploreCategory)))
                   .map((guide, idx) => (
 
-            <TouchableOpacity key={idx} activeOpacity={0.9} onPress={() => handleStartReading(guide)} className="mb-8">
+            <TouchableOpacity key={idx} activeOpacity={0.9} delayPressIn={0} onPress={() => handleStartReading(guide)} className="mb-8">
                 <View className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#F0F2F5] border border-[#E5E5E5]">
                   <Image source={{ uri: guide.banner || 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1000' }} className="w-full h-full" resizeMode="cover" />
                 </View>

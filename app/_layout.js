@@ -177,8 +177,12 @@ export default function Layout() {
         if (result.success && result.community) {
           await AsyncStorage.setItem('@temp_community_data', JSON.stringify({ ...result.community, isFromExplore: true }));
           router.replace({ pathname: '/community', params: uniqueParam });
-          if (String(data.openDiscussion) === 'true') {
+         if (String(data.openDiscussion) === 'true') {
             setTimeout(() => DeviceEventEmitter.emit('open_discussion_modal'), 800);
+          }
+          // 🚀 জয়েন রিকোয়েস্টের নোটিফিকেশনে ক্লিক করলে সরাসরি মেম্বার লিস্ট ওপেন করার ইভেন্ট
+          if (data.type === 'join_request') {
+            setTimeout(() => DeviceEventEmitter.emit('open_members_modal'), 800);
           }
         }
       } catch (error) { console.log("Community Open Error:", error); }
@@ -235,9 +239,8 @@ export default function Layout() {
     return null;
   }
 
-  return (
+ return (
     <View className="flex-1 bg-white">
-      <NotificationDebugger />
       <Autoupdate />
       <PushNotification />
       <StatusBar style="dark" backgroundColor="#FFFFFF" />
@@ -251,8 +254,7 @@ export default function Layout() {
         <Tabs.Screen name="index" />
         <Tabs.Screen name="tournament" />
         <Tabs.Screen name="study" />
-      <Tabs.Screen name="profile" />
-        <Tabs.Screen name="reader" options={{ href: null }} />
+     <Tabs.Screen name="profile" />
         <Tabs.Screen name="community" options={{ href: null }} />
       </Tabs>
     </View>

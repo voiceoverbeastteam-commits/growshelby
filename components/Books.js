@@ -307,23 +307,20 @@ const pickEditThumbnail = async () => {
     }
   };
 
- // 🚀 Helper: ইংরেজি নাম্বারকে বাংলায় রূপান্তর এবং 1k+ ফরম্যাটিং
-  const formatNumberToBangla = (num) => {
-    if (!num) return '০';
-    const banglaDigits = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' };
-    
+// 🚀 Helper: নাম্বার ফরম্যাটিং (English)
+  const formatNumber = (num) => {
+    if (!num) return '0';
     if (num >= 1000) {
       const kValue = (num / 1000).toFixed(1).replace('.0', ''); // 1.0k এর বদলে 1k
-      return kValue.toString().replace(/[0-9]/g, x => banglaDigits[x]) + 'k';
+      return kValue + 'k';
     }
-    return num.toString().replace(/[0-9]/g, x => banglaDigits[x]);
+    return num.toString();
   };
 
-  // 🚀 Helper: রেটিং ফরম্যাটিং (যেমন: ৪.৫)
-  const formatRatingToBangla = (rating) => {
+  // 🚀 Helper: রেটিং ফরম্যাটিং (English)
+  const formatRating = (rating) => {
     if (!rating || rating === 0) return 'নতুন'; // কেউ রেটিং না দিলে 'নতুন' দেখাবে
-    const banglaDigits = { '0': '০', '1': '১', '2': '২', '3': '৩', '4': '৪', '5': '৫', '6': '৬', '7': '৭', '8': '৮', '9': '৯' };
-    return rating.toFixed(1).toString().replace(/[0-9]/g, x => banglaDigits[x]);
+    return rating.toFixed(1).toString();
   };
 
 // 🚀 Community-First Squad Card (SUPER FAST & Error Free!)
@@ -362,10 +359,10 @@ const pickEditThumbnail = async () => {
       }).start(() => setIsImgLoaded(true));
     };
 
-    const rawContentCount = isExplore ? (guide.contentCount || guide.questionCount || guide.data?.length || 1) : (guide.failedItems?.length || guide.data?.length || 0);
-    const contentCount = formatNumberToBangla(rawContentCount);
-    const memberCount = formatNumberToBangla(guide.membersCount || 1);
-    const rating = formatRatingToBangla(guide.averageRating || 0);
+   const rawContentCount = isExplore ? (guide.contentCount || guide.questionCount || guide.data?.length || 1) : (guide.failedItems?.length || guide.data?.length || 0);
+    const contentCount = formatNumber(rawContentCount);
+    const memberCount = formatNumber(guide.membersCount || 1);
+    const rating = formatRating(guide.averageRating || 0);
 
     return (
       <View className="mb-7">
@@ -385,16 +382,16 @@ const pickEditThumbnail = async () => {
               <Animated.View style={{ opacity: shimmerAnim }} className="absolute inset-0 bg-[#EAE4D4]" />
             )}
 
-            {/* 🚀 ৩. শুধু ভ্যালিড ইমেজ থাকলেই Image কম্পোনেন্ট রেন্ডার হবে */}
+           {/* 🚀 ৩. শুধু ভ্যালিড ইমেজ থাকলেই Image কম্পোনেন্ট রেন্ডার হবে এবং ক্যাশ বাইপাস করবে */}
             {isValidImage && (
               <Animated.Image
-                source={{ uri: imageUri }}
+                source={{ uri: `${imageUri.includes('?') ? imageUri : imageUri + '?'}&t=${Date.now()}` }}
                 className="w-full h-full absolute inset-0"
                 resizeMode="cover"
                 style={{ opacity: imageFadeAnim }}
                 onLoad={handleImageLoad}
                 onError={() => {
-                  setIsImgLoaded(true); // এরর হলেও শিমার বন্ধ করে দিব
+                  setIsImgLoaded(true);
                   Animated.timing(imageFadeAnim, { toValue: 1, duration: 300, useNativeDriver: true }).start();
                 }}
               />

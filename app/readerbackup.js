@@ -30,9 +30,17 @@ const ShortAnswerCard = ({ data, globalReveal, onOpenDiscussion }) => {
 
   return (
     <View className="bg-white p-5 rounded-[20px] border-2 border-[#E5E5E5] mb-5 shadow-sm">
-      <View className="flex-row justify-between items-center mb-3">
-        <View className="bg-[#1CB0F6]/10 px-3 py-1 rounded-lg border border-[#1CB0F6]/30">
-          <Text className="text-[12px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.type}</Text>
+    <View className="flex-row justify-between items-center mb-3">
+        <View className="flex-row space-x-2">
+          <View className="bg-[#1CB0F6]/10 px-3 py-1 rounded-lg border border-[#1CB0F6]/30">
+            <Text className="text-[12px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.type}</Text>
+          </View>
+          {/* 🚀 নতুন ব্যাজ লজিক */}
+          {data.addedAt && (Date.now() - data.addedAt) < (7 * 24 * 60 * 60 * 1000) && (
+            <View className="bg-[#FF4B4B]/10 px-2 py-1 rounded-lg border border-[#FF4B4B]/30">
+              <Text className="text-[10px] text-[#FF4B4B] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>নতুন 💥</Text>
+            </View>
+          )}
         </View>
         <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-[#FDF6E3] px-3 py-1.5 rounded-full border border-[#EFE8D6]">
           <FontAwesome5 name="comments" size={12} color="#D47B00" />
@@ -70,11 +78,19 @@ const MCQCard = ({ data, globalReveal, onOpenDiscussion }) => {
   let anyOptionMatched = false;
   const normalizedCorrectText = normalizeText(data.correctAnswer);
 
-  return (
+ return (
     <View className="bg-white p-5 rounded-[20px] border-2 border-[#E5E5E5] mb-5 shadow-sm">
       <View className="flex-row justify-between items-center mb-3">
-        <View className="bg-[#A559D6]/10 px-3 py-1 rounded-lg border border-[#A559D6]/30">
-          <Text className="text-[12px] text-[#A559D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>এমসিকিউ</Text>
+        <View className="flex-row space-x-2">
+          <View className="bg-[#A559D6]/10 px-3 py-1 rounded-lg border border-[#A559D6]/30">
+            <Text className="text-[12px] text-[#A559D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>এমসিকিউ</Text>
+          </View>
+          {/* 🚀 নতুন ব্যাজ লজিক */}
+          {data.addedAt && (Date.now() - data.addedAt) < (7 * 24 * 60 * 60 * 1000) && (
+            <View className="bg-[#FF4B4B]/10 px-2 py-1 rounded-lg border border-[#FF4B4B]/30">
+              <Text className="text-[10px] text-[#FF4B4B] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>নতুন 💥</Text>
+            </View>
+          )}
         </View>
         <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-[#FDF6E3] px-3 py-1.5 rounded-full border border-[#EFE8D6]">
           <FontAwesome5 name="comments" size={12} color="#D47B00" />
@@ -156,11 +172,19 @@ const CQCard = ({ data, globalReveal, subFilter, onOpenDiscussion }) => {
     setRevealedAnswers(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
-  return (
+ return (
     <View className="bg-[#FFF4E5] p-5 rounded-[20px] border-2 border-[#FFC800] mb-5 shadow-sm">
       <View className="flex-row justify-between items-center mb-3">
-        <View className="bg-[#FF9600]/10 px-3 py-1 rounded-lg border border-[#FF9600]/30">
-          <Text className="text-[12px] text-[#D47B00] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>সৃজনশীল প্রশ্ন</Text>
+        <View className="flex-row space-x-2">
+          <View className="bg-[#FF9600]/10 px-3 py-1 rounded-lg border border-[#FF9600]/30">
+            <Text className="text-[12px] text-[#D47B00] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>সৃজনশীল প্রশ্ন</Text>
+          </View>
+          {/* 🚀 নতুন ব্যাজ লজিক */}
+          {data.addedAt && (Date.now() - data.addedAt) < (7 * 24 * 60 * 60 * 1000) && (
+            <View className="bg-[#FF4B4B]/10 px-2 py-1 rounded-lg border border-[#FF4B4B]/30">
+              <Text className="text-[10px] text-[#FF4B4B] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>নতুন 💥</Text>
+            </View>
+          )}
         </View>
         <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-white px-3 py-1.5 rounded-full border border-[#FFDDAA]">
           <FontAwesome5 name="comments" size={12} color="#D47B00" />
@@ -272,11 +296,22 @@ export default function ReaderPage() {
     );
   }
 
-  const extractedData = guideData.failedItems || guideData.data || [];
-  const categories = ['সব', ...Array.from(new Set(extractedData.map(item => item.type)))];
+const extractedData = guideData.failedItems || guideData.data || [];
+  const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
+  // 🚀 ডাইনামিক 'নতুন আপডেট' লজিক (শুধু নতুন প্রশ্ন থাকলেই ট্যাব দেখাবে)
+  const newQuestionsCount = extractedData.filter(item => item.addedAt && (Date.now() - item.addedAt) < SEVEN_DAYS_MS).length;
+  
+  const baseCategories = ['সব', ...Array.from(new Set(extractedData.map(item => item.type)))];
+  const categories = newQuestionsCount > 0 
+    ? ['সব', 'নতুন আপডেট 💥', ...Array.from(new Set(extractedData.map(item => item.type)))] 
+    : baseCategories;
 
   const filteredData = extractedData.filter(item => {
     if (activeCategory === 'সব') return true;
+    if (activeCategory === 'নতুন আপডেট 💥') {
+      return item.addedAt && (Date.now() - item.addedAt) < SEVEN_DAYS_MS;
+    }
     return item.type === activeCategory;
   });
 

@@ -86,7 +86,7 @@ const readFileAsBase64 = async (uri) => {
   }
 };
 
-export const processWithGuideEngine = async ({ images = [], rawText = "", onStatusChange, userData = null }) => {
+export const processWithGuideEngine = async ({ images = [], rawText = "", onStatusChange, userData = null, targetSubject = null, existingTopics = [] }) => {
   let geminiKeys = [];
 
   try {
@@ -111,7 +111,11 @@ export const processWithGuideEngine = async ({ images = [], rawText = "", onStat
   try {
     let promptParts = [SMART_GUIDE_PROMPT];
     let hasContent = false;
-    let instruction = "Extract EVERYTHING from the following source(s) into the strict JSON array format: \n\n";
+   let instruction = "Extract EVERYTHING from the following source(s) into the strict JSON array format: \n\n";
+
+    if (existingTopics && existingTopics.length > 0) {
+      instruction += `CRITICAL INSTRUCTION: This question bank already has the following topics: [${existingTopics.join(', ')}]. \nWhen categorizing new questions, strictly try to group them under these existing topics if relevant. ONLY create a new topic name if the new question covers a completely different concept.\n\n`;
+    }
 
     if (rawText && rawText.trim().length > 0) {
       instruction += `[TEXT SOURCE]\n${rawText}\n\n`;
@@ -193,8 +197,9 @@ export const processWithGuideEngine = async ({ images = [], rawText = "", onStat
       throw new Error(`DETAILED ERROR:\n${lastErrorDetails}`);
     }
     
-    // 🚀 অটো-পাবলিশ এবং নোটিফিকেশন লজিক শুরু
-    if (userData) {
+  // 🚀 অটো-পাবলিশ এবং নোটিফিকেশন লজিক শুরু
+    // 🚀 ফিক্স: যদি এটি কোশ্চেন ব্যাংক হয় (targetSubject থাকে), তবে এখানে অটো-পাবলিশ হবে না
+    if (userData && !targetSubject) {
       try {
         const shareCode = Math.random().toString(36).substring(2, 8).toUpperCase();
         const guideTitle = `স্মার্ট গাইড - ${new Date().toLocaleDateString('bn-BD')}`;

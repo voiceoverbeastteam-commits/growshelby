@@ -71,7 +71,7 @@ const normalizeText = (text) => {
 const ShortAnswerCard = ({ data, globalReveal, onOpenDiscussion }) => {
  const [showAnswer, setShowAnswer] = useState(false);
   useEffect(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); // 🚀 ম্যাজিক অ্যানিমেশন
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); // 🚀 ম্যাজিক অ্যানিমেশন ব্যাক!
     setShowAnswer(globalReveal);
   }, [globalReveal]);
 
@@ -80,11 +80,19 @@ const ShortAnswerCard = ({ data, globalReveal, onOpenDiscussion }) => {
     setShowAnswer(!showAnswer);
   };
 
-  return (
+ return (
     <View className="bg-white p-5 rounded-[20px] border-2 border-[#E5E5E5] mb-5 shadow-sm">
       <View className="flex-row justify-between items-center mb-3">
-        <View className="bg-[#1CB0F6]/10 px-3 py-1 rounded-lg border border-[#1CB0F6]/30">
-          <Text className="text-[12px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.type}</Text>
+        <View className="flex-row items-center space-x-2">
+          <View className="bg-[#1CB0F6]/10 px-3 py-1 rounded-lg border border-[#1CB0F6]/30">
+            <Text className="text-[12px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.type}</Text>
+          </View>
+          {/* 🚀 ম্যানুয়াল স্পেশাল ট্যাগ ব্যাজ */}
+          {data.updateVersion && (
+            <View className="bg-[#1899D6]/10 px-2 py-1 rounded-lg border border-[#1899D6]/30">
+              <Text className="text-[10px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.updateVersion}</Text>
+            </View>
+          )}
         </View>
         <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-[#FDF6E3] px-3 py-1.5 rounded-full border border-[#EFE8D6]">
           <FontAwesome5 name="comments" size={12} color="#D47B00" />
@@ -113,7 +121,7 @@ const ShortAnswerCard = ({ data, globalReveal, onOpenDiscussion }) => {
 const MCQCard = ({ data, globalReveal, onOpenDiscussion }) => {
   const [showAnswer, setShowAnswer] = useState(false);
   useEffect(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); // 🚀 ম্যাজিক অ্যানিমেশন
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); // 🚀 ম্যাজিক অ্যানিমেশন ব্যাক!
     setShowAnswer(globalReveal);
   }, [globalReveal]);
 
@@ -125,11 +133,19 @@ const MCQCard = ({ data, globalReveal, onOpenDiscussion }) => {
   let anyOptionMatched = false;
   const normalizedCorrectText = normalizeText(data.correctAnswer);
 
-  return (
+ return (
     <View className="bg-white p-5 rounded-[20px] border-2 border-[#E5E5E5] mb-5 shadow-sm">
       <View className="flex-row justify-between items-center mb-3">
-        <View className="bg-[#A559D6]/10 px-3 py-1 rounded-lg border border-[#A559D6]/30">
-          <Text className="text-[12px] text-[#A559D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>এমসিকিউ</Text>
+        <View className="flex-row items-center space-x-2">
+          <View className="bg-[#A559D6]/10 px-3 py-1 rounded-lg border border-[#A559D6]/30">
+            <Text className="text-[12px] text-[#A559D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>এমসিকিউ</Text>
+          </View>
+          {/* 🚀 ম্যানুয়াল স্পেশাল ট্যাগ ব্যাজ */}
+          {data.updateVersion && (
+            <View className="bg-[#1899D6]/10 px-2 py-1 rounded-lg border border-[#1899D6]/30">
+              <Text className="text-[10px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.updateVersion}</Text>
+            </View>
+          )}
         </View>
         <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-[#FDF6E3] px-3 py-1.5 rounded-full border border-[#EFE8D6]">
           <FontAwesome5 name="comments" size={12} color="#D47B00" />
@@ -198,7 +214,7 @@ const CQCard = ({ data, globalReveal, subFilter, onOpenDiscussion }) => {
 const showStem = subFilter === 'সব' || subFilter === 'গ ও ঘ';
 
 useEffect(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); // 🚀 ম্যাজিক অ্যানিমেশন
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); // 🚀 ম্যাজিক অ্যানিমেশন ব্যাক!
     const newState = {};
     filteredQuestions.forEach((_, i) => newState[i] = globalReveal);
     setRevealedAnswers(newState);
@@ -212,11 +228,19 @@ useEffect(() => {
     setRevealedAnswers(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
-  return (
+ return (
     <View className="bg-[#FFF4E5] p-5 rounded-[20px] border-2 border-[#FFC800] mb-5 shadow-sm">
       <View className="flex-row justify-between items-center mb-3">
-        <View className="bg-[#FF9600]/10 px-3 py-1 rounded-lg border border-[#FF9600]/30">
-          <Text className="text-[12px] text-[#D47B00] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>সৃজনশীল প্রশ্ন</Text>
+        <View className="flex-row items-center space-x-2">
+          <View className="bg-[#FF9600]/10 px-3 py-1 rounded-lg border border-[#FF9600]/30">
+            <Text className="text-[12px] text-[#D47B00] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>সৃজনশীল প্রশ্ন</Text>
+          </View>
+          {/* 🚀 ম্যানুয়াল স্পেশাল ট্যাগ ব্যাজ */}
+          {data.updateVersion && (
+            <View className="bg-[#1899D6]/10 px-2 py-1 rounded-lg border border-[#1899D6]/30">
+              <Text className="text-[10px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.updateVersion}</Text>
+            </View>
+          )}
         </View>
         <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-white px-3 py-1.5 rounded-full border border-[#FFDDAA]">
           <FontAwesome5 name="comments" size={12} color="#D47B00" />
@@ -273,9 +297,9 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
       if (result.success && result.community) {
         await AsyncStorage.setItem('@temp_community_data', JSON.stringify(result.community));
         
-      // বর্তমান প্রোফাইল ও রিডিং মডাল বন্ধ করে দিচ্ছি
-        setMembersModalVisible(false);
-        onClose(); 
+    // বর্তমান প্রোফাইল ও রিডিং মডাল বন্ধ করে দিচ্ছি
+        closeMembersModalSmoothly();
+        onClose();
         
      // 🚀 ম্যাজিক ফিক্স: মডালগুলো বন্ধ হওয়ার জন্য ৩০০ মিলিসেকেন্ড সময় দিয়ে তারপর পেজ রিপ্লেস করবো
         setTimeout(() => {
@@ -293,14 +317,16 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
   const [cqSubFilter, setCqSubFilter] = useState('সব');
   const [globalReveal, setGlobalReveal] = useState(false);
   
-  // 🚀 টপিক ফিল্টারের স্টেট
+// 🚀 টপিক এবং আপডেট ভার্সন ফিল্টারের স্টেট
  const [activeTopic, setActiveTopic] = useState('সব টপিক');
+ const [activeUpdate, setActiveUpdate] = useState('সব ভার্সন');
   const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   
   // 🚀 টেম্পোরারি ফিল্টার স্টেট (শুধুমাত্র মডালের ভেতরে কাজ করার জন্য)
   const [tempCategory, setTempCategory] = useState(activeCategory);
   const [tempCqSubFilter, setTempCqSubFilter] = useState(cqSubFilter);
   const [tempTopic, setTempTopic] = useState(activeTopic);
+  const [tempUpdate, setTempUpdate] = useState(activeUpdate);
 
   // মডাল ওপেন হলে কারেন্ট ফিল্টারগুলো টেম্পোরারিতে সেট করে নেওয়া
   useEffect(() => {
@@ -308,6 +334,7 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
       setTempCategory(activeCategory);
       setTempCqSubFilter(cqSubFilter);
       setTempTopic(activeTopic);
+      setTempUpdate(activeUpdate);
     }
   }, [isFilterModalVisible]);
   
@@ -410,6 +437,27 @@ if(!guideId) return;
 
  const [activeReaders, setActiveReaders] = useState([]);
  const [membersModalVisible, setMembersModalVisible] = useState(false);
+ 
+ // 🚀 Members Modal Bouncy Animation States
+ const membersSlideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
+ const membersFadeAnim = useRef(new Animated.Value(0)).current;
+
+ useEffect(() => {
+   if (membersModalVisible) {
+     Animated.parallel([
+       Animated.timing(membersFadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
+       Animated.spring(membersSlideAnim, { toValue: 0, friction: 9, tension: 60, useNativeDriver: true })
+     ]).start();
+   }
+ }, [membersModalVisible]);
+
+ const closeMembersModalSmoothly = () => {
+   Animated.parallel([
+     Animated.timing(membersFadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+     Animated.timing(membersSlideAnim, { toValue: SCREEN_HEIGHT, duration: 250, useNativeDriver: true })
+   ]).start(() => setMembersModalVisible(false));
+ };
+
 // 🚀 History Stack States (Rabbit Hole Effect)
   const [profileStack, setProfileStack] = useState([]); 
  const profileSlideAnim = useRef(new Animated.Value(Dimensions.get('window').width)).current;
@@ -976,10 +1024,10 @@ const fetchLobbyData = async (query = '') => {
     setDiscussionVisible(true);
   };
 
-  if (!guideData) return null;
+if (!guideData) return null;
 
   const extractedData = guideData.failedItems || guideData.data || [];
-  const categories = ['সব', ...Array.from(new Set(extractedData.map(item => item.type)))];
+  const categories = ['সব', ...Array.from(new Set(extractedData.map(item => item.type).filter(Boolean)))];
 
   // ১. ক্যাটাগরি অনুযায়ী ফিল্টার
   const categoryFilteredData = extractedData.filter(item => {
@@ -987,13 +1035,14 @@ const fetchLobbyData = async (query = '') => {
     return item.type === activeCategory;
   });
 
-  // ২. এই ক্যাটাগরির ভেতরের ইউনিক টপিকগুলো বের করা
+ // ২. এই ক্যাটাগরির ভেতরের ইউনিক টপিকগুলো বের করা
   const topics = ['সব টপিক', ...Array.from(new Set(categoryFilteredData.map(item => item.topic || 'অন্যান্য').filter(Boolean)))];
 
-  // ৩. এবার টপিক অনুযায়ী ফাইনাল ডেটা ফিল্টার
+  // ৩. এবার টপিক এবং আপডেট ভার্সন অনুযায়ী ফাইনাল ডেটা ফিল্টার
   const finalFilteredData = categoryFilteredData.filter(item => {
-    if (activeTopic === 'সব টপিক') return true;
-    return (item.topic || 'অন্যান্য') === activeTopic;
+    const matchTopic = activeTopic === 'সব টপিক' || (item.topic || 'অন্যান্য') === activeTopic;
+    const matchUpdate = activeUpdate === 'সব ভার্সন' || item.updateVersion === activeUpdate;
+    return matchTopic && matchUpdate;
   });
 
   // ৪. ডেটাগুলোকে টপিক অনুযায়ী গ্রুপ করা
@@ -1050,7 +1099,7 @@ const fetchLobbyData = async (query = '') => {
     // 🚀 ফিল্টার এপ্লাই করার সাথে সাথে শিমার ইফেক্ট চালু হবে!
     setIsContentReady(false); 
     
-    Animated.timing(listOpacity, {
+  Animated.timing(listOpacity, {
       toValue: 0,
       duration: 150,
       useNativeDriver: true,
@@ -1058,6 +1107,7 @@ const fetchLobbyData = async (query = '') => {
       setActiveCategory(tempCategory);
       setCqSubFilter(tempCqSubFilter);
       setActiveTopic(tempTopic);
+      setActiveUpdate(tempUpdate);
       setGlobalReveal(false);
       
       Animated.timing(listOpacity, {
@@ -1101,38 +1151,45 @@ const fetchLobbyData = async (query = '') => {
                 </TouchableOpacity>
               </View>
 
-            {/* 🟢 Center Zone: Live Presence Badge (Fixed Size Facepile) */}
-              <View className="items-center justify-center -mt-1">
-                <TouchableOpacity 
-                  activeOpacity={0.8} 
-                  onPress={() => setMembersModalVisible(true)} 
-                  className="flex-row items-center bg-white pl-1.5 pr-3 h-[44px] rounded-full border border-[#E5E5E5] shadow-sm max-w-[150px]"
-                >
-                  <View className="flex-row -space-x-3 mr-2">
-                    {activeReaders.length > 0 ? (
-                      <>
-                        {activeReaders.slice(0, 2).map((reader, i) => (
-                          <Image key={i} source={{ uri: reader.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-7 h-7 rounded-full border-2 border-white bg-[#EAE4D4]" style={{ zIndex: 3 - i }} />
-                        ))}
-                        {activeReaders.length > 2 && (
-                          <View className="w-7 h-7 rounded-full border-2 border-white bg-[#F0F0F0] items-center justify-center" style={{ zIndex: 1 }}>
-                            <Text className="text-[9px] text-[#4B4B4B]" style={{ fontFamily: 'BanglaBold' }}>
-                              +{activeReaders.length - 2 > 99 ? '99' : activeReaders.length - 2}
-                            </Text>
+      {/* 🟢 Center Zone: Live Presence Badge (Clickable Button Style) */}
+              <View className="items-center justify-center">
+                <TouchableOpacity activeOpacity={0.8} onPress={() => setMembersModalVisible(true)}>
+                  {/* 🚀 3D Button Wrapper (বাম ও ডান পাশের বাটনের সাথে কনসিস্টেন্ট) */}
+                  <View className="bg-[#E5E5E5] rounded-full pb-[3px] shadow-sm">
+                    <View className="flex-row items-center justify-center bg-white px-3 py-1.5 rounded-full border-2 border-[#E5E5E5] border-b-0">
+                      
+                      <View className="flex-row -space-x-2 mr-2">
+                        {activeReaders.length > 0 ? (
+                          <>
+                            {activeReaders.slice(0, 3).map((reader, i) => (
+                              <View key={i} className="relative" style={{ zIndex: 4 - i }}>
+                                <Image 
+                                  source={{ uri: reader.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} 
+                                  className="w-7 h-7 rounded-full border-2 border-white bg-[#EAE4D4]" 
+                                />
+                                {/* 🚀 Messenger Style Online Dot (Yellow) */}
+                                <View className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-[#FF9600] rounded-full border-[1.5px] border-white" />
+                              </View>
+                            ))}
+                            {activeReaders.length > 3 && (
+                              <View className="w-7 h-7 rounded-full border-2 border-white bg-[#F3F4F6] items-center justify-center" style={{ zIndex: 1 }}>
+                                <Text className="text-[9px] text-[#4B4B4B]" style={{ fontFamily: 'BanglaBold' }}>
+                                  +{activeReaders.length - 3 > 99 ? '99' : activeReaders.length - 3}
+                                </Text>
+                              </View>
+                            )}
+                          </>
+                        ) : (
+                          <View className="w-7 h-7 rounded-full border-2 border-white bg-[#F3F4F6] items-center justify-center">
+                            <FontAwesome5 name="user" size={10} color="#AFAFAF" />
                           </View>
                         )}
-                      </>
-                    ) : (
-                      <View className="w-7 h-7 rounded-full border-2 border-white bg-[#F0F0F0] items-center justify-center">
-                        <FontAwesome5 name="user" size={10} color="#AFAFAF" />
                       </View>
-                    )}
-                  </View>
-                  <View className="justify-center flex-shrink">
-                    <Text className="text-[#3C3C3C] text-[12px] leading-[15px]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>
-                      {activeReaders.length > 0 ? 'লাইভে পড়ছে' : 'একা'}
-                    </Text>
-                    
+
+                      {/* 🚀 শেভরন আইকন (ক্লিক করার সিগন্যাল) */}
+                      <FontAwesome5 name="chevron-down" size={10} color="#AFAFAF" />
+
+                    </View>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -1159,7 +1216,7 @@ const fetchLobbyData = async (query = '') => {
             </View>
           </View>
 
-          <View className="flex-1 px-5 pt-2">
+   <View className="flex-1 px-5 pt-2">
             <FlatList
               data={virtualizedData}
               keyExtractor={(item, index) => index.toString()}
@@ -1168,7 +1225,7 @@ const fetchLobbyData = async (query = '') => {
               initialNumToRender={8} // 🚀 শুরুতে মাত্র ৮টি প্রশ্ন রেন্ডার হবে (সুপার ফাস্ট)
               maxToRenderPerBatch={10}
               windowSize={5} // 🚀 মেমোরি ক্লিন রাখার ট্রিক
-              removeClippedSubviews={true} // 🚀 নতুন: এটা স্ক্রিনের বাইরের প্রশ্নগুলোকে পুরোপুরি ডিজেবল করে রাখবে, ফলে অ্যানিমেশন শুধু স্ক্রিনের ভেতরের ৫-৬ টাতেই কাজ করবে।
+              removeClippedSubviews={true} // 🚀 স্ক্রিনের বাইরের প্রশ্নগুলোকে ডিজেবল করে রাখবে, অ্যানিমেশন স্মুথ হবে
               ListEmptyComponent={
                 !isContentReady ? (
                   <View className="pt-2">
@@ -1379,7 +1436,7 @@ const fetchLobbyData = async (query = '') => {
                 </View>
               )}
 
-              {tempTopics.length > 1 && ( 
+           {tempTopics.length > 1 && ( 
                 <View className="mb-4">
                   <Text style={{ fontFamily: 'BanglaBold' }} className="text-[14px] text-[#7B92A5] mb-3 pt-1">টপিক অনুযায়ী</Text>
                   <View className="flex-row flex-wrap gap-2.5">
@@ -1394,6 +1451,30 @@ const fetchLobbyData = async (query = '') => {
                   </View>
                 </View>
               )}
+
+         {/* 🚀 স্পেশাল কালেকশন / সাজেশন ফিল্টার */}
+              {(() => {
+                const uniqueUpdates = ['সব', ...Array.from(new Set(extractedData.map(item => item.updateVersion).filter(Boolean)))];
+                if (uniqueUpdates.length > 1) {
+                  return (
+                    <View className="mb-6">
+                      <Text style={{ fontFamily: 'BanglaBold' }} className="text-[14px] text-[#7B92A5] mb-3 pt-1">বিশেষ কালেকশন</Text>
+                      <View className="flex-row flex-wrap gap-2.5">
+                        {uniqueUpdates.map((ver, index) => { 
+                          const isActive = tempUpdate === ver; 
+                          return (
+                            <TouchableOpacity key={`ver_${index}`} onPress={() => setTempUpdate(ver)} className={`px-4 py-2.5 rounded-full border ${isActive ? 'bg-[#1899D6] border-[#1899D6]' : 'bg-[#F9F9F9] border-[#E5E5E5]'}`}>
+                              <Text style={{ fontFamily: 'BanglaBold' }} className={`text-[13px] pt-0.5 ${isActive ? 'text-white' : 'text-[#777777]'}`}>{ver}</Text>
+                            </TouchableOpacity>
+                          );
+                        })}
+                      </View>
+                    </View>
+                  );
+                }
+                return null;
+              })()}
+
             </ScrollView>
 
             <TouchableOpacity className="bg-[#1CB0F6] py-3.5 rounded-[16px] mt-2 items-center shadow-sm" onPress={applyFilters}>
@@ -1405,19 +1486,23 @@ const fetchLobbyData = async (query = '') => {
       </Modal>
 
 
-{/* 🚀 3D Single Modal with Nested Slide (Duolingo Vibe) */}
-      <Modal visible={membersModalVisible} transparent animationType="fade" onRequestClose={() => setMembersModalVisible(false)}>
-        <View className="flex-1 justify-end bg-black/60">
-          <TouchableOpacity className="absolute inset-0" activeOpacity={1} onPress={() => setMembersModalVisible(false)} />
+{/* 🚀 3D Single Modal with Nested Slide (Duolingo Vibe + Bouncy Bottom Sheet) */}
+      <Modal visible={membersModalVisible} transparent animationType="none" onRequestClose={closeMembersModalSmoothly}>
+        <View className="flex-1 justify-end">
+          <Animated.View style={{ opacity: membersFadeAnim }} className="absolute inset-0 bg-black/60" />
+          <TouchableOpacity className="absolute inset-0" activeOpacity={1} onPress={closeMembersModalSmoothly} />
           
           {/* Main Modal Container */}
-          <View className="bg-[#FDF6E3] w-full h-[75%] rounded-t-[32px] overflow-hidden flex-col border-t-4 border-[#EFE8D6]">
+          <Animated.View 
+            style={{ transform: [{ translateY: membersSlideAnim }] }} 
+            className="bg-[#FDF6E3] w-full h-[75%] rounded-t-[32px] overflow-hidden flex-col border-t-4 border-[#EFE8D6]"
+          >
             
             <View className="w-12 h-1.5 bg-[#D7D7D7] rounded-full self-center mt-3 mb-2" />
             
             <View className="flex-row items-center justify-between px-5 pb-3 border-b border-[#EFE8D6]">
               <Text className="text-[#3D382F] text-[18px] pt-1" style={{ fontFamily: 'BanglaBold' }}>লাইভ মেম্বারস</Text>
-              <TouchableOpacity onPress={() => setMembersModalVisible(false)} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
+              <TouchableOpacity onPress={closeMembersModalSmoothly} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
                 <FontAwesome5 name="times" size={14} color="#6B655B" />
               </TouchableOpacity>
             </View>
@@ -1945,14 +2030,14 @@ const fetchLobbyData = async (query = '') => {
                             </View>
                           )}
                         </View>
-                      </>
+                  </>
                     )}
                   </ScrollView>
                 )}
               </Animated.View>
             </View>
 
-          </View>
+          </Animated.View>
         </View>
       </Modal>
 
