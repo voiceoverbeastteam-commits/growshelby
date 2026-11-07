@@ -3715,16 +3715,38 @@ const handleCreateRevisionPack = () => {
                 {/* 🚀 টপ বার, সার্চ এবং ফিল্টার চিপস */}
                 <View style={{ paddingTop: Math.max(insets.top, 15) }} className="px-5 pb-3 bg-[#FFFDF8] border-b border-[#EFE8D6]">
                   <View className="flex-row items-center justify-between mb-3">
-                    <TouchableOpacity onPress={() => {
+                <TouchableOpacity onPress={() => {
                       setIsBankManageModalVisible(false);
                       setIsBankSelectionMode(false);
                       setSelectedBankQuestions({});
+                      setBankSearchQuery('');
+                      setActiveBankFilter('সব');
+                      setActiveBankTypeFilter('সব'); // 🚀 নতুন রিসেট যুক্ত করা হলো
                     }} className="bg-[#EAE4D4] w-10 h-10 rounded-full items-center justify-center">
                       <FontAwesome5 name="arrow-left" size={16} color="#6B655B" />
                     </TouchableOpacity>
-                    <Text className="text-[18px] text-[#3D382F] pt-1 flex-1 text-center px-3" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>
-                      {managingBank?.bankName}
-                    </Text>
+                    
+                    {/* 🚀 ফিক্স: কোশ্চেন ব্যাংকের নাম সরাসরি এডিট করার অপশন */}
+                    <TextInput 
+                      className="text-[18px] text-[#3D382F] pt-1 flex-1 text-center px-3 border-b-2 border-[#D7D7D7] mx-2 pb-1" 
+                      style={{ fontFamily: 'BanglaBold' }} 
+                      value={managingBank?.bankName}
+                      onChangeText={(text) => setManagingBank(prev => ({...prev, bankName: text}))}
+                      onEndEditing={async () => {
+                        if (!managingBank?.bankName?.trim()) return;
+                        const updatedFailedItems = selectedSubject.failedItems.map(b => b.bankId === managingBank.bankId ? managingBank : b);
+                        const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
+                        setSelectedSubject(updatedSubject);
+                        setChannelGuides(prev => prev.map(g => g.shareCode === updatedSubject.shareCode ? updatedSubject : g));
+                        try {
+                          await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                            body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
+                          });
+                        } catch (e) {}
+                      }}
+                    />
                     
                     {/* 🚀 প্লাস আইকন (নতুন প্রশ্ন অ্যাড করার জন্য) */}
                     <TouchableOpacity activeOpacity={0.8} onPress={async () => {
@@ -3889,12 +3911,12 @@ const handleCreateRevisionPack = () => {
                           </View>
                         )}
                         
-                    <View className="flex-1 pr-3">
+                 <View className="flex-1 pr-3">
                           <View className="bg-[#1CB0F6]/10 self-start px-2 py-0.5 rounded border border-[#1CB0F6]/30 mb-1.5">
                             <Text className="text-[10px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{q.type} • {q.topic}</Text>
                           </View>
                           <Text className="text-[#3D382F] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>
-                            {q.question || q.stem}
+                            {q.question === "প্রশ্ন পাওয়া যায়নি" ? (q.stem || q.question) : (q.question || q.stem)}
                           </Text>
 
                       {/* 🚀 চিত্র প্লেসহোল্ডার / ইমেজ রেন্ডার (শুধু এডিট মোডে) */}

@@ -18,14 +18,14 @@ const SMART_GUIDE_PROMPT = `
   5. BOARD TAGGING (CRUCIAL): If a question mentions a board year (e.g., "ঢাকা বোর্ড ২০২৩"), extract it into a "board" field. If NO board is mentioned, set it to "ক্রিয়েটিভ প্রশ্ন".
   6. IMAGE HANDLING (CRUCIAL): If a question, stem, or option contains visual cues like "নিচের চিত্রটি লক্ষ করো", "A, B চিহ্নিত অংশ", or missing diagrams, set "needsImage": true. ALSO, extract the original question number or a short hint (e.g., "৫ নং প্রশ্ন", "চিত্র-২", "উদ্দীপক ১") and set it in the "imageHint" field so the user can easily find it in their source book.
  7. GROUPED MCQs (উদ্দীপক নির্ভর বহুনির্বাচনী): If multiple MCQs share a single passage/stem, you MUST prepend the passage to the 'question' field of EACH related MCQ.
-  8. BEAUTIFUL FORMATTING (CRUCIAL): You MUST use Markdown to format the text beautifully and make it stress-free to read.
+  8. BEAUTIFUL FORMATTING (CRUCIAL): You MUST use Markdown INSIDE the JSON string values (especially in the "answer" and "explanation" fields) to make it highly readable and stress-free.
      - Use **bold** for key concepts, important terms, or highlighting the core focus of a sentence.
      - Use Markdown tables if there is any comparison (পার্থক্য), chart, or structured data.
      - Use bullet points (-) for lists or multi-part answers.
-     - Maintain generous spacing (proper line breaks) to avoid overwhelming paragraphs.
+     - Add generous line breaks (\n\n) between paragraphs so it looks clean.
   9. STRICTLY REMOVE DUPLICATES. If an answer is missing, leave the "answer" field empty.
 
-  JSON OUTPUT FORMAT MUST BE A STRICT ARRAY OF OBJECTS (NO MARKDOWN TAGS):
+  OUTPUT EXACTLY THIS JSON FORMAT (DO NOT WRAP IN "json" MARKDOWN BLOCKS, BUT DO USE MARKDOWN INSIDE THE TEXT VALUES):
   [
     {
       "id": 1,

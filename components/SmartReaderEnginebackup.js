@@ -17,10 +17,10 @@ const { height: SCREEN_HEIGHT } = Dimensions.get('window');
 // 🚀 স্মার্ট মার্কডাউন স্টাইলস (তোমার অ্যাপের ফন্ট ও কালারের সাথে ম্যাচ করা)
 const mdStylesQuestion = {
   body: { fontFamily: 'BanglaBold', fontSize: 16, color: '#3C3C3C', lineHeight: 26 },
-  strong: { color: '#1899D6' }, // প্রশ্নের বোল্ড টেক্সট নীল হবে
+  strong: { fontFamily: 'BanglaBold', color: '#000000', fontWeight: 'normal' }, // 🚀 ফিক্স: ডিফল্ট fontWeight ওভাররাইড
   table: { borderColor: '#E5E5E5', borderWidth: 1, borderRadius: 8, marginTop: 10, marginBottom: 10 },
   tr: { borderBottomWidth: 1, borderColor: '#E5E5E5' },
-  th: { padding: 8, backgroundColor: '#F9F9F9', fontFamily: 'BanglaBold' },
+  th: { padding: 8, backgroundColor: '#F9F9F9', fontFamily: 'BanglaBold', fontWeight: 'normal' }, // এখানেও ফিক্স করা হলো
   td: { padding: 8 },
   bullet_list: { marginTop: 5, marginBottom: 5 },
   paragraph: { marginTop: 0, marginBottom: 10 },
@@ -28,10 +28,10 @@ const mdStylesQuestion = {
 
 const mdStylesAnswer = {
   body: { fontFamily: 'BanglaRegular', fontSize: 15, color: '#4B4B4B', lineHeight: 25 },
-  strong: { fontFamily: 'BanglaBold', color: '#D47B00' }, // উত্তরের বোল্ড টেক্সট অরেঞ্জ হবে
+  strong: { fontFamily: 'BanglaBold', color: '#000000', fontWeight: 'normal' }, // 🚀 ফিক্স: ডিফল্ট fontWeight ওভাররাইড
   table: { borderColor: '#D7D7D7', borderWidth: 1, borderRadius: 8, marginTop: 10, marginBottom: 10 },
   tr: { borderBottomWidth: 1, borderColor: '#D7D7D7' },
-  th: { padding: 8, backgroundColor: '#EAE4D4', fontFamily: 'BanglaBold' },
+  th: { padding: 8, backgroundColor: '#EAE4D4', fontFamily: 'BanglaBold', fontWeight: 'normal' }, // এখানেও ফিক্স করা হলো
   td: { padding: 8 },
   bullet_list: { marginTop: 5, marginBottom: 5 },
   paragraph: { marginTop: 0, marginBottom: 10 },
@@ -100,15 +100,16 @@ const normalizeText = (text) => {
 // 💡 শর্ট অ্যানসার কার্ড
 const ShortAnswerCard = ({ data, globalReveal, onOpenDiscussion }) => {
  const [showAnswer, setShowAnswer] = useState(false);
-  useEffect(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); // 🚀 ম্যাজিক অ্যানিমেশন ব্যাক!
-    setShowAnswer(globalReveal);
-  }, [globalReveal]);
+ 
+ useEffect(() => {
+   // 🚀 গ্লোবাল টগলে অ্যানিমেশন বন্ধ (অ্যান্ড্রয়েড ক্র্যাশ ফিক্স!)
+   setShowAnswer(globalReveal);
+ }, [globalReveal]);
 
-  const toggleAnswer = () => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-    setShowAnswer(!showAnswer);
-  };
+ const toggleAnswer = () => {
+   // 🚀 100% বুলেটপ্রুফ সেফটির জন্য সিঙ্গেল টগলেও LayoutAnimation বাদ দেওয়া হলো
+   setShowAnswer(!showAnswer);
+ };
 
  return (
     <View className="bg-white p-5 rounded-[20px] border-2 border-[#E5E5E5] mb-5 shadow-sm">
@@ -271,7 +272,7 @@ const CQCard = ({ data, globalReveal, subFilter, onOpenDiscussion }) => {
 const showStem = subFilter === 'সব' || subFilter === 'গ ও ঘ';
 
 useEffect(() => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); // 🚀 ম্যাজিক অ্যানিমেশন ব্যাক!
+    // 🚀 গ্লোবাল টগলে অ্যানিমেশন বন্ধ (অ্যান্ড্রয়েড ক্র্যাশ ফিক্স!)
     const newState = {};
     filteredQuestions.forEach((_, i) => newState[i] = globalReveal);
     setRevealedAnswers(newState);
@@ -281,7 +282,7 @@ useEffect(() => {
   if (filteredQuestions.length === 0) return null;
 
   const toggleAnswer = (index) => {
-    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    // 🚀 100% বুলেটপ্রুফ সেফটির জন্য সিঙ্গেল টগলেও LayoutAnimation বাদ দেওয়া হলো
     setRevealedAnswers(prev => ({ ...prev, [index]: !prev[index] }));
   };
 
@@ -1281,10 +1282,11 @@ const handleTempCategoryChange = (cat) => {
 
               {/* 🟢 Right Zone: Tools (ডানে ২টা বাটন) */}
               <View className="flex-row space-x-2 flex-1 justify-end">
-                <TouchableOpacity activeOpacity={0.8} onPress={handleGlobalReveal}>
+             <TouchableOpacity activeOpacity={0.8} onPress={handleGlobalReveal}>
                   <View className={`rounded-[14px] pb-[4px] ${globalReveal || isRevealLoading ? 'bg-[#1073A4]' : 'bg-[#E5E5E5]'}`}>
                     <View className={`w-[42px] h-[42px] rounded-[14px] items-center justify-center border-2 border-b-0 ${globalReveal || isRevealLoading ? 'bg-[#1CB0F6] border-[#1899D6]' : 'bg-white border-[#E5E5E5]'}`}>
-                      {isRevealLoading ? <ActivityIndicator size="small" color={globalReveal ? "#FFFFFF" : "#1CB0F6"} /> : <FontAwesome5 name={globalReveal ? "eye-slash" : "eye"} size={16} color={globalReveal ? "#FFFFFF" : "#777777"} />}
+                      {/* 🚀 ফিক্স: স্পিনারটা সবসময় সাদা হবে, কারণ ব্যাকগ্রাউন্ড তো সবসময়ই নীল হচ্ছে! */}
+                      {isRevealLoading ? <ActivityIndicator size="small" color="#FFFFFF" /> : <FontAwesome5 name={globalReveal ? "eye-slash" : "eye"} size={16} color={globalReveal ? "#FFFFFF" : "#777777"} />}
                     </View>
                   </View>
                 </TouchableOpacity>
@@ -1302,15 +1304,15 @@ const handleTempCategoryChange = (cat) => {
           </View>
 
    <View className="flex-1 px-5 pt-2">
-            <FlatList
+          <FlatList
               data={virtualizedData}
-              keyExtractor={(item, index) => index.toString()}
+              keyExtractor={(item, index) => item.id ? item.id.toString() : index.toString()}
               contentContainerStyle={{ paddingBottom: Math.max(insets.bottom, 40) }}
               showsVerticalScrollIndicator={false}
               initialNumToRender={8} // 🚀 শুরুতে মাত্র ৮টি প্রশ্ন রেন্ডার হবে (সুপার ফাস্ট)
               maxToRenderPerBatch={10}
               windowSize={5} // 🚀 মেমোরি ক্লিন রাখার ট্রিক
-              removeClippedSubviews={true} // 🚀 স্ক্রিনের বাইরের প্রশ্নগুলোকে ডিজেবল করে রাখবে, অ্যানিমেশন স্মুথ হবে
+              removeClippedSubviews={false} // 🚀 ফিক্স: Android-এ LayoutAnimation এর সাথে কনফ্লিক্ট ও ক্র্যাশ রোধ করতে এটি false রাখতে হবে
               ListEmptyComponent={
                 !isContentReady ? (
                   <View className="pt-2">

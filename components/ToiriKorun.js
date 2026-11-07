@@ -51,23 +51,26 @@ const parseSmartJSON = (rawText) => {
       fixedItem.needsImage = item.needsImage || false; 
       fixedItem.imageHint = item.imageHint || "এই প্রশ্নটি"; // 🚀 সোর্স থেকে খোঁজার জন্য হিন্ট
       fixedItem.image = item.image || ""; 
-      fixedItem.question = item.question || "প্রশ্ন পাওয়া যায়নি";
       
       // টাইপ অনুযায়ী ফিল্ড ঠিক করা
       if (fixedItem.type.toLowerCase() === 'mcq') {
         fixedItem.type = 'mcq'; // lowercase নিশ্চিত করা
+        fixedItem.question = item.question || "প্রশ্ন পাওয়া যায়নি";
         fixedItem.options = Array.isArray(item.options) && item.options.length > 0 ? item.options : ["ক", "খ", "গ", "ঘ"];
         fixedItem.correctAnswer = item.correctAnswer || item.answer || "";
         fixedItem.explanation = item.explanation || "";
       } 
       else if (fixedItem.type === 'সৃজনশীল') {
-        fixedItem.stem = item.stem || "উদ্দীপক পাওয়া যায়নি";
+        // 🚀 সৃজনশীল প্রশ্নের ক্ষেত্রে question ফিল্ড ফাঁকা থাকবে, যাতে stem অটোমেটিক শো করে
+        if (fixedItem.question) delete fixedItem.question; 
+        fixedItem.stem = item.stem || "উদ্দীপক পাওয়া যায়নি";
         fixedItem.questions = Array.isArray(item.questions) ? item.questions : [
           { label: "ক", question: item.question || "", answer: item.answer || "" }
         ];
       } 
-    else {
+      else {
         // জ্ঞানমূলক ও অনুধাবনমূলক এর জন্য
+        fixedItem.question = item.question || "প্রশ্ন পাওয়া যায়নি";
         fixedItem.answer = item.answer || ""; 
       }
       
@@ -266,26 +269,35 @@ Your ONLY job is to extract exact questions, answers, and context from the provi
 CRITICAL RULES (UX & PSYCHOLOGY FOCUSED):
 1. DO NOT invent or hallucinate. Extract EXACTLY what is in the source. Fix any Bengali typos.
 2. Categorize strictly into: "mcq", "জ্ঞানমূলক", "অনুধাবনমূলক", "সৃজনশীল".
-3. SMART TOPIC GROUPING (CRUCIAL): You MUST categorize all questions into exactly 5 to 6 broad, logical topics. Max allowed topics: 7.
+3. SMART TOPIC GROUPING (CRUCIAL): You MUST categorize all questions into a minimum of 4 and a maximum of 7 broad topics. DO NOT create micro-topics. Merge smaller related concepts. 
+   - VERY IMPORTANT: The "topic" name itself MUST be extremely short (Maximum 1 to 3 words). Never use long sentences. Keep it concise (e.g., "লজিক গেইট", "ভারত শাসন").
 4. BOARD TAGGING (CRUCIAL): If a question mentions a board year (e.g., "ঢাকা বোর্ড ২০২৩"), add it to the "board" field. Else, set it to "ক্রিয়েটিভ প্রশ্ন".
 5. IMAGE HANDLING (CRUCIAL): If a question/stem has visual cues (e.g., "নিচের চিত্রটি লক্ষ করো"), set "needsImage": true. ALSO, provide a short "imageHint" (e.g., "৫ নং প্রশ্ন", "চিত্র-১") so the user can find the original image in the book.
 6. GROUPED MCQs (উদ্দীপক নির্ভর বহুনির্বাচনী): If multiple MCQs share a passage/stem, prepend the passage to the 'question' field of EACH related MCQ.
-7. If an answer is missing, leave the "answer" field empty.
+7. BEAUTIFUL FORMATTING (CRUCIAL): You MUST use Markdown INSIDE the JSON string values (especially in the "answer" and "explanation" fields) to make it highly readable and stress-free.
+   - Use **bold** for key concepts, important terms, or highlighting the core focus of a sentence.
+   - Use Markdown tables if there is any comparison (পার্থক্য), chart, or structured data.
+   - Use bullet points (-) for lists or multi-part answers.
+   - Add generous line breaks (\\n\\n) between paragraphs so it looks clean.
+8. If an answer is missing, leave the "answer" field empty. STRICTLY REMOVE DUPLICATES.
 
-OUTPUT EXACTLY THIS JSON FORMAT (NO MARKDOWN TEXT, JUST VALID JSON ARRAY):
+OUTPUT EXACTLY THIS JSON FORMAT (DO NOT WRAP IN "json" MARKDOWN BLOCKS, BUT DO USE MARKDOWN INSIDE THE TEXT VALUES):
 [
   {
     "id": 1,
     "type": "জ্ঞানমূলক",
-    "topic": "Topic Name (Merged broadly)",
+    "topic": "Short Topic Name",
     "board": "ঢাকা বোর্ড ২০২৩",
+    "needsImage": true,
+    "imageHint": "১ নং প্রশ্ন",
     "question": "extracted question text here",
     "answer": "extracted answer text here"
   },
   {
     "id": 2,
     "type": "mcq",
-    "topic": "Topic Name",
+    "topic": "Short Topic Name",
+    "board": "ক্রিয়েটিভ প্রশ্ন",
     "question": "extracted question text here",
     "options": ["Option A", "Option B", "Option C", "Option D"],
     "correctAnswer": "Exact correct option text",
@@ -294,7 +306,8 @@ OUTPUT EXACTLY THIS JSON FORMAT (NO MARKDOWN TEXT, JUST VALID JSON ARRAY):
   {
     "id": 3,
     "type": "সৃজনশীল",
-    "topic": "Topic Name",
+    "topic": "Short Topic Name",
+    "board": "রাজশাহী বোর্ড ২০২১",
     "stem": "The main passage or context (উদ্দীপক)",
     "questions": [
       {"label": "ক", "question": "...", "answer": "..."},
@@ -303,7 +316,7 @@ OUTPUT EXACTLY THIS JSON FORMAT (NO MARKDOWN TEXT, JUST VALID JSON ARRAY):
   }
 ]`;
     await Clipboard.setStringAsync(promptData);
-    Alert.alert("কপি হয়েছে 🎉", "প্রম্পটটি কপি হয়েছে! এখন এটি ChatGPT বা Claude-এ পেস্ট করে রেসপন্স নিয়ে আসুন।");
+    Alert.alert("কপি হয়েছে 🎉", "প্রম্পটটি কপি হয়েছে! এখন এটি ChatGPT বা Claude-এ পেস্ট করে রেসপন্স নিয়ে আসুন।");
   };
 
  // 🚀 Handle Manual JSON Submit (Smart Bypass AI Engine)
