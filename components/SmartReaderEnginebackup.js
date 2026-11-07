@@ -6,12 +6,36 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import Pusher from 'pusher-js/react-native';
 import Discussion from './Discussion';
+import Markdown from 'react-native-markdown-display';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
   UIManager.setLayoutAnimationEnabledExperimental(true);
 }
 
 const { height: SCREEN_HEIGHT } = Dimensions.get('window');
+
+// 🚀 স্মার্ট মার্কডাউন স্টাইলস (তোমার অ্যাপের ফন্ট ও কালারের সাথে ম্যাচ করা)
+const mdStylesQuestion = {
+  body: { fontFamily: 'BanglaBold', fontSize: 16, color: '#3C3C3C', lineHeight: 26 },
+  strong: { color: '#1899D6' }, // প্রশ্নের বোল্ড টেক্সট নীল হবে
+  table: { borderColor: '#E5E5E5', borderWidth: 1, borderRadius: 8, marginTop: 10, marginBottom: 10 },
+  tr: { borderBottomWidth: 1, borderColor: '#E5E5E5' },
+  th: { padding: 8, backgroundColor: '#F9F9F9', fontFamily: 'BanglaBold' },
+  td: { padding: 8 },
+  bullet_list: { marginTop: 5, marginBottom: 5 },
+  paragraph: { marginTop: 0, marginBottom: 10 },
+};
+
+const mdStylesAnswer = {
+  body: { fontFamily: 'BanglaRegular', fontSize: 15, color: '#4B4B4B', lineHeight: 25 },
+  strong: { fontFamily: 'BanglaBold', color: '#D47B00' }, // উত্তরের বোল্ড টেক্সট অরেঞ্জ হবে
+  table: { borderColor: '#D7D7D7', borderWidth: 1, borderRadius: 8, marginTop: 10, marginBottom: 10 },
+  tr: { borderBottomWidth: 1, borderColor: '#D7D7D7' },
+  th: { padding: 8, backgroundColor: '#EAE4D4', fontFamily: 'BanglaBold' },
+  td: { padding: 8 },
+  bullet_list: { marginTop: 5, marginBottom: 5 },
+  paragraph: { marginTop: 0, marginBottom: 10 },
+};
 
 // 🚀 মেম্বার লিস্টের শিমার ইফেক্ট
 const MemberSkeleton = () => {
@@ -62,6 +86,12 @@ const QuestionSkeleton = () => {
   );
 };
 
+// 🚀 স্মার্ট টেক্সট ফরমেটার: \n বা \\n কে আসল লাইন ব্রেকে কনভার্ট করে সুন্দর স্পেসিং তৈরি করবে
+const formatSmartText = (text) => {
+  if (!text) return '';
+  return String(text).replace(/\\n/g, '\n').replace(/\\t/g, '\t');
+};
+
 const normalizeText = (text) => {
   if (text === null || text === undefined) return '';
   return String(text).replace(/[।.,;:'"()\-\s]/g, '').toLowerCase();
@@ -82,28 +112,42 @@ const ShortAnswerCard = ({ data, globalReveal, onOpenDiscussion }) => {
 
  return (
     <View className="bg-white p-5 rounded-[20px] border-2 border-[#E5E5E5] mb-5 shadow-sm">
-      <View className="flex-row justify-between items-center mb-3">
-        <View className="flex-row items-center space-x-2">
-          <View className="bg-[#1CB0F6]/10 px-3 py-1 rounded-lg border border-[#1CB0F6]/30">
-            <Text className="text-[12px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.type}</Text>
+    <View className="flex-row justify-between items-start mb-3">
+        <View className="flex-row flex-wrap flex-1 gap-1.5 mr-2">
+          <View className="bg-[#1CB0F6]/10 px-2.5 py-1 rounded-lg border border-[#1CB0F6]/30">
+            <Text className="text-[11px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.type}</Text>
           </View>
+          
+          {/* 🚀 বোর্ডগুলোকে আলাদা করে ডায়নামিক ব্যাজ */}
+          {data.board && data.board.split(/[;,]/).map((b, idx) => (
+            <View key={idx} className={`${data.board.includes('ক্রিয়েটিভ') ? 'bg-[#A559D6]/10 border-[#A559D6]/30' : 'bg-[#58A700]/10 border-[#58A700]/30'} px-2.5 py-1 rounded-lg border`}>
+              <Text className={`text-[11px] ${data.board.includes('ক্রিয়েটিভ') ? 'text-[#A559D6]' : 'text-[#58A700]'} pt-0.5`} style={{ fontFamily: 'BanglaBold' }}>{b.trim()}</Text>
+            </View>
+          ))}
+          
           {/* 🚀 ম্যানুয়াল স্পেশাল ট্যাগ ব্যাজ */}
           {data.updateVersion && (
-            <View className="bg-[#1899D6]/10 px-2 py-1 rounded-lg border border-[#1899D6]/30">
-              <Text className="text-[10px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.updateVersion}</Text>
+            <View className="bg-[#1899D6]/10 px-2.5 py-1 rounded-lg border border-[#1899D6]/30">
+              <Text className="text-[11px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.updateVersion}</Text>
             </View>
           )}
         </View>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-[#FDF6E3] px-3 py-1.5 rounded-full border border-[#EFE8D6]">
+
+        <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-[#FDF6E3] px-3 py-1.5 rounded-full border border-[#EFE8D6] flex-shrink-0">
           <FontAwesome5 name="comments" size={12} color="#D47B00" />
           <Text className="text-[12px] text-[#D47B00] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>আলোচনা</Text>
         </TouchableOpacity>
       </View>
-      <Text className="text-[#3C3C3C] text-[17px] mb-4 leading-8" style={{ fontFamily: 'BanglaBold' }}>{data.question}</Text>
-      
+   {/* 🚀 রিডিং মোডে চিত্র দেখালে টেক্সট হাইড হয়ে যাবে */}
+    {data.image ? (
+        <Image source={{ uri: data.image }} className="w-full aspect-[16/9] rounded-xl mb-5 border border-[#E5E5E5] bg-[#F9F9F9]" resizeMode="contain" />
+      ) : (
+        <Markdown style={mdStylesQuestion}>{formatSmartText(data.question)}</Markdown>
+      )}
+
       {showAnswer ? (
         <View className="bg-[#F2F6F9] p-4 rounded-xl border border-[#D7D7D7] mt-2">
-          <Text className="text-[#4B4B4B] text-[15px] leading-7" style={{ fontFamily: 'BanglaRegular' }}>{data.answer || 'কোনো উত্তর পাওয়া যায়নি।'}</Text>
+          <Markdown style={mdStylesAnswer}>{formatSmartText(data.answer || 'কোনো উত্তর পাওয়া যায়নি।')}</Markdown>
           <TouchableOpacity onPress={toggleAnswer} className="self-end mt-3">
             <Text className="text-[#FF4B4B] text-[13px]" style={{ fontFamily: 'BanglaBold' }}>লুকান <FontAwesome5 name="eye-slash" size={12}/></Text>
           </TouchableOpacity>
@@ -135,25 +179,38 @@ const MCQCard = ({ data, globalReveal, onOpenDiscussion }) => {
 
  return (
     <View className="bg-white p-5 rounded-[20px] border-2 border-[#E5E5E5] mb-5 shadow-sm">
-      <View className="flex-row justify-between items-center mb-3">
-        <View className="flex-row items-center space-x-2">
-          <View className="bg-[#A559D6]/10 px-3 py-1 rounded-lg border border-[#A559D6]/30">
-            <Text className="text-[12px] text-[#A559D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>এমসিকিউ</Text>
+  <View className="flex-row justify-between items-start mb-3">
+        <View className="flex-row flex-wrap flex-1 gap-1.5 mr-2">
+          <View className="bg-[#A559D6]/10 px-2.5 py-1 rounded-lg border border-[#A559D6]/30">
+            <Text className="text-[11px] text-[#A559D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>এমসিকিউ</Text>
           </View>
+          
+          {/* 🚀 বোর্ডগুলোকে আলাদা করে ডায়নামিক ব্যাজ */}
+          {data.board && data.board.split(/[;,]/).map((b, idx) => (
+            <View key={idx} className={`${data.board.includes('ক্রিয়েটিভ') ? 'bg-[#FF9600]/10 border-[#FF9600]/30' : 'bg-[#58A700]/10 border-[#58A700]/30'} px-2.5 py-1 rounded-lg border`}>
+              <Text className={`text-[11px] ${data.board.includes('ক্রিয়েটিভ') ? 'text-[#D47B00]' : 'text-[#58A700]'} pt-0.5`} style={{ fontFamily: 'BanglaBold' }}>{b.trim()}</Text>
+            </View>
+          ))}
+          
           {/* 🚀 ম্যানুয়াল স্পেশাল ট্যাগ ব্যাজ */}
           {data.updateVersion && (
-            <View className="bg-[#1899D6]/10 px-2 py-1 rounded-lg border border-[#1899D6]/30">
-              <Text className="text-[10px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.updateVersion}</Text>
+            <View className="bg-[#1899D6]/10 px-2.5 py-1 rounded-lg border border-[#1899D6]/30">
+              <Text className="text-[11px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.updateVersion}</Text>
             </View>
           )}
         </View>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-[#FDF6E3] px-3 py-1.5 rounded-full border border-[#EFE8D6]">
+
+        <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-[#FDF6E3] px-3 py-1.5 rounded-full border border-[#EFE8D6] flex-shrink-0">
           <FontAwesome5 name="comments" size={12} color="#D47B00" />
           <Text className="text-[12px] text-[#D47B00] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>আলোচনা</Text>
         </TouchableOpacity>
       </View>
-      
-      <Text className="text-[#3C3C3C] text-[17px] mb-4 leading-8" style={{ fontFamily: 'BanglaBold' }}>{data.question}</Text>
+ {/* 🚀 রিডিং মোডে চিত্র দেখালে টেক্সট হাইড হয়ে যাবে */}
+    {data.image ? (
+        <Image source={{ uri: data.image }} className="w-full aspect-[16/9] rounded-xl mb-4 border border-[#E5E5E5] bg-[#F9F9F9]" resizeMode="contain" />
+      ) : (
+        <Markdown style={mdStylesQuestion}>{formatSmartText(data.question)}</Markdown>
+      )}
 
       <View className="mb-4 space-y-2">
         {data.options?.map((option, index) => {
@@ -172,7 +229,7 @@ const MCQCard = ({ data, globalReveal, onOpenDiscussion }) => {
               <View className={`w-7 h-7 rounded-full items-center justify-center mr-3 ${isHighlighted ? 'bg-[#58CC02]' : 'bg-[#E5E5E5]'}`}>
                 <Text className={`text-[13px] ${isHighlighted ? 'text-white' : 'text-[#777777]'}`} style={{ fontFamily: 'BanglaBold' }}>{String.fromCharCode(2453 + index)}</Text>
               </View>
-              <Text className={`text-[15px] flex-1 pt-1 ${isHighlighted ? 'text-[#58A700]' : 'text-[#4B4B4B]'}`} style={{ fontFamily: isHighlighted ? 'BanglaBold' : 'BanglaRegular', lineHeight: 24 }}>{option}</Text>
+            <Text className={`text-[15px] flex-1 pt-1 ${isHighlighted ? 'text-[#58A700]' : 'text-[#4B4B4B]'}`} style={{ fontFamily: isHighlighted ? 'BanglaBold' : 'BanglaRegular', lineHeight: 24 }}>{formatSmartText(option)}</Text>
               {isHighlighted && <FontAwesome5 name="check-circle" size={16} color="#58A700" />}
             </View>
           );
@@ -181,10 +238,10 @@ const MCQCard = ({ data, globalReveal, onOpenDiscussion }) => {
 
       {showAnswer ? (
         <View className="mt-2">
-          {data.explanation && (
+        {data.explanation && (
             <View className="bg-[#F2F6F9] p-4 rounded-xl border border-[#D7D7D7]">
               <Text className="text-[#4B4B4B] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>ব্যাখ্যা:</Text>
-              <Text className="text-[#6B655B] text-[14px] mt-1 leading-6" style={{ fontFamily: 'BanglaRegular' }}>{data.explanation}</Text>
+              <Markdown style={mdStylesAnswer}>{formatSmartText(data.explanation)}</Markdown>
             </View>
           )}
           <TouchableOpacity onPress={toggleAnswer} className="self-end mt-3">
@@ -230,38 +287,59 @@ useEffect(() => {
 
  return (
     <View className="bg-[#FFF4E5] p-5 rounded-[20px] border-2 border-[#FFC800] mb-5 shadow-sm">
-      <View className="flex-row justify-between items-center mb-3">
-        <View className="flex-row items-center space-x-2">
-          <View className="bg-[#FF9600]/10 px-3 py-1 rounded-lg border border-[#FF9600]/30">
-            <Text className="text-[12px] text-[#D47B00] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>সৃজনশীল প্রশ্ন</Text>
+    <View className="flex-row justify-between items-start mb-3">
+        <View className="flex-row flex-wrap flex-1 gap-1.5 mr-2">
+          <View className="bg-[#FF9600]/10 px-2.5 py-1 rounded-lg border border-[#FF9600]/30">
+            <Text className="text-[11px] text-[#D47B00] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>সৃজনশীল প্রশ্ন</Text>
           </View>
+          
+          {/* 🚀 বোর্ডগুলোকে আলাদা করে ডায়নামিক ব্যাজ */}
+          {data.board && data.board.split(/[;,]/).map((b, idx) => (
+            <View key={idx} className={`${data.board.includes('ক্রিয়েটিভ') ? 'bg-[#1CB0F6]/10 border-[#1CB0F6]/30' : 'bg-[#58A700]/10 border-[#58A700]/30'} px-2.5 py-1 rounded-lg border`}>
+              <Text className={`text-[11px] ${data.board.includes('ক্রিয়েটিভ') ? 'text-[#1899D6]' : 'text-[#58A700]'} pt-0.5`} style={{ fontFamily: 'BanglaBold' }}>{b.trim()}</Text>
+            </View>
+          ))}
+          
           {/* 🚀 ম্যানুয়াল স্পেশাল ট্যাগ ব্যাজ */}
           {data.updateVersion && (
-            <View className="bg-[#1899D6]/10 px-2 py-1 rounded-lg border border-[#1899D6]/30">
-              <Text className="text-[10px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.updateVersion}</Text>
+            <View className="bg-[#1899D6]/10 px-2.5 py-1 rounded-lg border border-[#1899D6]/30">
+              <Text className="text-[11px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{data.updateVersion}</Text>
             </View>
           )}
         </View>
-        <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-white px-3 py-1.5 rounded-full border border-[#FFDDAA]">
+        
+        <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-white px-3 py-1.5 rounded-full border border-[#FFDDAA] flex-shrink-0">
           <FontAwesome5 name="comments" size={12} color="#D47B00" />
           <Text className="text-[12px] text-[#D47B00] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>আলোচনা</Text>
         </TouchableOpacity>
       </View>
-      
-      {showStem && (
+  {showStem && (
         <View className="mb-4 bg-white p-4 rounded-xl border border-[#FFDDAA]">
           <Text className="text-[#D47B00] text-[14px] mb-2" style={{ fontFamily: 'BanglaBold' }}>উদ্দীপক:</Text>
-          <Text className="text-[#3C3C3C] text-[16px] leading-8" style={{ fontFamily: 'BanglaRegular' }}>{data.stem}</Text>
+        {/* 🚀 রিডিং মোডে চিত্র দেখালে টেক্সট হাইড হয়ে যাবে */}
+          {data.image ? (
+            <Image source={{ uri: data.image }} className="w-full aspect-[16/9] rounded-xl mt-1 mb-1 border border-[#E5E5E5] bg-[#F9F9F9]" resizeMode="contain" />
+          ) : (
+            <Markdown style={mdStylesQuestion}>{formatSmartText(data.stem)}</Markdown>
+          )}
         </View>
       )}
       
       <View className={`${showStem ? 'border-t border-[#FFDDAA] pt-4' : ''}`}>
-        {filteredQuestions.map((q, index) => (
+     {filteredQuestions.map((q, index) => (
           <View className="mb-5" key={index}>
-            <Text className="text-[#3C3C3C] text-[16px] mb-2 leading-7" style={{ fontFamily: 'BanglaBold' }}>{q.label}) {q.question}</Text>
+            {/* 🚀 রিডিং মোডে চিত্র দেখালে টেক্সট হাইড হয়ে যাবে (ক, খ, গ, ঘ এর জন্য) */}
+            {q.image ? (
+              <View className="mb-3">
+                <Text className="text-[#3C3C3C] text-[16px] mb-2 leading-7" style={{ fontFamily: 'BanglaBold' }}>{q.label})</Text>
+              <Image source={{ uri: q.image }} className="w-full aspect-[16/9] rounded-xl border border-[#E5E5E5] bg-[#F9F9F9]" resizeMode="contain" />
+              </View>
+            ) : (
+              <Markdown style={mdStylesQuestion}>{`${q.label}) ${formatSmartText(q.question)}`}</Markdown>
+            )}
             {revealedAnswers[index] ? (
               <View className="bg-white p-4 rounded-xl border border-[#FFC800] mt-2">
-                <Text className="text-[#4B4B4B] text-[15px] leading-7" style={{ fontFamily: 'BanglaRegular' }}>{q.answer || 'কোনো উত্তর পাওয়া যায়নি।'}</Text>
+                <Markdown style={mdStylesAnswer}>{formatSmartText(q.answer || 'কোনো উত্তর পাওয়া যায়নি।')}</Markdown>
                 <TouchableOpacity onPress={() => toggleAnswer(index)} className="self-end mt-3">
                   <Text className="text-[#D47B00] text-[13px]" style={{ fontFamily: 'BanglaBold' }}>লুকান <FontAwesome5 name="eye-slash" size={12}/></Text>
                 </TouchableOpacity>
@@ -317,26 +395,29 @@ export default function SmartReaderEngine({ visible, onClose, guideData, onOpenC
   const [cqSubFilter, setCqSubFilter] = useState('সব');
   const [globalReveal, setGlobalReveal] = useState(false);
   
-// 🚀 টপিক এবং আপডেট ভার্সন ফিল্টারের স্টেট
+// 🚀 টপিক, আপডেট ভার্সন এবং বোর্ড ফিল্টারের স্টেট
  const [activeTopic, setActiveTopic] = useState('সব টপিক');
  const [activeUpdate, setActiveUpdate] = useState('সব ভার্সন');
-  const [isFilterModalVisible, setFilterModalVisible] = useState(false);
+ const [activeBoard, setActiveBoard] = useState('সব বোর্ড'); // 🚀 নতুন বোর্ড স্টেট
+ const [isFilterModalVisible, setFilterModalVisible] = useState(false);
   
-  // 🚀 টেম্পোরারি ফিল্টার স্টেট (শুধুমাত্র মডালের ভেতরে কাজ করার জন্য)
-  const [tempCategory, setTempCategory] = useState(activeCategory);
-  const [tempCqSubFilter, setTempCqSubFilter] = useState(cqSubFilter);
-  const [tempTopic, setTempTopic] = useState(activeTopic);
-  const [tempUpdate, setTempUpdate] = useState(activeUpdate);
+ // 🚀 টেম্পোরারি ফিল্টার স্টেট (শুধুমাত্র মডালের ভেতরে কাজ করার জন্য)
+ const [tempCategory, setTempCategory] = useState(activeCategory);
+ const [tempCqSubFilter, setTempCqSubFilter] = useState(cqSubFilter);
+ const [tempTopic, setTempTopic] = useState(activeTopic);
+ const [tempUpdate, setTempUpdate] = useState(activeUpdate);
+ const [tempBoard, setTempBoard] = useState(activeBoard); // 🚀 টেম্পোরারি বোর্ড স্টেট
 
-  // মডাল ওপেন হলে কারেন্ট ফিল্টারগুলো টেম্পোরারিতে সেট করে নেওয়া
-  useEffect(() => {
-    if (isFilterModalVisible) {
-      setTempCategory(activeCategory);
-      setTempCqSubFilter(cqSubFilter);
-      setTempTopic(activeTopic);
-      setTempUpdate(activeUpdate);
-    }
-  }, [isFilterModalVisible]);
+ // মডাল ওপেন হলে কারেন্ট ফিল্টারগুলো টেম্পোরারিতে সেট করে নেওয়া
+ useEffect(() => {
+   if (isFilterModalVisible) {
+     setTempCategory(activeCategory);
+     setTempCqSubFilter(cqSubFilter);
+     setTempTopic(activeTopic);
+     setTempUpdate(activeUpdate);
+     setTempBoard(activeBoard);
+   }
+ }, [isFilterModalVisible]);
   
  const slideAnim = useRef(new Animated.Value(SCREEN_HEIGHT)).current;
   const listOpacity = useRef(new Animated.Value(1)).current;
@@ -1038,12 +1119,14 @@ if (!guideData) return null;
  // ২. এই ক্যাটাগরির ভেতরের ইউনিক টপিকগুলো বের করা
   const topics = ['সব টপিক', ...Array.from(new Set(categoryFilteredData.map(item => item.topic || 'অন্যান্য').filter(Boolean)))];
 
-  // ৩. এবার টপিক এবং আপডেট ভার্সন অনুযায়ী ফাইনাল ডেটা ফিল্টার
-  const finalFilteredData = categoryFilteredData.filter(item => {
-    const matchTopic = activeTopic === 'সব টপিক' || (item.topic || 'অন্যান্য') === activeTopic;
-    const matchUpdate = activeUpdate === 'সব ভার্সন' || item.updateVersion === activeUpdate;
-    return matchTopic && matchUpdate;
-  });
+// ৩. এবার টপিক, আপডেট ভার্সন এবং বোর্ড অনুযায়ী ফাইনাল ডেটা ফিল্টার
+ const finalFilteredData = categoryFilteredData.filter(item => {
+   const matchTopic = activeTopic === 'সব টপিক' || (item.topic || 'অন্যান্য') === activeTopic;
+   const matchUpdate = activeUpdate === 'সব ভার্সন' || item.updateVersion === activeUpdate;
+   // 🚀 স্মার্ট বোর্ড ফিল্টার লজিক: সেমিকোলন বা কমা দিয়ে স্প্লিট করে চেক করবে
+   const matchBoard = activeBoard === 'সব বোর্ড' || (item.board && item.board.split(/[;,]/).map(b => b.trim()).includes(activeBoard));
+   return matchTopic && matchUpdate && matchBoard;
+ });
 
   // ৪. ডেটাগুলোকে টপিক অনুযায়ী গ্রুপ করা
   const groupedData = finalFilteredData.reduce((acc, item) => {
@@ -1066,9 +1149,10 @@ if (!guideData) return null;
   });
   const tempTopics = ['সব টপিক', ...Array.from(new Set(tempCategoryFilteredData.map(item => item.topic || 'অন্যান্য').filter(Boolean)))];
 
-  const handleTempCategoryChange = (cat) => {
+const handleTempCategoryChange = (cat) => {
     setTempCategory(cat);
     setTempTopic('সব টপিক'); 
+    setTempBoard('সব বোর্ড'); // 🚀 ক্যাটাগরি চেঞ্জ হলে বোর্ডও রিসেট হবে
     if (cat !== 'সৃজনশীল') setTempCqSubFilter('সব'); 
   };
 
@@ -1104,10 +1188,11 @@ if (!guideData) return null;
       duration: 150,
       useNativeDriver: true,
     }).start(() => {
-      setActiveCategory(tempCategory);
+    setActiveCategory(tempCategory);
       setCqSubFilter(tempCqSubFilter);
       setActiveTopic(tempTopic);
       setActiveUpdate(tempUpdate);
+      setActiveBoard(tempBoard); // 🚀 বোর্ড ফিল্টার অ্যাপ্লাই
       setGlobalReveal(false);
       
       Animated.timing(listOpacity, {
@@ -1241,14 +1326,13 @@ if (!guideData) return null;
                 )
               }
               renderItem={({ item }) => {
-                // 🚀 যদি এটা টপিক হেডার হয়
+             // 🚀 যদি এটা টপিক হেডার হয়
                 if (item.isTopicHeader) {
                   return (
                     <View className="mb-5 mt-2 flex-row items-center">
                       <View className="h-[2px] flex-1 bg-[#E5E5E5] rounded-full" />
-                      <View className="bg-[#1899D6]/10 px-5 py-2 rounded-full border border-[#1899D6]/30 mx-3 flex-row items-center shadow-sm">
-                        <FontAwesome5 name="hashtag" size={12} color="#1899D6" />
-                        <Text className="text-[#1899D6] text-[15px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{item.topicName}</Text>
+                      <View className="bg-[#1899D6]/10 px-5 py-2 rounded-[20px] border border-[#1899D6]/30 mx-3 justify-center items-center shadow-sm">
+                        <Text className="text-[#1899D6] text-[15px] pt-0.5 text-center" style={{ fontFamily: 'BanglaBold' }}>{item.topicName}</Text>
                       </View>
                       <View className="h-[2px] flex-1 bg-[#E5E5E5] rounded-full" />
                     </View>
@@ -1435,6 +1519,37 @@ if (!guideData) return null;
                   </View>
                 </View>
               )}
+
+  {/* 🚀 নতুন স্মার্ট বোর্ড ফিল্টার UI */}
+                  {(() => {
+                    // 🚀 সবগুলো বোর্ডকে সেমিকোলন/কমা দিয়ে আলাদা করে ইউনিক লিস্ট তৈরি
+                    const allBoards = [];
+                    tempCategoryFilteredData.forEach(item => {
+                      if (item.board) {
+                        item.board.split(/[;,]/).forEach(b => allBoards.push(b.trim()));
+                      }
+                    });
+                    const uniqueBoards = ['সব বোর্ড', ...new Set(allBoards)];
+                    
+                    if (uniqueBoards.length > 1) {
+                      return (
+                        <View className="mb-4">
+                          <Text style={{ fontFamily: 'BanglaBold' }} className="text-[14px] text-[#7B92A5] mb-3 pt-1">বোর্ড অনুযায়ী ফিল্টার</Text>
+                          <View className="flex-row flex-wrap gap-2.5">
+                            {uniqueBoards.map((board, index) => { 
+                              const isActive = tempBoard === board; 
+                              return (
+                                <TouchableOpacity key={`board_${index}`} onPress={() => setTempBoard(board)} className={`px-4 py-2.5 rounded-full border ${isActive ? 'bg-[#58A700] border-[#58CC02]' : 'bg-[#F9F9F9] border-[#E5E5E5]'}`}>
+                                  <Text style={{ fontFamily: 'BanglaBold' }} className={`text-[13px] pt-0.5 ${isActive ? 'text-white' : 'text-[#777777]'}`}>{board}</Text>
+                                </TouchableOpacity>
+                              );
+                            })}
+                          </View>
+                        </View>
+                      );
+                    }
+                    return null;
+                  })()}
 
            {tempTopics.length > 1 && ( 
                 <View className="mb-4">

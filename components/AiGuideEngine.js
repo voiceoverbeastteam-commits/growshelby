@@ -10,23 +10,30 @@ const SMART_GUIDE_PROMPT = `
   Your ONLY job is to extract exact questions, answers, and context from the provided images or raw text and format them into a highly structured JSON array for a "Smart Reading App".
 
   CRITICAL RULES:
-  1. DO NOT invent, hallucinate, or create any new questions. Extract EXACTLY what is in the source.
-  2. Fix any OCR typos or spelling mistakes to perfectly readable Bengali text.
-  3. Categorize every extracted question into one of these 4 types strictly:
-     "mcq" (Multiple Choice Question)
-     "জ্ঞানমূলক" (Short answer/Knowledge-based)
-     "অনুধাবনমূলক" (Comprehension/Medium answer)
-     "সৃজনশীল" (Creative/Board Question with a stem/উদ্দীপক)
-  4. ADD A TOPIC: For each question, add a "topic" field indicating the core concept (e.g., "লজিক গেইট", "কোষ বিভাজন"). Keep it short (max 2-3 words).
-  5. STRICTLY REMOVE DUPLICATES: If two or more questions test the exact same concept or have highly similar options, keep the best one and SKIP the duplicates. Never include the same concept twice.
-  6. If an answer is missing in the source, leave the "answer" field empty.
+  1. DO NOT invent or hallucinate. Extract EXACTLY what is in the source.
+  2. Fix any OCR typos to perfectly readable Bengali text.
+  3. Categorize strictly into: "mcq", "জ্ঞানমূলক", "অনুধাবনমূলক", "সৃজনশীল".
+4. TOPIC GROUPING (CRUCIAL): You MUST categorize all questions into a minimum of 4 and a maximum of 7 broad topics. DO NOT create micro-topics. Merge smaller related concepts. 
+  - VERY IMPORTANT: The "topic" name itself MUST be extremely short (Maximum 1 to 3 words). Never use long sentences. Keep it concise (e.g., "লজিক গেইট", "ভারত শাসন").
+  5. BOARD TAGGING (CRUCIAL): If a question mentions a board year (e.g., "ঢাকা বোর্ড ২০২৩"), extract it into a "board" field. If NO board is mentioned, set it to "ক্রিয়েটিভ প্রশ্ন".
+  6. IMAGE HANDLING (CRUCIAL): If a question, stem, or option contains visual cues like "নিচের চিত্রটি লক্ষ করো", "A, B চিহ্নিত অংশ", or missing diagrams, set "needsImage": true. ALSO, extract the original question number or a short hint (e.g., "৫ নং প্রশ্ন", "চিত্র-২", "উদ্দীপক ১") and set it in the "imageHint" field so the user can easily find it in their source book.
+ 7. GROUPED MCQs (উদ্দীপক নির্ভর বহুনির্বাচনী): If multiple MCQs share a single passage/stem, you MUST prepend the passage to the 'question' field of EACH related MCQ.
+  8. BEAUTIFUL FORMATTING (CRUCIAL): You MUST use Markdown to format the text beautifully and make it stress-free to read.
+     - Use **bold** for key concepts, important terms, or highlighting the core focus of a sentence.
+     - Use Markdown tables if there is any comparison (পার্থক্য), chart, or structured data.
+     - Use bullet points (-) for lists or multi-part answers.
+     - Maintain generous spacing (proper line breaks) to avoid overwhelming paragraphs.
+  9. STRICTLY REMOVE DUPLICATES. If an answer is missing, leave the "answer" field empty.
 
-  JSON OUTPUT FORMAT MUST BE A STRICT ARRAY OF OBJECTS (DO NOT USE MARKDOWN LIKE \`\`\`json):
+  JSON OUTPUT FORMAT MUST BE A STRICT ARRAY OF OBJECTS (NO MARKDOWN TAGS):
   [
     {
       "id": 1,
-      "type": "জ্ঞানমূলক",
-      "topic": "Topic Name",
+   "type": "জ্ঞানমূলক",
+      "topic": "Short Topic Name",
+      "board": "ঢাকা বোর্ড ২০২৩",
+      "needsImage": true,
+      "image": "",
       "question": "extracted question text here",
       "answer": "extracted exact answer text here"
     },
@@ -113,8 +120,8 @@ export const processWithGuideEngine = async ({ images = [], rawText = "", onStat
     let hasContent = false;
    let instruction = "Extract EVERYTHING from the following source(s) into the strict JSON array format: \n\n";
 
-    if (existingTopics && existingTopics.length > 0) {
-      instruction += `CRITICAL INSTRUCTION: This question bank already has the following topics: [${existingTopics.join(', ')}]. \nWhen categorizing new questions, strictly try to group them under these existing topics if relevant. ONLY create a new topic name if the new question covers a completely different concept.\n\n`;
+   if (existingTopics && existingTopics.length > 0) {
+      instruction += `CRITICAL INSTRUCTION: This question bank already has the following topics: [${existingTopics.join(', ')}]. \nYou MUST group the new questions into these EXISTING topics. DO NOT create any new topics unless the question is 100% completely unrelated to the existing ones. Keep the total topic count as low as possible (5-6 average).\n\n`;
     }
 
     if (rawText && rawText.trim().length > 0) {

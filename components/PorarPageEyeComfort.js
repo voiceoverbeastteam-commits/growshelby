@@ -119,6 +119,58 @@ const ReviewSkeleton = () => {
   );
 };
 
+// 🚀 লিডারবোর্ডের স্পেশাল শিমার (Podium + List)
+const LeaderboardSkeleton = () => {
+  const shimmerAnim = useRef(new Animated.Value(0.4)).current;
+  
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, { toValue: 1, duration: 800, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: 0.4, duration: 800, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+
+  return (
+    <Animated.View style={{ opacity: shimmerAnim, paddingTop: 10 }}>
+      {/* 🚀 Podium Shimmer */}
+      <View className="flex-row justify-center items-end mb-8 mt-6">
+        <View className="items-center flex-1">
+          <View className="w-14 h-14 rounded-full bg-[#EAE4D4] mb-3" />
+          <View className="w-16 h-3 bg-[#EAE4D4] rounded-full mb-2" />
+          <View className="w-10 h-2 bg-[#EAE4D4] rounded-full" />
+        </View>
+        <View className="items-center flex-[1.2] -mt-6">
+          <View className="w-8 h-6 bg-[#EAE4D4] rounded-md mb-3" />
+          <View className="w-20 h-20 rounded-full bg-[#EAE4D4] mb-3" />
+          <View className="w-20 h-4 bg-[#EAE4D4] rounded-full mb-2" />
+          <View className="w-12 h-2 bg-[#EAE4D4] rounded-full" />
+        </View>
+        <View className="items-center flex-1">
+          <View className="w-14 h-14 rounded-full bg-[#EAE4D4] mb-3" />
+          <View className="w-16 h-3 bg-[#EAE4D4] rounded-full mb-2" />
+          <View className="w-10 h-2 bg-[#EAE4D4] rounded-full" />
+        </View>
+      </View>
+      
+      {/* 🚀 List Shimmer */}
+      <View className="bg-white rounded-3xl border border-[#EFE8D6] shadow-sm p-2">
+        {[1, 2, 3].map((_, idx) => (
+          <View key={idx} className="flex-row items-center p-3 border-b border-[#F9F9F9]">
+            <View className="w-4 h-4 bg-[#EAE4D4] rounded-sm mr-3" />
+            <View className="w-10 h-10 rounded-full bg-[#EAE4D4] mr-3" />
+            <View className="flex-1 justify-center">
+              <View className="w-32 h-3 bg-[#EAE4D4] rounded-full mb-2" />
+              <View className="w-20 h-2 bg-[#EAE4D4] rounded-full" />
+            </View>
+          </View>
+        ))}
+      </View>
+    </Animated.View>
+  );
+};
+
 // 🚀 মেম্বার লিস্টের ফ্ল্যাশিং স্কেলেটন
 const MemberSkeleton = () => {
   const shimmerAnim = useRef(new Animated.Value(0.4)).current;
@@ -240,8 +292,13 @@ const ShortAnswerCard = ({ data, globalReveal, onOpenDiscussion }) => {
         </TouchableOpacity>
       </View>
 
-      <Text className="text-[#3D382F] text-[17px] mb-4 leading-8" style={{ fontFamily: 'BanglaBold' }}>{data.question}</Text>
-      
+  {/* 🚀 রিডিং মোডে চিত্র দেখালে টেক্সট হাইড হয়ে যাবে */}
+      {data.image ? (
+        <Image source={{ uri: data.image }} className="w-full aspect-[16/9] rounded-xl mb-5 border border-[#EFE8D6] bg-[#F9F9F9]" resizeMode="contain" />
+      ) : (
+        <Text className="text-[#3D382F] text-[17px] mb-4 leading-8" style={{ fontFamily: 'BanglaBold' }}>{data.question}</Text>
+      )}
+
       {showAnswer ? (
         <View className="bg-[#FDF6E3] p-4 rounded-xl border border-[#EFE8D6] mt-2">
           <Text className="text-[#5C5549] text-[15px] leading-7" style={{ fontFamily: 'BanglaRegular' }}>{data.answer || 'কোনো উত্তর পাওয়া যায়নি।'}</Text>
@@ -282,8 +339,12 @@ const MCQCard = ({ data, globalReveal, onOpenDiscussion }) => {
           <Text className="text-[12px] text-[#D47B00] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>আলোচনা</Text>
         </TouchableOpacity>
       </View>
-      
-      <Text className="text-[#3D382F] text-[17px] mb-4 leading-8" style={{ fontFamily: 'BanglaBold' }}>{data.question}</Text>
+   {/* 🚀 রিডিং মোডে চিত্র দেখালে টেক্সট হাইড হয়ে যাবে */}
+      {data.image ? (
+        <Image source={{ uri: data.image }} className="w-full aspect-[16/9] rounded-xl mb-5 border border-[#EFE8D6] bg-[#F9F9F9]" resizeMode="contain" />
+      ) : (
+        <Text className="text-[#3D382F] text-[17px] mb-4 leading-8" style={{ fontFamily: 'BanglaBold' }}>{data.question}</Text>
+      )}
 
       <View className="mb-4 space-y-2">
         {data.options?.map((option, index) => {
@@ -376,17 +437,30 @@ const CQCard = ({ data, globalReveal, subFilter, onOpenDiscussion }) => {
         </TouchableOpacity>
       </View>
       
-      {showStem && (
+   {showStem && (
         <View className="mb-4 bg-[#FFFDF8] p-4 rounded-xl border border-[#F0D5A3]">
           <Text className="text-[#D47B00] text-[14px] mb-2" style={{ fontFamily: 'BanglaBold' }}>উদ্দীপক:</Text>
-          <Text className="text-[#3D382F] text-[16px] leading-8" style={{ fontFamily: 'BanglaRegular' }}>{data.stem}</Text>
+          {/* 🚀 রিডিং মোডে চিত্র দেখালে টেক্সট হাইড হয়ে যাবে */}
+          {data.image ? (
+            <Image source={{ uri: data.image }} className="w-full aspect-[16/9] rounded-xl mt-2 mb-2 border border-[#EFE8D6] bg-[#F9F9F9]" resizeMode="contain" />
+          ) : (
+            <Text className="text-[#3D382F] text-[16px] leading-8" style={{ fontFamily: 'BanglaRegular' }}>{data.stem}</Text>
+          )}
         </View>
       )}
       
       <View className={`${showStem ? 'border-t border-[#F0D5A3] pt-4' : ''}`}>
         {filteredQuestions.map((q, index) => (
-          <View className="mb-5" key={index}>
-            <Text className="text-[#3D382F] text-[16px] mb-2 leading-7" style={{ fontFamily: 'BanglaBold' }}>{q.label}) {q.question}</Text>
+        <View className="mb-5" key={index}>
+            {/* 🚀 রিডিং মোডে চিত্র দেখালে টেক্সট হাইড হয়ে যাবে (ক, খ, গ, ঘ এর জন্য) */}
+            {q.image ? (
+              <View className="mb-3">
+                <Text className="text-[#3D382F] text-[16px] mb-2 leading-7" style={{ fontFamily: 'BanglaBold' }}>{q.label})</Text>
+                <Image source={{ uri: q.image }} className="w-full aspect-[16/9] rounded-xl border border-[#EFE8D6] bg-[#F9F9F9]" resizeMode="contain" />
+              </View>
+            ) : (
+              <Text className="text-[#3D382F] text-[16px] mb-2 leading-7" style={{ fontFamily: 'BanglaBold' }}>{q.label}) {q.question}</Text>
+            )}
             {revealedAnswers[index] ? (
               <View className="bg-[#FFFDF8] p-4 rounded-xl border border-[#FFC800] mt-2">
                 <Text className="text-[#5C5549] text-[15px] leading-7" style={{ fontFamily: 'BanglaRegular' }}>{q.answer || 'কোনো উত্তর পাওয়া যায়নি।'}</Text>
@@ -602,10 +676,91 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
 
  // 🚀 Quiz System States
-  const [activeQuizTab, setActiveQuizTab] = useState('upcoming');
+ const [activeQuizTab, setActiveQuizTab] = useState('upcoming');
  const [isQuizCreateModalVisible, setIsQuizCreateModalVisible] = useState(false);
   const [communityQuizzes, setCommunityQuizzes] = useState([]);
   const [editingQuizId, setEditingQuizId] = useState(null); // 🚀 কুইজ এডিট ট্র্যাক করার স্টেট
+  
+
+// 🚀 Creator AI Generator States
+  const [quizJsonInput, setQuizJsonInput] = useState('');
+  const [tempGeneratedQuestions, setTempGeneratedQuestions] = useState([]);
+
+ // 🚀 Live Smart Quiz Engine States (For Students)
+  const [isLiveQuizModalVisible, setIsLiveQuizModalVisible] = useState(false);
+  const [liveQuizActiveQuiz, setLiveQuizActiveQuiz] = useState(null);
+  const [parsedQuizData, setParsedQuizData] = useState(null);
+  const [currentQuizIndex, setCurrentQuizIndex] = useState(0);
+  const [quizAnswers, setQuizAnswers] = useState({});
+  const [isQuizFinished, setIsQuizFinished] = useState(false);
+  const [quizResults, setQuizResults] = useState(null);
+  
+// 🚀 Quiz History & Revision Tracker State
+  const [quizHistoryMap, setQuizHistoryMap] = useState({});
+
+  // 🚀 Load Quiz History on Mount (Offline First + Server Sync)
+  useEffect(() => {
+    if (currentUserEmail && visible) {
+      // ১. প্রথমে ইনস্ট্যান্ট UI এর জন্য লোকাল স্টোরেজ থেকে ডেটা লোড
+      AsyncStorage.getItem(`@quiz_history_v1_${currentUserEmail}`).then(data => {
+        if (data) setQuizHistoryMap(JSON.parse(data));
+      }).catch(e => console.log(e));
+
+      // ২. ব্যাকগ্রাউন্ডে সার্ভার থেকে সব হিস্ট্রি টানবে (যাতে অন্য ফোনে খেললেও এখানে সিঙ্ক হয়)
+      fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: 'fetch_my_quiz_history', userEmail: currentUserEmail })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success && data.history) {
+          const serverMap = {};
+          data.history.forEach(item => {
+            serverMap[item.quizId] = { score: item.score, failedItems: item.failedItems, completedAt: new Date(item.updatedAt).getTime() };
+          });
+          setQuizHistoryMap(prev => {
+            const mergedMap = { ...prev, ...serverMap };
+            AsyncStorage.setItem(`@quiz_history_v1_${currentUserEmail}`, JSON.stringify(mergedMap)).catch(()=>{});
+            return mergedMap;
+          });
+        }
+      })
+      .catch(e => console.log("Fetch History Error:", e));
+    }
+  }, [currentUserEmail, visible]);
+  
+  // 🚀 Timer & Performance States
+  const [quizStartTime, setQuizStartTime] = useState(null);
+  const [quizTimeLeft, setQuizTimeLeft] = useState(0);
+  const [totalTimeTaken, setTotalTimeTaken] = useState(0);
+
+  // 🚀 Timer Engine (Countdown)
+  useEffect(() => {
+    let timer;
+    if (isLiveQuizModalVisible && parsedQuizData && !isQuizFinished && quizTimeLeft > 0) {
+      timer = setInterval(() => {
+        setQuizTimeLeft((prev) => {
+          if (prev <= 1) {
+            clearInterval(timer);
+            handleQuizFinish(); // সময় শেষ হলে অটো সাবমিট
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+    }
+    return () => clearInterval(timer);
+  }, [isLiveQuizModalVisible, parsedQuizData, isQuizFinished, quizTimeLeft]);
+
+  const formatQuizTime = (seconds) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    const bn = (num) => String(num).padStart(2, '0').replace(/[0-9]/g, w => '০১২৩৪৫৬৭৮৯'[w]);
+    return `${bn(m)}:${bn(s)}`;
+  };
+
+  // কুইজ তৈরির ফর্ম স্টেট
 
   // কুইজ তৈরির ফর্ম স্টেট
   const [quizTitle, setQuizTitle] = useState('');
@@ -736,7 +891,11 @@ const [isSubjectCreateVisible, setIsSubjectCreateVisible] = useState(false);
   const [selectedBankQuestions, setSelectedBankQuestions] = useState({});
   const [bankSearchQuery, setBankSearchQuery] = useState('');
   const [activeBankFilter, setActiveBankFilter] = useState('সব');
-  const [activeBankTypeFilter, setActiveBankTypeFilter] = useState('সব'); // 🚀 নতুন যুক্ত করা হলো (Type Filter)
+const [activeBankTypeFilter, setActiveBankTypeFilter] = useState('সব'); 
+ const [activeNeedsImageFilter, setActiveNeedsImageFilter] = useState(false); // 🚀 চিত্র ফিল্টার স্টেট
+ const [uploadingImageQId, setUploadingImageQId] = useState(null); // 🚀 কোন প্রশ্নে ছবি আপলোড হচ্ছে তার ট্র্যাক
+  
+ // 🚀 Undo/Redo History States
   
   // 🚀 Undo/Redo History States
   const [bankHistory, setBankHistory] = useState([]);
@@ -1607,6 +1766,12 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
     }
   };
 
+ // 🚀 লিডারবোর্ড স্টেটস (Fix: Early return-এর আগে Hook কল করতে হবে)
+  const [isLeaderboardVisible, setIsLeaderboardVisible] = useState(false);
+  const [leaderboardData, setLeaderboardData] = useState([]);
+  const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(false);
+  const [activeLeaderboardQuiz, setActiveLeaderboardQuiz] = useState(null);
+
   if (!visible) return null;
 
   const extractedData = lessonItem?.failedItems || lessonItem?.data || [];
@@ -1617,11 +1782,194 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
     return item.type === activeCategory;
   });
 
-  const handleCategoryChange = (cat) => {
+const handleCategoryChange = (cat) => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     setActiveCategory(cat);
     setGlobalReveal(false); 
     if (cat !== 'সৃজনশীল') setCqSubFilter('সব'); 
+  };
+
+const openLeaderboard = async (quiz) => {
+    setActiveLeaderboardQuiz(quiz);
+    setIsLeaderboardVisible(true);
+    setIsLeaderboardLoading(true);
+    
+    try {
+      const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: 'get_quiz_leaderboard', quizId: quiz.id || quiz._id })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setLeaderboardData(data.leaderboard || []);
+      }
+    } catch (e) {
+      console.log("Leaderboard Fetch Error:", e);
+    } finally {
+      setIsLeaderboardLoading(false);
+    }
+  };
+
+  // 🚀 স্মার্ট অটো-শিফটিং লজিক (কুইজ শুরুর ৬০ মিনিট পর নিজে থেকেই Past-এ চলে যাবে)
+  const upcomingQuizzes = communityQuizzes.filter(q => !q.targetTimestamp || (Date.now() - q.targetTimestamp) < (60 * 60 * 1000));
+  const pastQuizzes = communityQuizzes.filter(q => q.targetTimestamp && (Date.now() - q.targetTimestamp) >= (60 * 60 * 1000));
+  const displayQuizzes = activeQuizTab === 'upcoming' ? upcomingQuizzes : pastQuizzes;
+
+ // ==========================================================
+  // 🚀 Creator AI Quiz Generator Logic (Robust Parsing)
+  // ==========================================================
+  const handleCreatorCopyAIPrompt = async () => {
+    let filteredQuestions = [];
+    if (quizSelectedRules && quizSelectedRules.length > 0) {
+      quizSelectedRules.forEach(rule => {
+        const sourceGuide = channelGuides.find(g => g.id === (rule.guideId || rule.id));
+        if (sourceGuide && sourceGuide.failedItems) {
+          sourceGuide.failedItems.forEach(bank => {
+            if (bank.questions) {
+              bank.questions.forEach(q => {
+                filteredQuestions.push({ question: q.question || q.stem, answer: q.answer || q.correctAnswer || (q.options ? q.options[q.answer] : '') });
+              });
+            }
+          });
+        }
+      });
+    }
+    
+    if (filteredQuestions.length === 0) {
+      return Alert.alert("রিসোর্স নেই", "প্রথমে সিলেবাস ও ফিল্টার থেকে রিসোর্স সিলেক্ট করুন।");
+    }
+
+    const cleanDataForAI = filteredQuestions.map(q => ({ q: q.question, a: q.answer }));
+    const prompt = `Act as an expert examiner. Below is a dataset of questions and answers. Based ONLY on this data, create exactly 30 Multiple Choice Questions (MCQs) in Bengali. Output ONLY a valid JSON array of objects in this exact format: [{"question": "...", "options": ["A", "B", "C", "D"], "correctAnswerIndex": 0}]. Do not wrap in markdown tags like \`\`\`json. Just output the raw array. Here is the data: ${JSON.stringify(cleanDataForAI)}`;
+    
+    await Clipboard.setStringAsync(prompt);
+    Alert.alert("প্রম্পট কপি হয়েছে! 🚀", "এখন ChatGPT বা Claude-এ গিয়ে পেস্ট করুন এবং যে JSON দিবে তা নিচে পেস্ট করুন।");
+  };
+
+  const handleCreatorParseQuizJson = () => {
+    try {
+      // 🚀 ম্যাজিক ফিক্স: AI-এর রেসপন্সে থাকা সব লাইনব্রেক ও এন্টার রিমুভ করে ক্লিন জেসন বানানো হচ্ছে।
+      let safeJsonString = quizJsonInput.replace(/[\n\r\t]/g, ' ').trim();
+      
+      const jsonMatch = safeJsonString.match(/\[[\s\S]*\]/);
+      if (!jsonMatch) throw new Error("No JSON array found");
+      
+      const parsedData = JSON.parse(jsonMatch[0]);
+      if (Array.isArray(parsedData) && parsedData.length > 0 && parsedData[0].question && parsedData[0].options) {
+        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+        setTempGeneratedQuestions(parsedData);
+        Alert.alert("সফল!", `${parsedData.length} টি প্রশ্ন সফলভাবে পার্স হয়েছে। এখন কুইজ সেভ করুন।`);
+      } else {
+        Alert.alert("ইনভ্যালিড ডেটা", "আপনার পেস্ট করা ডেটা সঠিক JSON ফরম্যাটে নেই।");
+      }
+    } catch (error) {
+      console.log("JSON Parse Error: ", error);
+      Alert.alert("পার্স এরর", "এআই-এর রেসপন্সে কোনো সমস্যা আছে অথবা সঠিক JSON পেস্ট করেননি।");
+    }
+  };
+
+  const handleQuizOptionSelect = (index) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setQuizAnswers(prev => ({ ...prev, [currentQuizIndex]: index }));
+  };
+
+  const handleNextQuestion = () => {
+    if (currentQuizIndex < parsedQuizData.length - 1) {
+      LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+      setCurrentQuizIndex(prev => prev + 1);
+    } else {
+      handleQuizFinish();
+    }
+  };
+
+const handleQuizFinish = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    let correct = 0;
+    let wrong = 0;
+    let skipped = 0;
+    let failedItemsToSave = [];
+
+    parsedQuizData.forEach((q, idx) => {
+      const userAnswer = quizAnswers[idx];
+      if (userAnswer === undefined || userAnswer === null) {
+        skipped++;
+        failedItemsToSave.push({ type: 'mcq', question: q.question, options: q.options, answer: q.correctAnswerIndex, explanation: 'আপনি প্রশ্নটি স্কিপ করেছেন।' });
+      } else if (userAnswer === q.correctAnswerIndex) {
+        correct++;
+      } else {
+        wrong++;
+        failedItemsToSave.push({ type: 'mcq', question: q.question, options: q.options, answer: q.correctAnswerIndex, explanation: `আপনার দেওয়া উত্তর ছিল: ${q.options[userAnswer]}` });
+      }
+    });
+
+    // 🚀 Performance Time Calculation
+    const endTime = Date.now();
+    const timeTaken = Math.floor((endTime - quizStartTime) / 1000);
+    setTotalTimeTaken(timeTaken);
+
+    const finalResultObj = { correct, wrong, skipped, total: parsedQuizData.length };
+    setQuizResults(finalResultObj);
+    setIsQuizFinished(true);
+
+ // 🚀 Save History & Failed Items Silently to AsyncStorage
+    if (liveQuizActiveQuiz) {
+      const quizId = liveQuizActiveQuiz.id || liveQuizActiveQuiz._id;
+      setQuizHistoryMap(prev => {
+        const existingHistory = prev[quizId]; // চেক করছি আগে কুইজ দিয়েছে কিনা
+        const newMap = {
+          ...prev,
+          [quizId]: { 
+            // 🚀 যদি আগে কুইজ দিয়ে থাকে, তবে আগের অরিজিনাল স্কোরটাই লক থাকবে। শুধু রিভিশন প্যাকের জন্য ভুলগুলো আপডেট হবে।
+            score: existingHistory ? existingHistory.score : finalResultObj, 
+            failedItems: failedItemsToSave, 
+            completedAt: Date.now() 
+          }
+        };
+        AsyncStorage.setItem(`@quiz_history_v1_${currentUserEmail}`, JSON.stringify(newMap)).catch(()=>{});
+        return newMap;
+      });
+
+      // 🚀 Background Sync to Server for Future Leaderboard & Cloud Save
+      if (currentUserEmail) {
+        fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({
+            action: 'submit_quiz_result',
+            quizId: quizId,
+            channelId: lessonItem?.channelId,
+            userEmail: currentUserEmail,
+            userName: currentUserName || 'শিক্ষার্থী',
+            userAvatar: members.find(m => m.userEmail === currentUserEmail)?.userAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
+            score: finalResultObj,
+            timeTaken: timeTaken,
+            failedItems: failedItemsToSave
+          })
+        }).catch(e => console.log("Background Quiz Sync Error:", e));
+      }
+    }
+  };
+
+const handleCreateRevisionPack = () => {
+    const quizId = liveQuizActiveQuiz?.id || liveQuizActiveQuiz?._id;
+    const historyData = quizHistoryMap[quizId];
+
+    if (!historyData || !historyData.failedItems || historyData.failedItems.length === 0) {
+      return Alert.alert("অভিনন্দন!", "আপনার কোনো ভুল নেই, রিভিশন করার দরকার নেই!");
+    }
+
+    const revisionGuide = {
+      id: 'revision_' + Date.now(),
+      notebookName: liveQuizActiveQuiz.title + ' (রিভিশন প্যাক)',
+      failedItems: historyData.failedItems, // 🚀 Saved history থেকে সরাসরি নিয়ে নিচ্ছে
+      channelId: lessonItem?.channelId,
+      creatorName: 'Smart AI Revision',
+      isQuizResourceMode: true 
+    };
+
+    setIsLiveQuizModalVisible(false);
+    openBookInReader(revisionGuide); 
   };
 
  // 🚀 ফিক্স: এটা নেটিভ স্ক্রিন হলে View হিসেবে রেন্ডার হবে, আর প্রোফাইল থেকে ওপেন হলে Modal হিসেবে!
@@ -1951,12 +2299,12 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
             <View className="flex-row items-center justify-between mb-5 mt-2">
               <Text className="text-[19px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>🏆 কুইজ প্রতিযোগিতা</Text>
               
-          {/* ক্রিয়েটরের জন্য কুইজ অ্যাড করার বাটন */}
+         {/* ক্রিয়েটরের জন্য কুইজ অ্যাড করার বাটন */}
               {lessonItem?.creatorEmail === currentUserEmail && (
                 <TouchableOpacity 
                   activeOpacity={0.8}
                   onPress={() => {
-                    // 🚀 নতুন কুইজের জন্য ফিল্ড ক্লিয়ার রাখা
+                    // 🚀 নতুন কুইজের জন্য ফিল্ড ক্লিয়ার রাখা
                   setEditingQuizId(null);
                     setQuizTitle('');
                     setQuizBanner('');
@@ -1965,6 +2313,8 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
                     setquizSelectedRules([]);
                     setQuizTimestamp(null);
                     setTempDate(new Date());
+                    setQuizJsonInput('');
+                    setTempGeneratedQuestions([]);
                     setIsQuizCreateModalVisible(true);
                   }}
                   className="bg-[#D47B00]/10 px-3.5 py-1.5 rounded-full flex-row items-center"
@@ -1987,9 +2337,9 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
               </TouchableOpacity>
             </View>
 
-         {/* Live UI for Upcoming Quizzes (Mapped from State) */}
-            {activeQuizTab === 'upcoming' ? (
-              communityQuizzes.length > 0 ? communityQuizzes.map((quiz, idx) => (
+     {/* 🚀 Dynamic Quizzes (Upcoming / Past Auto Shifted) */}
+            {displayQuizzes.length > 0 ? (
+              displayQuizzes.map((quiz, idx) => (
                 <View key={idx} className="mb-8">
             {/* Edge-to-edge rounded image (Pinterest style) */}
                   <View className="w-full aspect-[16/9] bg-[#EAE4D4] rounded-[24px] overflow-hidden mb-4 shadow-sm relative">
@@ -2007,7 +2357,7 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
                     <View className="flex-row items-start justify-between mb-2">
                       <Text className="text-[#3D382F] text-[20px] leading-7 flex-1 pr-2" style={{ fontFamily: 'BanglaBold' }}>{quiz.title}</Text>
                       
-                      {/* 🚀 ক্রিয়েটরের জন্য এডিট ও ডিলিট বাটন (টাইটেলের পাশে ক্লিন UI) */}
+              {/* 🚀 ক্রিয়েটরের জন্য এডিট ও ডিলিট বাটন (টাইটেলের পাশে ক্লিন UI) */}
                       {lessonItem?.creatorEmail === currentUserEmail && (
                         <View className="flex-row space-x-2 mt-1">
                           <TouchableOpacity activeOpacity={0.7} onPress={() => {
@@ -2020,6 +2370,12 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
                             setquizSelectedRules(quiz.resources || []);
                             setQuizTimestamp(quiz.targetTimestamp || null);
                             if (quiz.targetTimestamp) setTempDate(new Date(quiz.targetTimestamp));
+                            
+                            // 🚀 আগের প্রশ্নগুলো মডেলে লোড করা হচ্ছে যাতে হারিয়ে না যায়
+                            const existingQ = quiz.questions || [];
+                            setTempGeneratedQuestions(existingQ);
+                            setQuizJsonInput(existingQ.length > 0 ? JSON.stringify(existingQ, null, 2) : '');
+                            
                             setIsQuizCreateModalVisible(true);
                           }} className="w-8 h-8 rounded-full bg-[#FDF6E3] border border-[#EFE8D6] items-center justify-center shadow-sm">
                             <FontAwesome5 name="pen" size={11} color="#D47B00" />
@@ -2055,47 +2411,127 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
                       <Text className="text-[#827B6E] text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaRegular' }}>{quiz.timeText || '--:--'}</Text>
                     </View>
                     
-                    {/* Action Buttons */}
-                    <View className="flex-row space-x-3">
-                      {/* 🚀 ওয়ার্কিং রিসোর্সেস বাটন */}
-                      <TouchableOpacity 
-                        activeOpacity={0.8} 
-                        onPress={() => handleOpenQuizResources(quiz)}
-                        className="bg-white px-6 py-3.5 rounded-[16px] border-2 border-[#EFE8D6] flex-row items-center justify-center shadow-sm"
-                      >
-                        <FontAwesome5 name="book-reader" size={16} color="#D47B00" />
-                      </TouchableOpacity>
-                      
-                      {/* ডাইনামিক টাইমার / কুইজ শুরু বাটন */}
-                  {quiz.isReady ? ( 
-                        <TouchableOpacity activeOpacity={0.8} className="flex-1 bg-[#58CC02] py-3.5 rounded-[16px] flex-row items-center justify-center border-b-[4px] border-[#58A700] active:border-b-0 active:mt-[4px] transition-all">
-                          <FontAwesome5 name="play-circle" size={16} color="#FFFFFF" />
-                          <Text className="text-white text-[16px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>কুইজ শুরু করুন</Text>
+       {/* Action Buttons */}
+                <View className="flex-row items-center justify-between w-full space-x-3">
+                  {(() => {
+                    const history = quizHistoryMap[quiz.id || quiz._id];
+                    const hasTaken = !!history; 
+                    const hasMistakes = history?.failedItems && history.failedItems.length > 0;
+                    const isQuizPlayable = quiz.isReady || (quiz.targetTimestamp && quiz.targetTimestamp <= Date.now());
+
+                    return (
+                      <>
+                        {/* 🚀 বাম পাশ: রিভিশন / রিসোর্স (ছোট আইকন) */}
+                        <TouchableOpacity 
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            if (hasTaken) {
+                              if (hasMistakes) {
+                                openBookInReader({
+                                  id: 'revision_' + Date.now(),
+                                  notebookName: quiz.title + ' (রিভিশন)',
+                                  failedItems: history.failedItems,
+                                  channelId: lessonItem?.channelId,
+                                  creatorName: 'Smart AI Revision',
+                                  isQuizResourceMode: true
+                                });
+                              } else {
+                                Alert.alert("অভিনন্দন!", "আপনার কোনো ভুল নেই, রিভিশন করার দরকার নেই!");
+                              }
+                            } else {
+                              handleOpenQuizResources(quiz);
+                            }
+                          }}
+                          className={`w-[52px] ${
+                            hasTaken ? (hasMistakes ? 'bg-[#1073A4]' : 'bg-[#D7D7D7]') : 'bg-[#4A8C00]'
+                          } rounded-[16px] pb-[4px]`} // 🚀 Duolingo 3D Bottom Shadow
+                        >
+                          <View className={`w-full h-[46px] rounded-[16px] items-center justify-center border-2 border-b-0 ${
+                            hasTaken ? (hasMistakes ? 'bg-[#1CB0F6] border-[#1899D6]' : 'bg-[#F9F9F9] border-[#E5E5E5]') : 'bg-[#58CC02] border-[#58A700]'
+                          }`}>
+                            <FontAwesome5 name={hasTaken ? (hasMistakes ? "sync-alt" : "check-double") : "book-reader"} size={16} color={hasTaken && !hasMistakes ? "#AFAFAF" : "#FFF"} />
+                          </View>
                         </TouchableOpacity>
-                      ) : (
-                        <View className="flex-1 bg-[#FFF4E5] py-3.5 rounded-[16px] flex-row items-center justify-center border-2 border-[#FFDDAA]">
-                          <FontAwesome5 name="clock" size={14} color="#D47B00" />
-                          {quiz.targetTimestamp ? (
-                            <LiveCountdown targetTimestamp={quiz.targetTimestamp} />
+
+                        {/* 🚀 মাঝখানে: লিডারবোর্ড (মেইন ফোকাস) */}
+                        <TouchableOpacity 
+                          activeOpacity={0.8}
+                          onPress={() => openLeaderboard(quiz)}
+                          className="flex-1 bg-[#D47B00] rounded-[16px] pb-[4px]" // 🚀 Duolingo 3D Bottom Shadow
+                        >
+                          <View className="w-full h-[46px] bg-[#FFC800] rounded-[16px] flex-row items-center justify-center border-2 border-b-0 border-[#FF9600]">
+                            <FontAwesome5 name="crown" size={16} color="#FFFFFF" solid />
+                            <Text className="text-white text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>লিডারবোর্ড</Text>
+                          </View>
+                        </TouchableOpacity>
+
+                        {/* 🚀 ডান পাশ: কুইজ এন্ট্রি / রিটেক / টাইমার */}
+                        {hasTaken ? (
+                          <TouchableOpacity 
+                            activeOpacity={0.8}
+                            onPress={() => {
+                              setLiveQuizActiveQuiz(quiz);
+                              setParsedQuizData(quiz.questions);
+                              setCurrentQuizIndex(0);
+                              setQuizAnswers({});
+                              setIsQuizFinished(false);
+                              setQuizStartTime(Date.now());
+                              setQuizTimeLeft(quiz.questions.length * 60); 
+                              setIsLiveQuizModalVisible(true);
+                            }}
+                            className="w-[52px] bg-[#D7D7D7] rounded-[16px] pb-[4px]" // 🚀 Duolingo 3D Bottom Shadow
+                          >
+                            <View className="w-full h-[46px] bg-[#F9F9F9] rounded-[16px] items-center justify-center border-2 border-b-0 border-[#E5E5E5]">
+                              <FontAwesome5 name="redo-alt" size={16} color="#AFAFAF" />
+                            </View>
+                          </TouchableOpacity>
+                        ) : (
+                          isQuizPlayable ? (
+                            <TouchableOpacity 
+                              activeOpacity={0.8}
+                              onPress={() => {
+                                if (!quiz.questions || quiz.questions.length === 0) {
+                                  return Alert.alert("অপেক্ষা করুন", "অ্যাডমিন এখনো কুইজের প্রশ্ন সেট করেননি।");
+                                }
+                                setLiveQuizActiveQuiz(quiz);
+                                setParsedQuizData(quiz.questions);
+                                setCurrentQuizIndex(0);
+                                setQuizAnswers({});
+                                setIsQuizFinished(false);
+                                setQuizStartTime(Date.now());
+                                setQuizTimeLeft(quiz.questions.length * 60); 
+                                setIsLiveQuizModalVisible(true);
+                              }}
+                              className="w-[52px] bg-[#1073A4] rounded-[16px] pb-[4px]" // 🚀 Duolingo 3D Bottom Shadow
+                            >
+                              <View className="w-full h-[46px] bg-[#1CB0F6] rounded-[16px] items-center justify-center border-2 border-b-0 border-[#1899D6]">
+                                <FontAwesome5 name="play" size={16} color="#FFF" style={{ marginLeft: 3 }} />
+                              </View>
+                            </TouchableOpacity>
                           ) : (
-                            <Text className="text-[#D47B00] text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>তারিখ ঠিক হয়নি</Text>
-                          )}
-                        </View>
-                      )}
-                    </View>
+                            <View className="flex-1 max-w-[105px] h-[50px] bg-[#F5F5F5] rounded-[16px] flex-row items-center justify-center border-2 border-[#E5E5E5] px-2">
+                              <FontAwesome5 name="clock" size={12} color="#AFAFAF" />
+                              {quiz.targetTimestamp ? (
+                                <LiveCountdown targetTimestamp={quiz.targetTimestamp} />
+                              ) : (
+                                <Text className="text-[#AFAFAF] text-[11px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>টাইম সেট হয়নি</Text>
+                              )}
+                            </View>
+                          )
+                        )}
+                      </>
+                    );
+                  })()}
+                </View>
                   </View>
                 </View>
-              )) : (
-                <View className="items-center justify-center py-10">
-                  <FontAwesome5 name="clock" size={32} color="#EAE4D4" />
-                  <Text className="text-[#AFAFAF] text-[14px] mt-4 pt-1" style={{ fontFamily: 'BanglaBold' }}>আপকামিং কোনো কুইজ নেই</Text>
-                </View>
-              )
+          ))
             ) : (
-              /* Empty state for Past Quizzes (Minimalist) */
               <View className="items-center justify-center py-12 mt-2">
-                <FontAwesome5 name="trophy" size={36} color="#EAE4D4" />
-                <Text className="text-[#827B6E] text-[15px] mt-4 pt-1" style={{ fontFamily: 'BanglaBold' }}>কোনো অতীতের কুইজ নেই</Text>
+                <FontAwesome5 name={activeQuizTab === 'upcoming' ? "clock" : "trophy"} size={36} color="#EAE4D4" />
+                <Text className="text-[#827B6E] text-[15px] mt-4 pt-1" style={{ fontFamily: 'BanglaBold' }}>
+                  {activeQuizTab === 'upcoming' ? 'আপকামিং কোনো কুইজ নেই' : 'কোনো অতীতের কুইজ নেই'}
+                </Text>
               </View>
             )}
           </View>
@@ -2833,10 +3269,10 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
         }}
       />
 
-      {/* 🚀 Guide Edit Modal for Community Creators */}
+   {/* 🚀 Guide Edit Modal for Community Creators */}
       <Modal visible={isGuideEditModalVisible} animationType="slide" transparent={true} onRequestClose={() => setIsGuideEditModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-black/60 justify-end">
-          <View className="bg-[#FFFDF8] rounded-t-[32px] p-6 pt-5 w-full max-h-[85%]">
+          <View className="bg-[#FFFDF8] rounded-t-[32px] p-6 pt-5 w-full">
             <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mb-5" />
             <View className="flex-row justify-between items-center mb-4 border-b border-[#EFE8D6] pb-3">
               <Text className="text-[18px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>বই এডিট করুন</Text>
@@ -2845,200 +3281,37 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
               </TouchableOpacity>
             </View>
 
-          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>কুইজের ব্যানার (16:9)</Text>
-              <TouchableOpacity activeOpacity={0.8} className="mb-5">
-                <View className="w-full aspect-[16/9] rounded-[16px] overflow-hidden border-2 border-[#EFE8D6] border-dashed bg-[#F5F5F5] items-center justify-center relative">
+            <TouchableOpacity activeOpacity={0.85} onPress={pickGuideThumbnail} className="mb-6 items-center">
+              <View className="w-32 h-32 rounded-[20px] overflow-hidden border-2 border-[#EFE8D6] border-dashed bg-[#F5F5F5] items-center justify-center relative">
+                {tempGuideThumbnail ? (
+                  <Image source={{ uri: tempGuideThumbnail }} className="w-full h-full" resizeMode="cover" />
+                ) : (
                   <FontAwesome5 name="image" size={32} color="#D7D7D7" />
-                  <Text className="text-[#AFAFAF] text-[12px] mt-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>ব্যানার সিলেক্ট করুন</Text>
-                </View>
-              </TouchableOpacity>
-
-              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>কুইজের নাম</Text>
-              <TextInput
-                className="bg-white p-4 rounded-[16px] text-[16px] text-[#3D382F] mb-5 border border-[#EFE8D6]"
-                style={{ fontFamily: 'BanglaBold' }}
-                placeholder="যেমন: Weekly Model Test 1"
-                value={quizTitle}
-                onChangeText={setQuizTitle}
-              />
-
-            <View className="flex-row space-x-3 mb-5">
-                <View className="flex-1">
-                  <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>তারিখ</Text>
-                  <TouchableOpacity activeOpacity={0.8} onPress={() => setShowDatePicker(true)} className="bg-white p-4 rounded-[16px] border border-[#EFE8D6] items-center">
-                    <Text className="text-[#3D382F] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>
-                      {quizTimestamp ? formatBnDate(quizTimestamp) : 'তারিখ বাছুন'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-                <View className="flex-1">
-                  <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>সময়</Text>
-                  <TouchableOpacity activeOpacity={0.8} onPress={() => setShowTimePicker(true)} className="bg-white p-4 rounded-[16px] border border-[#EFE8D6] items-center">
-                    <Text className="text-[#3D382F] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>
-                      {quizTimestamp ? formatBnTime(quizTimestamp) : 'সময় বাছুন'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
+                )}
+                {isImageUploading && (
+                  <View className="absolute inset-0 bg-black/50 items-center justify-center">
+                    <ActivityIndicator size="large" color="#FF9600" />
+                  </View>
+                )}
               </View>
+            </TouchableOpacity>
 
-              {/* 🚀 Date & Time Picker Triggers */}
-              {showDatePicker && (
-                <DateTimePicker
-                  value={tempDate}
-                  mode="date"
-                  display="default"
-                  minimumDate={new Date()}
-                  onChange={(event, selectedDate) => {
-                    setShowDatePicker(false);
-                    if (selectedDate) {
-                      const newTime = selectedDate;
-                      setTempDate(newTime);
-                      setQuizTimestamp(newTime.getTime());
-                    }
-                  }}
-                />
-              )}
-              {showTimePicker && (
-                <DateTimePicker
-                  value={tempDate}
-                  mode="time"
-                  display="default"
-                  onChange={(event, selectedDate) => {
-                    setShowTimePicker(false);
-                    if (selectedDate) {
-                      const newTime = selectedDate;
-                      setTempDate(newTime);
-                      setQuizTimestamp(newTime.getTime());
-                    }
-                  }}
-                />
-              )}
+            <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>বইয়ের নাম</Text>
+            <TextInput
+              className="bg-white p-4 rounded-[16px] text-[16px] text-[#3D382F] mb-6 border border-[#EFE8D6]"
+              style={{ fontFamily: 'BanglaBold' }}
+              value={tempGuideTitle}
+              onChangeText={setTempGuideTitle}
+            />
 
-              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>রিসোর্স ফিল্টার (সিলেবাস)</Text>
-              <TouchableOpacity 
-                activeOpacity={0.8}
-                onPress={() => setIsResourcePickerVisible(true)}
-                className={`p-4 rounded-[16px] border flex-row justify-between items-center mb-5 border-dashed ${quizSelectedRules.length > 0 ? 'bg-[#EAF2D7] border-[#8BA85E]' : 'bg-[#FDF6E3] border-[#FFDDAA]'}`}
-              >
-                <Text className={`text-[14px] pt-1 ${quizSelectedRules.length > 0 ? 'text-[#4A632D]' : 'text-[#D47B00]'}`} style={{ fontFamily: 'BanglaBold' }}>
-                  {quizSelectedRules.length > 0 ? `${quizSelectedRules.length} টি স্টাডি প্যাক সিলেক্টেড` : 'কোশ্চেন ব্যাংক সিলেক্ট করুন'}
-                </Text>
-                <FontAwesome5 name={quizSelectedRules.length > 0 ? "check-circle" : "chevron-right"} size={14} color={quizSelectedRules.length > 0 ? "#58A700" : "#D47B00"} />
-              </TouchableOpacity>
-            </ScrollView>
-
-    <TouchableOpacity 
-              activeOpacity={0.8}
-              onPress={async () => {
-                if (!quizTitle) return Alert.alert("সতর্কতা", "কুইজের নাম দিন!");
-
-                const quizDataObj = {
-                  _id: editingQuizId || 'quiz_' + Date.now(), // 🚀 MongoDB _id সাপোর্ট
-                  id: editingQuizId || 'quiz_' + Date.now(),
-                  title: quizTitle,
-                  banner: quizBanner || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1000',
-                  dateText: quizDate || 'শীঘ্রই',
-                  timeText: quizTime || '--:--',
-                  isReady: false, 
-                  resources: quizSelectedRules
-                };
-
-                // 🚀 (q._id || q.id) চেক করে ১০০% রিপ্লেস করা হচ্ছে (আর ডুপ্লিকেট হবে না)
-                if (editingQuizId) {
-                  setCommunityQuizzes(prev => prev.map(q => (q._id || q.id) === editingQuizId ? quizDataObj : q));
-                } else {
-                  setCommunityQuizzes(prev => [quizDataObj, ...prev]);
-                }
-                
-                setIsQuizCreateModalVisible(false);
-                
-                // ফিল্ডগুলো রিসেট করা
-                setQuizTitle('');
-                setQuizBanner('');
-                setQuizDate('');
-                setQuizTime('');
-                setquizSelectedRules([]);
-                setEditingQuizId(null); 
-
-                try {
-                  await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-                    body: JSON.stringify({ 
-                      action: editingQuizId ? 'update_quiz' : 'create_quiz', 
-                      channelId: lessonItem?.channelId || currentUserEmail,
-                      quizId: editingQuizId, // 🚀 আপডেটের জন্য রিয়েল আইডি পাঠানো হচ্ছে
-                      quizData: quizDataObj 
-                    })
-                  });
-                } catch(e) {}
-              }}
-              className="bg-[#1899D6] py-4 mt-2 rounded-[16px] items-center shadow-sm"
+            <TouchableOpacity 
+              className="bg-[#1899D6] py-3.5 rounded-[16px] items-center shadow-sm" 
+              onPress={saveGuideEdits}
             >
-              <Text style={{ fontFamily: 'BanglaBold' }} className="text-white text-[16px] pt-1">
-                {editingQuizId ? 'কুইজ আপডেট করুন' : 'কুইজ সেভ করুন'}
-              </Text>
+              <Text style={{ fontFamily: 'BanglaBold' }} className="text-white text-[16px] pt-1">সেভ করুন</Text>
             </TouchableOpacity>
           </View>
         </KeyboardAvoidingView>
-      </Modal>
-
-      {/* 🚀 ৫. রিসোর্স (সিলেবাস) সিলেক্ট করার বটম শিট মডাল */}
-      <Modal visible={isResourcePickerVisible} animationType="fade" transparent={true} onRequestClose={() => setIsResourcePickerVisible(false)}>
-        <View className="flex-1 bg-black/60 justify-center px-4">
-          <View className="bg-[#FFFDF8] rounded-[24px] p-5 w-full max-h-[70%] shadow-lg border-b-4 border-[#EFE8D6]">
-            <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-[#EFE8D6]">
-              <Text className="text-[17px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>সিলেবাস সিলেক্ট করুন</Text>
-              <TouchableOpacity onPress={() => setIsResourcePickerVisible(false)} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
-                <FontAwesome5 name="times" size={14} color="#6B655B" />
-              </TouchableOpacity>
-            </View>
-
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-              {channelGuides.length > 0 ? (
-                channelGuides.map((guide, idx) => {
-                  const isSelected = quizSelectedRules.some(r => r.id === guide.id);
-                  return (
-                    <TouchableOpacity 
-                      key={idx}
-                      activeOpacity={0.8}
-                      onPress={() => {
-                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                        if (isSelected) {
-                          setquizSelectedRules(prev => prev.filter(r => r.id !== guide.id));
-                        } else {
-                          setquizSelectedRules(prev => [...prev, guide]);
-                        }
-                      }}
-                      className={`flex-row items-center p-3 rounded-[16px] mb-3 border ${isSelected ? 'bg-[#EAF2D7] border-[#8BA85E]' : 'bg-white border-[#EFE8D6]'}`}
-                    >
-                      <View className={`w-6 h-6 rounded-full border flex-row items-center justify-center mr-3 ${isSelected ? 'bg-[#58A700] border-[#58A700]' : 'bg-[#EAE4D4] border-[#EFE8D6]'}`}>
-                        {isSelected && <FontAwesome5 name="check" size={10} color="#FFF" />}
-                      </View>
-                      <View className="flex-1">
-                        <Text className="text-[#3D382F] text-[15px]" style={{ fontFamily: 'BanglaBold' }}>{guide.notebookName}</Text>
-                        <Text className="text-[#827B6E] text-[12px] mt-0.5" style={{ fontFamily: 'BanglaRegular' }}>{guide.failedItems?.length || 0} টি প্রশ্ন</Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })
-              ) : (
-                <View className="items-center py-6">
-                  <Text className="text-[#827B6E] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>কোনো স্টাডি প্যাক পাওয়া যায়নি</Text>
-                </View>
-              )}
-            </ScrollView>
-
-            <TouchableOpacity 
-              activeOpacity={0.8}
-              onPress={() => setIsResourcePickerVisible(false)}
-              className="bg-[#58A700] py-3.5 rounded-[16px] items-center shadow-sm"
-            >
-           <Text style={{ fontFamily: 'BanglaBold' }} className="text-white text-[15px] pt-1">কনফার্ম করুন ({quizSelectedRules.length})</Text>
-         </TouchableOpacity>
-          </View>
-        </View>
       </Modal>
 
    {/* 🚀 Discussion Modal */}
@@ -3275,7 +3548,53 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
       {(() => {
             const allQuestions = managingBank?.questions || [];
             
-            // 🚀 ১. ডাইনামিক ফিল্টার টপিক ও টাইপ তৈরি (যে টপিক/টাইপগুলো এক্সিস্ট করে শুধু সেগুলোই চিপসে দেখাবে)
+         // 🚀 ইমেজ আপলোডার লজিক (কোশ্চেনের ভেতরে)
+            const pickQuestionImage = async (questionId) => {
+              let result = await ImagePicker.launchImageLibraryAsync({
+                mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [16, 9], quality: 0.8
+              });
+              
+              if (!result.canceled && result.assets[0].uri) {
+                setUploadingImageQId(questionId);
+                try {
+                  const manipResult = await ImageManipulator.manipulateAsync(
+                    result.assets[0].uri, [{ resize: { width: 800 } }],
+                    { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+                  );
+                  
+                  if (manipResult.base64) {
+                    const imgUrl = await uploadToImgBB(manipResult.base64);
+                    if (imgUrl) {
+                      const newHistory = bankHistory.slice(0, historyStep + 1);
+                      const updatedQuestions = allQuestions.map(q => q.id === questionId ? { ...q, image: imgUrl, needsImage: false } : q);
+                      
+                      newHistory.push(updatedQuestions);
+                      setBankHistory(newHistory);
+                      setHistoryStep(newHistory.length - 1);
+                      
+                      // 🚀 এই ফাংশন কল করার মাধ্যমেই ছবিটা মেইন স্টেটে এবং ডাটাবেসে সেভ হয়ে যাবে
+                      await updateBankWithQuestions(updatedQuestions);
+                      
+                      // 🚀 সাকসেস অ্যালার্ট দেখানো
+                      setCustomAlert({
+                        visible: true,
+                        title: "ছবি সেভ হয়েছে! ✅",
+                        message: "আপনার চিত্রটি সফলভাবে প্রশ্নব্যাংকে যুক্ত হয়েছে।",
+                        type: "success"
+                      });
+                    } else {
+                      Alert.alert("দুঃখিত", "ছবি আপলোড করতে সমস্যা হয়েছে। ইন্টারনেট কানেকশন চেক করুন।");
+                    }
+                  }
+                } catch (error) {
+                  Alert.alert("ত্রুটি", "ছবি প্রসেস করতে সমস্যা হয়েছে।");
+                } finally {
+                  setUploadingImageQId(null);
+                }
+              }
+            };
+
+            // 🚀 ১. ডাইনামিক ফিল্টার টপিক ও টাইপ তৈরি
             const uniqueTopics = ['সব', ...new Set(allQuestions.map(q => q.topic).filter(Boolean))];
             const uniqueTypes = ['সব', ...new Set(allQuestions.map(q => q.type).filter(Boolean))]; // 🚀 টাইপ লিস্ট
             
@@ -3314,12 +3633,13 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
               }
             };
 
-            // 🚀 ৩. সার্চ ও ফিল্টার লজিক (ডাবল ফিল্টার)
+        // 🚀 ৩. সার্চ ও ফিল্টার লজিক (ট্রিপল ফিল্টার + চিত্র)
             const filteredQuestions = allQuestions.filter(q => {
               const matchSearch = (q.question || q.stem || '').toLowerCase().includes(bankSearchQuery.toLowerCase());
               const matchTopic = activeBankFilter === 'সব' || q.topic === activeBankFilter;
-              const matchType = activeBankTypeFilter === 'সব' || q.type === activeBankTypeFilter; // 🚀 টাইপ চেক
-              return matchSearch && matchTopic && matchType;
+              const matchType = activeBankTypeFilter === 'সব' || q.type === activeBankTypeFilter;
+              const matchImage = activeNeedsImageFilter ? q.needsImage === true : true; // 🚀 শুধু চিত্র দরকার এমন প্রশ্নগুলো আনবে
+              return matchSearch && matchTopic && matchType && matchImage;
             });
 
             const selectedCount = Object.keys(selectedBankQuestions).length;
@@ -3430,9 +3750,23 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
                     />
                   </View>
 
-                  {/* 🚀 ডাবল ফিল্টার চিপস: টাইপ এবং টপিক */}
+            {/* 🚀 ট্রিপল ফিল্টার চিপস: টাইপ, টপিক ও চিত্র */}
                   <ScrollView horizontal showsHorizontalScrollIndicator={false} className="flex-row mb-2">
-                    <Text className="text-[#AFAFAF] text-[12px] pt-1.5 mr-2" style={{ fontFamily: 'BanglaBold' }}>টাইপ:</Text>
+                    
+                    {/* 🚀 চিত্র দরকার ফিল্টার চিপ */}
+                    <TouchableOpacity 
+                      activeOpacity={0.8} 
+                      onPress={() => {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        setActiveNeedsImageFilter(!activeNeedsImageFilter);
+                      }} 
+                      className={`mr-3 px-3 py-1.5 rounded-full border flex-row items-center ${activeNeedsImageFilter ? 'bg-[#FF4B4B] border-[#D63939]' : 'bg-white border-[#EFE8D6]'}`}
+                    >
+                      <FontAwesome5 name="image" size={12} color={activeNeedsImageFilter ? "#FFF" : "#827B6E"} />
+                      <Text className={`text-[12px] pt-1 ml-1.5 ${activeNeedsImageFilter ? 'text-white' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaBold' }}>চিত্র দরকার</Text>
+                    </TouchableOpacity>
+
+                    <Text className="text-[#AFAFAF] text-[12px] pt-1.5 mx-2" style={{ fontFamily: 'BanglaBold' }}>টাইপ:</Text>
                     {uniqueTypes.map((type, index) => {
                       const isActive = activeBankTypeFilter === type;
                       return (
@@ -3555,13 +3889,67 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
                           </View>
                         )}
                         
-                        <View className="flex-1 pr-3">
+                    <View className="flex-1 pr-3">
                           <View className="bg-[#1CB0F6]/10 self-start px-2 py-0.5 rounded border border-[#1CB0F6]/30 mb-1.5">
                             <Text className="text-[10px] text-[#1899D6] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{q.type} • {q.topic}</Text>
                           </View>
-                          <Text className="text-[#3D382F] text-[14px]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={2}>
+                          <Text className="text-[#3D382F] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>
                             {q.question || q.stem}
                           </Text>
+
+                      {/* 🚀 চিত্র প্লেসহোল্ডার / ইমেজ রেন্ডার (শুধু এডিট মোডে) */}
+                          {q.image ? (
+                            <View className="mt-3 relative w-full aspect-[16/9] rounded-xl overflow-hidden border border-[#E5E5E5]">
+                              <Image source={{ uri: q.image }} className="w-full h-full bg-[#F9F9F9]" resizeMode="contain" />
+                              {!isBankSelectionMode && (
+                                <TouchableOpacity activeOpacity={0.8} onPress={() => pickQuestionImage(q.id)} className="absolute bottom-2 right-2 bg-black/60 px-3 py-1.5 rounded-lg flex-row items-center backdrop-blur-md">
+                                  {uploadingImageQId === q.id ? <ActivityIndicator size="small" color="#FFF" /> : <><FontAwesome5 name="camera" size={10} color="#FFF" /><Text className="text-white text-[11px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>পরিবর্তন</Text></>}
+                                </TouchableOpacity>
+                              )}
+                            </View>
+                        ) : q.needsImage ? (
+                            <View className="mt-3">
+                              {!isBankSelectionMode && (
+                                <View className="bg-[#1073A4]/10 self-start px-3 py-2 rounded-full border border-[#1073A4]/30 mb-2 flex-row items-center">
+                                  <FontAwesome5 name="search" size={11} color="#1073A4" />
+                                  <Text className="text-[#1073A4] text-[12px] pt-0.5 ml-2" style={{ fontFamily: 'BanglaBold' }}>
+                                    সোর্স বইতে খুঁজুন: {q.imageHint || 'এই প্রশ্নটি'}
+                                  </Text>
+                                </View>
+                              )}
+                              <TouchableOpacity activeOpacity={0.8} onPress={() => !isBankSelectionMode && pickQuestionImage(q.id)} className="w-full aspect-[16/9] rounded-xl border-2 border-[#FFDDAA] border-dashed bg-[#FFF4E5] items-center justify-center">
+                                {uploadingImageQId === q.id ? (
+                                  <ActivityIndicator size="large" color="#FF9600" />
+                                ) : (
+                             <>
+                                    <FontAwesome5 name="image" size={24} color="#D47B00" />
+                                    <Text className="text-[#D47B00] text-[13px] mt-3 pt-1" style={{ fontFamily: 'BanglaBold' }}>চিত্র যুক্ত করুন (16:9)</Text>
+                                    <Text className="text-[#D47B00]/70 text-[11px] mt-1" style={{ fontFamily: 'BanglaRegular' }}>এই প্রশ্নে একটি চিত্র প্রয়োজন</Text>
+                                  </>
+                                )}
+                              </TouchableOpacity>
+                            </View>
+                          ) : (
+                            /* 🚀 ম্যানুয়াল ওভাররাইড: এআই ভুলে গেলেও ইউজার নিজে চিত্র প্লেসহোল্ডার আনতে পারবে */
+                            !isBankSelectionMode && (
+                              <TouchableOpacity 
+                                activeOpacity={0.8} 
+                                onPress={() => {
+                                  LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                  const updatedQuestions = allQuestions.map(item => item.id === q.id ? { ...item, needsImage: true } : item);
+                                  const newHistory = bankHistory.slice(0, historyStep + 1);
+                                  newHistory.push(updatedQuestions);
+                                  setBankHistory(newHistory);
+                                  setHistoryStep(newHistory.length - 1);
+                                  updateBankWithQuestions(updatedQuestions);
+                                }} 
+                                className="mt-3 bg-[#F9F9F9] py-2 rounded-xl border border-[#E5E5E5] items-center flex-row justify-center border-dashed"
+                              >
+                                <FontAwesome5 name="plus-circle" size={12} color="#AFAFAF" />
+                                <Text className="text-[#777777] text-[12px] pt-0.5 ml-2" style={{ fontFamily: 'BanglaBold' }}>চিত্র প্লেসহোল্ডার যুক্ত করুন</Text>
+                              </TouchableOpacity>
+                            )
+                          )}
                         </View>
                         
                         {/* 🚀 সিঙ্গেল ডিলিট বাটন (যদি সিলেক্ট মোড অফ থাকে)[cite: 1, 2] */}
@@ -3666,43 +4054,153 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
                 onChangeText={setQuizTitle}
               />
 
-              <View className="flex-row space-x-3 mb-5">
+           <View className="flex-row space-x-3 mb-5">
                 <View className="flex-1">
                   <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>তারিখ</Text>
-                  <TextInput
-                    className="bg-white p-4 rounded-[16px] border border-[#EFE8D6] text-[#3D382F] text-[14px]"
-                    style={{ fontFamily: 'BanglaBold' }}
-                    placeholder="যেমন: ১৫ নভেম্বর"
-                    value={quizDate}
-                    onChangeText={setQuizDate}
-                  />
+                  <TouchableOpacity activeOpacity={0.8} onPress={() => setShowDatePicker(true)} className="bg-white p-4 rounded-[16px] border border-[#EFE8D6] items-center">
+                    <Text className="text-[#3D382F] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>
+                      {quizTimestamp ? formatBnDate(quizTimestamp) : 'তারিখ বাছুন'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
                 <View className="flex-1">
                   <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>সময়</Text>
-                  <TextInput
-                    className="bg-white p-4 rounded-[16px] border border-[#EFE8D6] text-[#3D382F] text-[14px]"
-                    style={{ fontFamily: 'BanglaBold' }}
-                    placeholder="যেমন: রাত ৮:০০ টা"
-                    value={quizTime}
-                    onChangeText={setQuizTime}
-                  />
+                  <TouchableOpacity activeOpacity={0.8} onPress={() => setShowTimePicker(true)} className="bg-white p-4 rounded-[16px] border border-[#EFE8D6] items-center">
+                    <Text className="text-[#3D382F] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>
+                      {quizTimestamp ? formatBnTime(quizTimestamp) : 'সময় বাছুন'}
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
 
+              {/* 🚀 Date & Time Picker Triggers */}
+              {showDatePicker && (
+                <DateTimePicker
+                  value={tempDate}
+                  mode="date"
+                  display="default"
+                  minimumDate={new Date()}
+                  onChange={(event, selectedDate) => {
+                    setShowDatePicker(false);
+                    if (selectedDate) {
+                      const newTime = selectedDate;
+                      setTempDate(newTime);
+                      setQuizTimestamp(newTime.getTime());
+                    }
+                  }}
+                />
+              )}
+              {showTimePicker && (
+                <DateTimePicker
+                  value={tempDate}
+                  mode="time"
+                  display="default"
+                  onChange={(event, selectedDate) => {
+                    setShowTimePicker(false);
+                    if (selectedDate) {
+                      const newTime = selectedDate;
+                      setTempDate(newTime);
+                      setQuizTimestamp(newTime.getTime());
+                    }
+                  }}
+                />
+              )}
+
               <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>রিসোর্স ফিল্টার (সিলেবাস)</Text>
-              <TouchableOpacity 
+            <TouchableOpacity 
                 activeOpacity={0.8}
                 onPress={() => setIsResourcePickerVisible(true)}
-                className={`p-4 rounded-[16px] border flex-row justify-between items-center mb-5 border-dashed ${quizSelectedRules.length > 0 ? 'bg-[#EAF2D7] border-[#8BA85E]' : 'bg-[#FDF6E3] border-[#FFDDAA]'}`}
+                className={`p-4 rounded-[16px] border flex-row justify-between items-center mb-6 border-dashed ${quizSelectedRules.length > 0 ? 'bg-[#EAF2D7] border-[#8BA85E]' : 'bg-[#FDF6E3] border-[#FFDDAA]'}`}
               >
                 <Text className={`text-[14px] pt-1 ${quizSelectedRules.length > 0 ? 'text-[#4A632D]' : 'text-[#D47B00]'}`} style={{ fontFamily: 'BanglaBold' }}>
                   {quizSelectedRules.length > 0 ? `${quizSelectedRules.length} টি প্যাক থেকে ফিল্টারড` : 'সিলেবাস ও ফিল্টার সিলেক্ট করুন'}
                 </Text>
                 <FontAwesome5 name={quizSelectedRules.length > 0 ? "check-circle" : "chevron-right"} size={14} color={quizSelectedRules.length > 0 ? "#58A700" : "#D47B00"} />
               </TouchableOpacity>
+
+              {/* 🚀 AI MCQ Generator (Creator Side) */}
+              <View className="bg-[#FFFDF8] border-2 border-[#EFE8D6] rounded-[24px] p-5 mb-5 shadow-sm">
+                <View className="items-center mb-4">
+                  <View className="w-14 h-14 bg-[#1899D6]/10 rounded-full items-center justify-center mb-3 border border-[#1899D6]/20">
+                    <FontAwesome5 name="robot" size={24} color="#1899D6" />
+                  </View>
+                  <Text className="text-[17px] text-[#3D382F] mb-1" style={{ fontFamily: 'BanglaBold' }}>AI এমসিকিউ জেনারেটর</Text>
+                  <Text className="text-[12px] text-[#827B6E] text-center px-2 leading-5" style={{ fontFamily: 'BanglaRegular' }}>
+                    নিচের বাটনে ক্লিক করে প্রম্পট কপি করুন এবং ChatGPT বা Claude-এ পেস্ট করে JSON রেসপন্স এখানে দিন।
+                  </Text>
+                </View>
+
+                <TouchableOpacity 
+                  activeOpacity={0.8} 
+                  onPress={handleCreatorCopyAIPrompt} 
+                  className="bg-[#1899D6] w-full py-3.5 rounded-[16px] flex-row justify-center items-center shadow-sm mb-5"
+                >
+                  <FontAwesome5 name="copy" size={14} color="#FFFFFF" />
+                  <Text className="text-white text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>AI এর জন্য প্রম্পট কপি করুন</Text>
+                </TouchableOpacity>
+
+            {tempGeneratedQuestions.length > 0 ? (
+                  <View className="bg-[#EAF2D7] p-4 rounded-xl border border-[#8BA85E] flex-row items-center justify-between">
+                    <View className="flex-row items-center flex-1 pr-2">
+                      <FontAwesome5 name="check-circle" size={16} color="#58A700" />
+                      <Text className="text-[#4A632D] text-[14px] pt-0.5 ml-2" style={{ fontFamily: 'BanglaBold' }}>{tempGeneratedQuestions.length} টি প্রশ্ন সেট করা আছে</Text>
+                    </View>
+                    
+                    <View className="flex-row space-x-2">
+                      {/* 🚀 প্রশ্ন এডিট করার বাটন (টেক্সটবক্স আবার নিয়ে আসবে) */}
+                      <TouchableOpacity 
+                        activeOpacity={0.7} 
+                        onPress={() => {
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                          setQuizJsonInput(JSON.stringify(tempGeneratedQuestions, null, 2));
+                          setTempGeneratedQuestions([]);
+                        }} 
+                        className="bg-white w-9 h-9 rounded-full items-center justify-center border border-[#8BA85E]"
+                      >
+                        <FontAwesome5 name="pen" size={12} color="#58A700" />
+                      </TouchableOpacity>
+
+                      {/* 🚀 প্রশ্ন পুরোপুরি ডিলিট করার বাটন */}
+                      <TouchableOpacity 
+                        activeOpacity={0.7} 
+                        onPress={() => {
+                          LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                          setTempGeneratedQuestions([]);
+                          setQuizJsonInput('');
+                        }} 
+                        className="bg-[#FFF4E5] w-9 h-9 rounded-full items-center justify-center border border-[#FFDDAA]"
+                      >
+                        <FontAwesome5 name="trash" size={12} color="#FF4B4B" />
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ) : (
+                  <>
+                    <Text className="text-[#AFAFAF] text-[12px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>AI এর রেসপন্স (JSON) পেস্ট করুন:</Text>
+                    <TextInput
+                      className="bg-white p-3 rounded-xl text-[13px] text-[#3D382F] min-h-[100px] border border-[#EFE8D6] mb-3"
+                      style={{ fontFamily: 'BanglaRegular', textAlignVertical: 'top' }}
+                      placeholder="[ { question: '...', options: [...] } ]"
+                      multiline
+                      value={quizJsonInput}
+                      onChangeText={setQuizJsonInput}
+                    />
+                    <TouchableOpacity 
+                      activeOpacity={0.8} 
+                      onPress={handleCreatorParseQuizJson}
+                      disabled={!quizJsonInput.trim()}
+                      className={`w-full py-3 rounded-[12px] items-center ${quizJsonInput.trim() ? 'bg-[#58A700]' : 'bg-[#EAE4D4]'}`}
+                    >
+                      <Text className={`text-[14px] pt-0.5 ${quizJsonInput.trim() ? 'text-white' : 'text-[#AFAFAF]'}`} style={{ fontFamily: 'BanglaBold' }}>
+                        কোশ্চেন পার্স করুন
+                      </Text>
+                    </TouchableOpacity>
+                  </>
+                )}
+              </View>
             </ScrollView>
 
-        <TouchableOpacity 
+      <TouchableOpacity 
               activeOpacity={0.8}
               disabled={isQuizImageUploading}
               onPress={async () => {
@@ -3716,8 +4214,9 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
                   dateText: quizTimestamp ? formatBnDate(quizTimestamp) : 'শীঘ্রই',
                   timeText: quizTimestamp ? formatBnTime(quizTimestamp) : '--:--',
                   targetTimestamp: quizTimestamp || null,
-                  isReady: false,
-                  resources: quizSelectedRules 
+                  isReady: tempGeneratedQuestions.length > 0, // 🚀 প্রশ্ন থাকলেই কুইজ রেডি
+                  resources: quizSelectedRules,
+                  questions: tempGeneratedQuestions // 🚀 সরাসরি স্টেট থেকে সেভ হবে
                 };
 
                 // 🚀 এডিট নাকি নতুন কুইজ সেটা চেক করে স্টেটে আপডেট করা
@@ -3905,7 +4404,7 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
               )}
             </ScrollView>
 
-            <TouchableOpacity 
+       <TouchableOpacity 
               activeOpacity={0.8}
               onPress={() => setIsResourcePickerVisible(false)}
               className="bg-[#58A700] py-4 rounded-[16px] items-center shadow-sm"
@@ -3916,8 +4415,275 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
         </View>
       </Modal>
 
+    {/* ==========================================================
+          🚀 Smart Live Quiz Engine Modal (Vibe Coder AI Integration)
+          ========================================================== */}
+      <Modal visible={isLiveQuizModalVisible} animationType="slide" presentationStyle="overFullScreen" statusBarTranslucent={true} onRequestClose={() => setIsLiveQuizModalVisible(false)}>
+        <View className="flex-1 bg-[#FDF6E3]">
+          {/* Header */}
+          <View style={{ paddingTop: Math.max(insets.top, 15) }} className="px-5 pb-3 bg-[#FFFDF8] border-b border-[#EFE8D6] flex-row justify-between items-center shadow-sm">
+            <TouchableOpacity onPress={() => setIsLiveQuizModalVisible(false)} className="bg-[#EAE4D4] w-10 h-10 rounded-full items-center justify-center">
+              <FontAwesome5 name="times" size={16} color="#6B655B" />
+            </TouchableOpacity>
+            <Text className="text-[18px] text-[#3D382F] pt-1 flex-1 text-center px-2" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>
+              {liveQuizActiveQuiz?.title}
+            </Text>
+            
+            {/* 🚀 Dynamic Timer UI */}
+            {parsedQuizData && !isQuizFinished ? (
+              <View className="bg-[#FFF4E5] px-3 py-1.5 rounded-full border border-[#FFDDAA] flex-row items-center">
+                <FontAwesome5 name="clock" size={12} color="#D47B00" />
+                <Text className="text-[#D47B00] text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>
+                  {formatQuizTime(quizTimeLeft)}
+                </Text>
+              </View>
+            ) : (
+              <View className="w-10 h-10" />
+            )}
+          </View>
+
+      {/* Body */}
+          <View className="flex-1 px-5 pt-5">
+            {parsedQuizData && !isQuizFinished ? (
+              // 🚀 STEP 1: One-Question-at-a-Time UI
+              <View className="flex-1">
+                {/* Progress Bar */}
+                <View className="flex-row items-center justify-between mb-2 px-1">
+                  <Text className="text-[#827B6E] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>প্রশ্ন {currentQuizIndex + 1} / {parsedQuizData.length}</Text>
+                  <Text className="text-[#1899D6] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>{Math.round(((currentQuizIndex + 1) / parsedQuizData.length) * 100)}%</Text>
+                </View>
+                <View className="w-full h-2.5 bg-[#EAE4D4] rounded-full mb-6 overflow-hidden">
+                  <View className="h-full bg-[#1899D6]" style={{ width: `${((currentQuizIndex + 1) / parsedQuizData.length) * 100}%` }} />
+                </View>
+
+                {/* Question */}
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
+                  <Text className="text-[#3D382F] text-[19px] leading-[30px] mb-6 px-1" style={{ fontFamily: 'BanglaBold' }}>
+                    {parsedQuizData[currentQuizIndex].question}
+                  </Text>
+
+                  {/* Options */}
+                  {parsedQuizData[currentQuizIndex].options.map((opt, idx) => {
+                    const isSelected = quizAnswers[currentQuizIndex] === idx;
+                    return (
+                      <TouchableOpacity
+                        key={idx}
+                        activeOpacity={0.8}
+                        onPress={() => handleQuizOptionSelect(idx)}
+                        className={`flex-row items-center p-4 rounded-[16px] mb-3 border-2 shadow-sm ${isSelected ? 'bg-[#EAF2D7] border-[#8BA85E]' : 'bg-white border-[#EFE8D6]'}`}
+                      >
+                        <View className={`w-8 h-8 rounded-full items-center justify-center mr-3 border-2 ${isSelected ? 'bg-[#58A700] border-[#58A700]' : 'bg-[#F9F9F9] border-[#EFE8D6]'}`}>
+                          <Text className={`text-[14px] pt-1 ${isSelected ? 'text-white' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaBold' }}>
+                            {String.fromCharCode(2453 + idx)}
+                          </Text>
+                        </View>
+                        <Text className={`flex-1 text-[16px] pt-1 leading-6 ${isSelected ? 'text-[#4A632D]' : 'text-[#5C5549]'}`} style={{ fontFamily: isSelected ? 'BanglaBold' : 'BanglaRegular' }}>
+                          {opt}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </ScrollView>
+
+                {/* Action Footer */}
+                <View className="absolute bottom-6 w-full flex-row space-x-3 bg-[#FDF6E3] pt-4">
+                  <TouchableOpacity 
+                    activeOpacity={0.8}
+                    onPress={handleNextQuestion}
+                    className="flex-1 bg-[#FFF4E5] py-4 rounded-[16px] items-center border-2 border-[#FFDDAA] shadow-sm"
+                  >
+                    <Text className="text-[#D47B00] text-[15px] pt-1" style={{ fontFamily: 'BanglaBold' }}>স্কিপ করুন</Text>
+                  </TouchableOpacity>
+
+                  <TouchableOpacity 
+                    activeOpacity={0.8}
+                    disabled={quizAnswers[currentQuizIndex] === undefined}
+                    onPress={handleNextQuestion}
+                    className={`flex-[2] py-4 rounded-[16px] flex-row justify-center items-center shadow-sm ${quizAnswers[currentQuizIndex] !== undefined ? 'bg-[#58CC02] border-b-[4px] border-[#58A700] active:border-b-0 active:mt-[4px]' : 'bg-[#EAE4D4]'}`}
+                  >
+                    <Text className={`text-[16px] pt-1 ${quizAnswers[currentQuizIndex] !== undefined ? 'text-white' : 'text-[#AFAFAF]'}`} style={{ fontFamily: 'BanglaBold' }}>
+                      {currentQuizIndex === parsedQuizData.length - 1 ? 'সাবমিট করুন' : 'পরবর্তী প্রশ্ন'}
+                    </Text>
+                    {quizAnswers[currentQuizIndex] !== undefined && <FontAwesome5 name="arrow-right" size={14} color="#FFF" style={{ marginLeft: 8 }} />}
+                  </TouchableOpacity>
+                </View>
+              </View>
+            ) : (
+              // 🚀 STEP 3: Results & Smart Revision Generator
+              <View className="flex-1 items-center pt-8">
+                <FontAwesome5 name="trophy" size={64} color="#FF9600" solid className="mb-5" />
+                <Text className="text-[26px] text-[#3D382F] mb-1" style={{ fontFamily: 'BanglaBold' }}>কুইজ শেষ!</Text>
+                <Text className="text-[#827B6E] text-[15px] mb-8" style={{ fontFamily: 'BanglaRegular' }}>আপনার রেটিং ও রেজাল্ট দেখে নিন</Text>
+
+            <View className="w-full flex-row justify-between mb-5 px-2">
+                  <View className="items-center bg-[#EAF2D7] p-5 rounded-[20px] flex-1 mr-2 border border-[#8BA85E] shadow-sm">
+                    <FontAwesome5 name="check-circle" size={24} color="#58A700" solid className="mb-2" />
+                    <Text className="text-[#4A632D] text-[22px]" style={{ fontFamily: 'BanglaBold' }}>{quizResults?.correct}</Text>
+                    <Text className="text-[#6B8544] text-[13px] pt-1" style={{ fontFamily: 'BanglaBold' }}>সঠিক</Text>
+                  </View>
+                  <View className="items-center bg-[#FFF4E5] p-5 rounded-[20px] flex-1 mx-1 border border-[#FFC800] shadow-sm">
+                    <FontAwesome5 name="times-circle" size={24} color="#D47B00" solid className="mb-2" />
+                    <Text className="text-[#D47B00] text-[22px]" style={{ fontFamily: 'BanglaBold' }}>{quizResults?.wrong}</Text>
+                    <Text className="text-[#B56A00] text-[13px] pt-1" style={{ fontFamily: 'BanglaBold' }}>ভুল</Text>
+                  </View>
+                  <View className="items-center bg-[#FDF6E3] p-5 rounded-[20px] flex-1 ml-2 border border-[#EFE8D6] shadow-sm">
+                    <FontAwesome5 name="minus-circle" size={24} color="#AFAFAF" solid className="mb-2" />
+                    <Text className="text-[#777777] text-[22px]" style={{ fontFamily: 'BanglaBold' }}>{quizResults?.skipped}</Text>
+                    <Text className="text-[#AFAFAF] text-[13px] pt-1" style={{ fontFamily: 'BanglaBold' }}>স্কিপ</Text>
+                  </View>
+                </View>
+
+                {/* 🚀 Performance Time Stats */}
+                <View className="w-full flex-row justify-between mb-8 px-2">
+                  <View className="flex-1 bg-white p-4 rounded-[16px] border border-[#EFE8D6] shadow-sm mr-2 items-center flex-row">
+                    <View className="w-10 h-10 bg-[#1899D6]/10 rounded-full items-center justify-center mr-3">
+                      <FontAwesome5 name="stopwatch" size={16} color="#1899D6" />
+                    </View>
+                    <View>
+                      <Text className="text-[#AFAFAF] text-[11px]" style={{ fontFamily: 'BanglaBold' }}>মোট সময়</Text>
+                      <Text className="text-[#3D382F] text-[15px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{formatQuizTime(totalTimeTaken)} মিনিট</Text>
+                    </View>
+                  </View>
+                  <View className="flex-1 bg-white p-4 rounded-[16px] border border-[#EFE8D6] shadow-sm ml-2 items-center flex-row">
+                    <View className="w-10 h-10 bg-[#A559D6]/10 rounded-full items-center justify-center mr-3">
+                      <FontAwesome5 name="bolt" size={16} color="#A559D6" />
+                    </View>
+                    <View>
+                      <Text className="text-[#AFAFAF] text-[11px]" style={{ fontFamily: 'BanglaBold' }}>গড় সময়/প্রশ্ন</Text>
+                      <Text className="text-[#3D382F] text-[15px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{toEnglishNumber(Math.round(totalTimeTaken / quizResults?.total))} সেকেন্ড</Text>
+                    </View>
+                  </View>
+                </View>
+
+                {/* 🚀 স্মার্ট রিভিশন বাটন (Takes failed items and formats them to read mode) */}
+                <TouchableOpacity 
+                  activeOpacity={0.9}
+                  onPress={handleCreateRevisionPack}
+                  className="w-full bg-[#1899D6] py-4 rounded-[16px] flex-row justify-center items-center shadow-sm border-b-[4px] border-[#1073A4] active:border-b-0 active:mt-[4px]"
+                >
+                  <FontAwesome5 name="sync-alt" size={16} color="#FFFFFF" />
+                  <Text className="text-white text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>
+                    ভুলগুলোর রিভিশন প্যাক বানান
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity 
+                  activeOpacity={0.8}
+                  onPress={() => setIsLiveQuizModalVisible(false)}
+                  className="mt-6 py-3"
+                >
+                  <Text className="text-[#AFAFAF] text-[15px]" style={{ fontFamily: 'BanglaBold' }}>লবিতে ফিরে যান</Text>
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
+
+   {/* 🚀 Leaderboard Modal (Glorified Top 3) */}
+        <Modal visible={isLeaderboardVisible} animationType="slide" transparent={true} onRequestClose={() => setIsLeaderboardVisible(false)}>
+          <View className="flex-1 bg-black/60 justify-end">
+            <View className="bg-[#FFFDF8] rounded-t-[32px] w-full h-[85%] border-t-4 border-[#EFE8D6] overflow-hidden">
+              {/* Header */}
+              <View className="w-12 h-1.5 bg-[#D7D7D7] rounded-full self-center mt-3 mb-2" />
+              <View className="flex-row justify-between items-center px-6 pb-3 border-b border-[#EFE8D6]">
+                <View className="flex-1 pr-2">
+                  <Text className="text-[18px] text-[#3D382F] pt-1" style={{ fontFamily: 'BanglaBold' }}>লিডারবোর্ড 🏆</Text>
+                  <Text className="text-[12px] text-[#827B6E]" style={{ fontFamily: 'BanglaRegular' }} numberOfLines={1}>{activeLeaderboardQuiz?.title}</Text>
+                </View>
+                <TouchableOpacity onPress={() => setIsLeaderboardVisible(false)} className="bg-[#FFF4E5] w-9 h-9 rounded-full items-center justify-center border border-[#FFDDAA]">
+                  <FontAwesome5 name="times" size={14} color="#D47B00" />
+                </TouchableOpacity>
+              </View>
+
+          {/* Leaderboard Content */}
+              <ScrollView contentContainerStyle={{ padding: 20, paddingBottom: 60 }} showsVerticalScrollIndicator={false}>
+                {isLeaderboardLoading ? (
+                  <LeaderboardSkeleton />
+                ) : leaderboardData.length === 0 ? (
+                  <View className="items-center justify-center py-20">
+                    <FontAwesome5 name="ghost" size={40} color="#EAE4D4" />
+                    <Text className="text-[#AFAFAF] text-[15px] mt-4 pt-1" style={{ fontFamily: 'BanglaBold' }}>এখনো কেউ কুইজ দেয়নি!</Text>
+                  </View>
+                ) : (
+                  <View>
+                    {/* 🚀 Top 3 Glorified Podium UI */}
+                    <View className="flex-row justify-center items-end mb-8 mt-6">
+                      {/* 2nd Place (Silver) */}
+                      {leaderboardData[1] && (
+                        <View className="items-center flex-1">
+                          <Text className="text-[12px] text-[#AFAFAF] mb-1" style={{ fontFamily: 'BanglaBold' }}>২য় স্থান</Text>
+                          <View className="w-14 h-14 rounded-full border-4 border-[#C0C0C0] bg-[#F5F5F5] mb-2 relative">
+                            <Image source={{ uri: leaderboardData[1].userAvatar }} className="w-full h-full rounded-full" />
+                            <View className="absolute -bottom-2 -right-2 bg-[#C0C0C0] w-6 h-6 rounded-full items-center justify-center border-2 border-white">
+                              <Text className="text-white text-[10px]" style={{ fontFamily: 'BanglaBold' }}>2</Text>
+                            </View>
+                          </View>
+                          <Text className="text-[#3D382F] text-[13px] text-center" numberOfLines={1} style={{ fontFamily: 'BanglaBold' }}>{leaderboardData[1].userName}</Text>
+                          <Text className="text-[#58A700] text-[11px]" style={{ fontFamily: 'BanglaBold' }}>{leaderboardData[1].score.correct} সঠিক</Text>
+                        </View>
+                      )}
+
+                      {/* 1st Place (Gold & Crown) */}
+                      {leaderboardData[0] && (
+                        <View className="items-center flex-[1.2] -mt-6">
+                          <FontAwesome5 name="crown" size={24} color="#FFC800" className="mb-2" />
+                          <View className="w-20 h-20 rounded-full border-4 border-[#FFC800] bg-[#FFF4E5] mb-2 relative shadow-md">
+                            <Image source={{ uri: leaderboardData[0].userAvatar }} className="w-full h-full rounded-full" />
+                            <View className="absolute -bottom-2 -right-2 bg-[#FFC800] w-7 h-7 rounded-full items-center justify-center border-2 border-white">
+                              <Text className="text-white text-[12px]" style={{ fontFamily: 'BanglaBold' }}>1</Text>
+                            </View>
+                          </View>
+                          <Text className="text-[#3D382F] text-[15px] text-center" numberOfLines={1} style={{ fontFamily: 'BanglaBold' }}>{leaderboardData[0].userName}</Text>
+                          <Text className="text-[#58A700] text-[12px]" style={{ fontFamily: 'BanglaBold' }}>{leaderboardData[0].score.correct} সঠিক</Text>
+                          <Text className="text-[#D47B00] text-[10px] bg-[#FFF4E5] px-2 py-0.5 rounded-full mt-1 border border-[#FFDDAA]" style={{ fontFamily: 'BanglaBold' }}>{leaderboardData[0].timeTaken} সেকেন্ড</Text>
+                        </View>
+                      )}
+
+                      {/* 3rd Place (Bronze) */}
+                      {leaderboardData[2] && (
+                        <View className="items-center flex-1">
+                          <Text className="text-[12px] text-[#AFAFAF] mb-1" style={{ fontFamily: 'BanglaBold' }}>৩য় স্থান</Text>
+                          <View className="w-14 h-14 rounded-full border-4 border-[#CD7F32] bg-[#F5F5F5] mb-2 relative">
+                            <Image source={{ uri: leaderboardData[2].userAvatar }} className="w-full h-full rounded-full" />
+                            <View className="absolute -bottom-2 -right-2 bg-[#CD7F32] w-6 h-6 rounded-full items-center justify-center border-2 border-white">
+                              <Text className="text-white text-[10px]" style={{ fontFamily: 'BanglaBold' }}>3</Text>
+                            </View>
+                          </View>
+                          <Text className="text-[#3D382F] text-[13px] text-center" numberOfLines={1} style={{ fontFamily: 'BanglaBold' }}>{leaderboardData[2].userName}</Text>
+                          <Text className="text-[#58A700] text-[11px]" style={{ fontFamily: 'BanglaBold' }}>{leaderboardData[2].score.correct} সঠিক</Text>
+                        </View>
+                      )}
+                    </View>
+
+                    {/* 🚀 Rest of the leaderboard list */}
+                    <View className="bg-white rounded-3xl border border-[#EFE8D6] shadow-sm p-2">
+                      {leaderboardData.slice(3).map((student, idx) => (
+                        <View key={idx} className="flex-row items-center justify-between p-3 border-b border-[#F9F9F9]">
+                          <View className="flex-row items-center flex-1">
+                            <Text className="text-[#AFAFAF] text-[14px] w-6 text-center" style={{ fontFamily: 'BanglaBold' }}>{idx + 4}</Text>
+                            <Image source={{ uri: student.userAvatar }} className="w-10 h-10 rounded-full bg-[#EAE4D4] mx-3" />
+                            <View className="flex-1">
+                              <Text className="text-[#3D382F] text-[14px]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>{student.userName}</Text>
+                              <View className="flex-row items-center mt-1 space-x-2">
+                                <Text className="text-[#58A700] text-[11px]" style={{ fontFamily: 'BanglaBold' }}>{student.score.correct} সঠিক</Text>
+                                <Text className="text-[#D7D7D7]">•</Text>
+                                <Text className="text-[#827B6E] text-[11px]" style={{ fontFamily: 'BanglaRegular' }}>{student.timeTaken} সেক</Text>
+                              </View>
+                            </View>
+                          </View>
+                        </View>
+                      ))}
+                    </View>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
       </Animated.View>
-     </>
+      </>
     </Wrapper>
   );
 }

@@ -43,13 +43,17 @@ const parseSmartJSON = (rawText) => {
     const finalData = parsedData.map((item, idx) => {
       let fixedItem = { ...item };
       
-      // বেসিক ফিল্ডগুলো নিশ্চিত করা
+  // বেসিক ফিল্ডগুলো নিশ্চিত করা
       fixedItem.id = item.id || `manual_${Date.now()}_${idx}`;
       fixedItem.type = item.type || "জ্ঞানমূলক";
       fixedItem.topic = item.topic || "সাধারণ টপিক";
-      fixedItem.question = item.question || "প্রশ্ন পাওয়া যায়নি";
+      fixedItem.board = item.board || "ক্রিয়েটিভ প্রশ্ন"; 
+      fixedItem.needsImage = item.needsImage || false; 
+      fixedItem.imageHint = item.imageHint || "এই প্রশ্নটি"; // 🚀 সোর্স থেকে খোঁজার জন্য হিন্ট
+      fixedItem.image = item.image || ""; 
+      fixedItem.question = item.question || "প্রশ্ন পাওয়া যায়নি";
       
-      // টাইপ অনুযায়ী ফিল্ড ঠিক করা
+      // টাইপ অনুযায়ী ফিল্ড ঠিক করা
       if (fixedItem.type.toLowerCase() === 'mcq') {
         fixedItem.type = 'mcq'; // lowercase নিশ্চিত করা
         fixedItem.options = Array.isArray(item.options) && item.options.length > 0 ? item.options : ["ক", "খ", "গ", "ঘ"];
@@ -262,19 +266,19 @@ Your ONLY job is to extract exact questions, answers, and context from the provi
 CRITICAL RULES (UX & PSYCHOLOGY FOCUSED):
 1. DO NOT invent or hallucinate. Extract EXACTLY what is in the source. Fix any Bengali typos.
 2. Categorize strictly into: "mcq", "জ্ঞানমূলক", "অনুধাবনমূলক", "সৃজনশীল".
-3. SMART TOPIC GROUPING: Analyze the content and decide the most psychologically easy, non-overwhelming way to group the questions for a student. 
-   - Keep the number of unique "topics" to an ABSOLUTE MINIMUM. 
-   - Group by broad, logical categories like "Chapter Name", "Story Name", or "Main Core Concept" (e.g., "অপরিচিতা", "কোষ বিভাজন"). 
-   - DO NOT create fragmented, random, or micro-themes (e.g., avoid topics like "যৌতুক", "মামার বৈশিষ্ট্য", or "কাব্যগ্রন্থ"). 
-4. SEQUENTIAL FLOW: Keep all questions under the same broad topic together in chronological order. Do not mix formats unnecessarily.
-5. If an answer is missing, leave the "answer" field empty.
+3. SMART TOPIC GROUPING (CRUCIAL): You MUST categorize all questions into exactly 5 to 6 broad, logical topics. Max allowed topics: 7.
+4. BOARD TAGGING (CRUCIAL): If a question mentions a board year (e.g., "ঢাকা বোর্ড ২০২৩"), add it to the "board" field. Else, set it to "ক্রিয়েটিভ প্রশ্ন".
+5. IMAGE HANDLING (CRUCIAL): If a question/stem has visual cues (e.g., "নিচের চিত্রটি লক্ষ করো"), set "needsImage": true. ALSO, provide a short "imageHint" (e.g., "৫ নং প্রশ্ন", "চিত্র-১") so the user can find the original image in the book.
+6. GROUPED MCQs (উদ্দীপক নির্ভর বহুনির্বাচনী): If multiple MCQs share a passage/stem, prepend the passage to the 'question' field of EACH related MCQ.
+7. If an answer is missing, leave the "answer" field empty.
 
 OUTPUT EXACTLY THIS JSON FORMAT (NO MARKDOWN TEXT, JUST VALID JSON ARRAY):
 [
   {
     "id": 1,
     "type": "জ্ঞানমূলক",
-    "topic": "Topic Name",
+    "topic": "Topic Name (Merged broadly)",
+    "board": "ঢাকা বোর্ড ২০২৩",
     "question": "extracted question text here",
     "answer": "extracted answer text here"
   },
