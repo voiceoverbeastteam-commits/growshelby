@@ -281,10 +281,15 @@ const [caApplications, setCaApplications] = useState([]);
       let formData = new FormData();
       formData.append("image", base64String);
    const imgbbKey = process.env.EXPO_PUBLIC_IMGBB_KEY;
+      if (!imgbbKey) {
+        console.log("❌ EXPO_PUBLIC_IMGBB_KEY is missing in this build!");
+        return null;
+      }
       const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, { method: "POST", body: formData });
       const data = await res.json();
+      if (!data.success) console.log("❌ ImgBB error:", JSON.stringify(data));
       return data.success ? data.data.url : null;
-    } catch (e) { return null; }
+   } catch (e) { console.log("❌ ImgBB upload exception:", e); return null; }
   };
 
   const handlePickTempAvatar = async () => {
@@ -763,7 +768,7 @@ const handleEnterCommunity = async () => {
 // 🚀 Pick ID Card Image
   const handlePickIdCard = async () => {
     let result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.8,
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: false, quality: 0.8,
     });
     if (!result.canceled && result.assets[0].uri) {
       const manipResult = await ImageManipulator.manipulateAsync(
@@ -773,7 +778,11 @@ const handleEnterCommunity = async () => {
       if (manipResult.base64) {
         setIsImageUploading(true);
         const imgUrl = await uploadToImgBB(manipResult.base64);
-        if (imgUrl) setCaForm({ ...caForm, idImage: imgUrl });
+       if (imgUrl) {
+          setCaForm(prev => ({ ...prev, idImage: imgUrl }));
+        } else {
+          Alert.alert("আপলোড ব্যর্থ", "আইডি কার্ডের ছবি আপলোড করা যায়নি। ইন্টারনেট চেক করে আবার চেষ্টা করুন।");
+        }
         setIsImageUploading(false);
       }
     }
@@ -781,7 +790,7 @@ const handleEnterCommunity = async () => {
 
 // 🚀 Submit CA Form
   const submitCaApplication = async () => {
-    if (!caForm.college || !caForm.dept || !caForm.batch || !caForm.specialty || !caForm.idImage || !caForm.social || !caForm.phone) {
+   if (!caForm.college || !caForm.dept || !caForm.batch || !caForm.specialty || !caForm.idImage || !caForm.idImage.startsWith('http') || !caForm.social || !caForm.phone) {
       return Alert.alert("সতর্কতা", "সবগুলো তথ্য, যোগাযোগের মাধ্যম এবং আইডি কার্ডের ছবি সঠিকভাবে দিন!");
     }
     setCaStatus('pending'); // Optimistic UI
