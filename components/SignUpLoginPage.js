@@ -1,26 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ActivityIndicator, Alert, KeyboardAvoidingView, Platform, Image, ScrollView, DeviceEventEmitter } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as ImagePicker from 'expo-image-picker';
+import * as ImageManipulator from 'expo-image-manipulator';
+import { FontAwesome5 } from '@expo/vector-icons';
 
-// কালো আইকনটি সরিয়ে ৩টি ছেলে ও ৩টি মেয়ের সুন্দর অ্যাভাটার লিস্ট আপডেট করা হলো
-const AVATARS = [
-  'https://cdn-icons-png.flaticon.com/512/3135/3135715.png',
-  'https://cdn-icons-png.flaticon.com/512/4140/4140048.png',
-  'https://cdn-icons-png.flaticon.com/512/4139/4139981.png', 
-  'https://cdn-icons-png.flaticon.com/512/4140/4140047.png',
-  'https://cdn-icons-png.flaticon.com/512/4140/4140051.png',
-  'https://cdn-icons-png.flaticon.com/512/4139/4139993.png'
-];
+// 🚀 অ্যাভাটার লিস্ট মুছে ফেলা হলো, কারণ প্রোফাইল পিকচার আপলোড ম্যান্ডেটরি করা হয়েছে
 
-// অ্যাকাডেমিক লেভেলের লিস্ট (মাইক্রোসফট 3D ইমোজি সহ)
+// অ্যাকাডেমিক লেভেলের লিস্ট (আপাতত সফট লঞ্চের জন্য শুধুমাত্র এইচএসসি রাখা হলো)
 const ACADEMIC_LEVELS = [
-  { id: 'primary', label: '১ম - ৫ম শ্রেণি', iconUrl: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Backpack/3D/backpack_3d.png', color: '#FF9600' },
-  { id: 'jsc', label: '৬ষ্ঠ - ৮ম শ্রেণি', iconUrl: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Books/3D/books_3d.png', color: '#CE82FF' },
-  { id: 'ssc', label: 'নবম - দশম (SSC)', iconUrl: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/School/3D/school_3d.png', color: '#1CB0F6' },
-  { id: 'hsc', label: 'একাদশ - দ্বাদশ (HSC)', iconUrl: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Graduation%20cap/3D/graduation_cap_3d.png', color: '#FF4B4B' },
-  { id: 'admission', label: 'বিশ্ববিদ্যালয় ভর্তি', iconUrl: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Classical%20building/3D/classical_building_3d.png', color: '#58CC02' },
-  { id: 'bcs_job', label: 'বিসিএস ও চাকরি', iconUrl: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Briefcase/3D/briefcase_3d.png', color: '#FFC800' },
-  { id: 'other', label: 'অন্যান্য', iconUrl: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Sparkles/3D/sparkles_3d.png', color: '#8F93A2' }
+  { id: 'hsc', label: 'এইচএসসি (HSC)', iconUrl: 'https://raw.githubusercontent.com/microsoft/fluentui-emoji/main/assets/Graduation%20cap/3D/graduation_cap_3d.png', color: '#FF4B4B' }
 ];
 
 export default function SignUpLoginPage({ onLoginSuccess }) {
@@ -29,31 +18,66 @@ export default function SignUpLoginPage({ onLoginSuccess }) {
   const [otp, setOtp] = useState('');
   const [name, setName] = useState('');
   const [password, setPassword] = useState('');
-  const [selectedAcademic, setSelectedAcademic] = useState(null);
-  const [selectedAvatar, setSelectedAvatar] = useState(AVATARS[0]);
+ const [selectedAcademic, setSelectedAcademic] = useState(null);
+  const [selectedAvatar, setSelectedAvatar] = useState(null); // 🚀 ডিফল্ট অ্যাভাটার বাতিল
+  const [isImageUploading, setIsImageUploading] = useState(false); // 🚀 ছবি আপলোডিং স্টেট
   
   const [generatedOtp, setGeneratedOtp] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   
-  const [logoUrl, setLogoUrl] = useState('https://via.placeholder.com/260x100/ffffff/1CB0F6?text=LOGO');
-
  const EMAILJS_SERVICE_ID = process.env.EXPO_PUBLIC_EMAILJS_SERVICE_ID;
   const EMAILJS_TEMPLATE_ID = process.env.EXPO_PUBLIC_EMAILJS_TEMPLATE_ID;
   const EMAILJS_PUBLIC_KEY = process.env.EXPO_PUBLIC_EMAILJS_PUBLIC_KEY;
-  
-  useEffect(() => {
-    const fetchLogo = () => {
-      fetch('https://growshelby-api.vercel.app/api/get_settings')
-        .then(response => response.json())
-        .then(data => {
-          if (data.logoUrl) {
-            setLogoUrl(data.logoUrl);
+
+  // 🚀 ImgBB তে ছবি আপলোড করার লজিক
+  const uploadToImgBB = async (base64String) => {
+    try {
+      let formData = new FormData();
+      formData.append("image", base64String);
+      const imgbbKey = process.env.EXPO_PUBLIC_IMGBB_KEY;
+      const res = await fetch(`https://api.imgbb.com/1/upload?key=${imgbbKey}`, { method: "POST", body: formData });
+      const data = await res.json();
+      return data.success ? data.data.url : null;
+    } catch (e) { return null; }
+  };
+
+  // 🚀 গ্যালারি থেকে ছবি সিলেক্ট ও কম্প্রেস করার লজিক
+  const handlePickAvatar = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.8,
+    });
+
+    if (!result.canceled && result.assets[0].uri) {
+      setIsImageUploading(true);
+      try {
+        const manipResult = await ImageManipulator.manipulateAsync(
+          result.assets[0].uri, [{ resize: { width: 400 } }],
+          { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+        );
+
+        if (manipResult.base64) {
+          // ইউজারকে তাৎক্ষণিক দেখানোর জন্য লোকাল প্রিভিউ সেট করা হলো
+          setSelectedAvatar(`data:image/jpeg;base64,${manipResult.base64}`); 
+          
+          const imgUrl = await uploadToImgBB(manipResult.base64);
+          if (imgUrl) {
+            setSelectedAvatar(imgUrl);
+          } else {
+             Alert.alert('আপলোড ব্যর্থ', 'ইন্টারনেট সমস্যার কারণে ছবি আপলোড হয়নি।');
+             setSelectedAvatar(null);
           }
-        })
-        .catch(error => console.error("Error fetching logo:", error));
-    };
-    fetchLogo();
-  }, []);
+        }
+      } catch(e) {
+        Alert.alert('ত্রুটি', 'ছবি প্রসেস করতে সমস্যা হয়েছে।');
+        setSelectedAvatar(null);
+      } finally {
+        setIsImageUploading(false);
+      }
+    }
+  };
 
   const handleCheckEmail = async () => {
     const cleanEmail = email.trim().toLowerCase();
@@ -173,7 +197,8 @@ export default function SignUpLoginPage({ onLoginSuccess }) {
         })
       });
       
-      const data = await response.json();
+   const data = await response.json();
+      if (data.token) await AsyncStorage.setItem('@auth_token', data.token); // 🚀 JWT টোকেন সেভ
       await saveUserDataAndLogin(finalEmail, finalName, data.coins, selectedAvatar, selectedAcademic.label);
       
     } catch (error) {
@@ -206,7 +231,8 @@ export default function SignUpLoginPage({ onLoginSuccess }) {
       
       const data = await response.json();
 
-      if (response.ok && data.success) {
+  if (response.ok && data.success) {
+        if (data.token) await AsyncStorage.setItem('@auth_token', data.token); // 🚀 JWT টোকেন সেভ
         await saveUserDataAndLogin(data.user.email, data.user.name, data.user.coins, data.user.avatar, data.user.academic_level);
       } else {
         Alert.alert('লগইন ব্যর্থ', data.error || 'পাসওয়ার্ড সঠিক নয়।');
@@ -243,7 +269,9 @@ export default function SignUpLoginPage({ onLoginSuccess }) {
       // 🚀 FIX: Trigger push token generation immediately after login
       DeviceEventEmitter.emit('USER_LOGGED_IN_SYNC_TOKEN');
       
-      if (onLoginSuccess) {
+    if (onLoginSuccess) {
+        // 🚀 ম্যাজিক ফিক্স: লগইন সাকসেস হলে নতুন ডাটা লোড করার সিগন্যাল দিচ্ছি
+        DeviceEventEmitter.emit('FORCE_REFRESH_HOME_DATA');
         onLoginSuccess();
       }
     } catch (e) {
@@ -256,10 +284,11 @@ export default function SignUpLoginPage({ onLoginSuccess }) {
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       className="flex-1 bg-white justify-center px-6"
     >
-      <View className="items-center justify-center mb-4 w-full">
+   <View className="items-center justify-center mb-4 w-full">
         <Image
-          source={{ uri: logoUrl }}
-          style={{ width: 260, height: 100 }}
+          source={require('../assets/logo.png')} 
+          // 🚀 সাইজ বড় করার জন্য width ও height বাড়িয়ে দেওয়া হলো
+          style={{ width: 320, height: 130 }} 
           resizeMode="contain"
         />
       </View>
@@ -400,41 +429,59 @@ export default function SignUpLoginPage({ onLoginSuccess }) {
         </View>
       )}
 
-      {/* STEP 5: Select Avatar */}
+   {/* STEP 5: Upload Profile Picture (Mandatory) */}
       {step === 5 && (
         <View className="w-full items-center">
-          <Text style={{ fontFamily: 'BanglaBold' }} className="text-xl text-gray-700 mb-4 text-center">
-            আপনার পছন্দের অ্যাভাটার বেছে নিন
+          <Text style={{ fontFamily: 'BanglaBold' }} className="text-xl text-[#3C3C3C] mb-2 text-center">
+            প্রোফাইল ছবি সেট করুন
+          </Text>
+          <Text style={{ fontFamily: 'BanglaRegular' }} className="text-[#777777] mb-8 text-center">
+            অ্যাকাউন্ট তৈরি করতে একটি সুন্দর ছবি আপলোড করুন
           </Text>
           
-          <View className="h-32 mb-6 w-full">
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={{ paddingHorizontal: 10, alignItems: 'center' }}
-            >
-              {AVATARS.map((url, index) => (
-                <TouchableOpacity 
-                  key={index}
-                  onPress={() => setSelectedAvatar(url)}
-                  className={`w-24 h-24 rounded-full border-4 overflow-hidden mx-2 items-center justify-center ${selectedAvatar === url ? 'border-[#1CB0F6] bg-[#E5F7FF]' : 'border-gray-200 bg-gray-50'}`}
-                >
-                  <Image source={{ uri: url }} className="w-[85%] h-[85%]" resizeMode="contain" />
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
+          {/* 🚀 ইমেজ আপলোডার */}
+          <TouchableOpacity 
+            activeOpacity={0.8} 
+            onPress={handlePickAvatar} 
+            disabled={isImageUploading || isLoading}
+            className="mb-10"
+          >
+            <View className="w-36 h-36 rounded-full border-4 border-[#E5E5E5] border-dashed overflow-hidden bg-[#F9F9F9] items-center justify-center relative shadow-sm">
+              {selectedAvatar ? (
+                <Image source={{ uri: selectedAvatar }} className="w-full h-full" resizeMode="cover" />
+              ) : (
+                <View className="items-center">
+                  <FontAwesome5 name="camera" size={36} color="#1CB0F6" className="mb-2" />
+                  <Text className="text-[#1899D6] text-[13px] pt-1" style={{ fontFamily: 'BanglaBold' }}>ছবি দিন</Text>
+                </View>
+              )}
+              
+              {/* আপলোডিং স্পিনার */}
+              {isImageUploading && (
+                <View className="absolute inset-0 bg-black/60 items-center justify-center">
+                   <ActivityIndicator size="large" color="#FFFFFF" />
+                   <Text className="text-white text-[12px] pt-2" style={{ fontFamily: 'BanglaBold' }}>আপলোড হচ্ছে...</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
 
+          {/* 🚀 সাইকোলজিক্যাল লক বাটন */}
           <TouchableOpacity 
             onPress={handleFinishSetup}
-            disabled={isLoading}
+            disabled={!selectedAvatar || isImageUploading || isLoading}
             activeOpacity={0.8}
-            className={`w-full py-4 rounded-2xl items-center justify-center border-2 shadow-sm ${isLoading ? 'bg-gray-400 border-gray-400' : 'bg-[#FFC800] border-[#FFC800] border-b-[5px] border-b-[#E5B400]'}`}
+            className={`w-full py-4 rounded-2xl items-center justify-center border-2 shadow-sm ${(!selectedAvatar || isImageUploading || isLoading) ? 'bg-[#F0F0F0] border-[#E5E5E5] border-b-[5px] border-b-[#D7D7D7]' : 'bg-[#FFC800] border-[#FFC800] border-b-[5px] border-b-[#E5B400]'}`}
           >
             {isLoading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={{ fontFamily: 'BanglaBold' }} className="text-white text-xl pt-1">একাউন্ট তৈরি করুন</Text>
+              <View className="flex-row items-center justify-center">
+                {!selectedAvatar && <FontAwesome5 name="lock" size={16} color="#AFAFAF" style={{ marginRight: 10 }} />}
+                <Text style={{ fontFamily: 'BanglaBold' }} className={`text-xl pt-1 ${!selectedAvatar ? 'text-[#AFAFAF]' : 'text-white'}`}>
+                  {!selectedAvatar ? 'ছবি আপলোড করুন' : 'একাউন্ট তৈরি করুন 🎉'}
+                </Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>

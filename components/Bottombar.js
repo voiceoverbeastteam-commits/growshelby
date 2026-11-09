@@ -131,20 +131,24 @@ export default function Bottombar({ translateY }) {
       <Modal visible={isActionSheetOpen} transparent animationType="fade" onRequestClose={() => setActionSheetOpen(false)}>
         <View className="flex-1 justify-end bg-black/60">
           <TouchableOpacity className="flex-1" onPress={() => setActionSheetOpen(false)} />
-          <View className="bg-white rounded-t-[32px] p-6 pb-10 border-t-4 border-[#E5E5E5]">
-            <Text className="text-xl text-[#3C3C3C] text-center mb-6" style={{ fontFamily: 'BanglaBold' }}>কী করতে চান?</Text>
-
+         <View className="bg-white rounded-t-[32px] p-6 pb-10 border-t-4 border-[#E5E5E5]">
+            
+            {/* 🚀 ফিক্স: "কী করতে চান?" মুছে ফেলা হলো এবং বাটনের থ্রিডি ডিজাইন পারফেক্ট করা হলো */}
             <TouchableOpacity 
               activeOpacity={0.8} 
               onPress={() => { setActionSheetOpen(false); setTimeout(() => setActiveGlobalAction('IMPORT'), 200); }} 
-              className="bg-[#58CC02] p-4 rounded-[20px] mb-6 flex-row items-center border-b-4 border-[#58A700]"
+              className="w-full mb-6 mt-2"
             >
-              <View className="bg-white/20 w-14 h-14 rounded-full items-center justify-center mr-4">
-                <FontAwesome5 name="cloud-download-alt" size={22} color="#FFF" />
-              </View>
-             <View>
-                <Text className="text-white text-[18px] pt-1" style={{ fontFamily: 'BanglaBold' }}>কমিউনিটি জয়েন করুন</Text>
-                <Text className="text-white/80 text-[13px]" style={{ fontFamily: 'BanglaRegular' }}>সিক্রেট কোড ব্যবহার করে</Text>
+              <View className="bg-[#58A700] rounded-[20px] pb-[6px]">
+                <View className="bg-[#58CC02] p-4 rounded-[20px] flex-row items-center">
+                  <View className="bg-white/20 w-14 h-14 rounded-full items-center justify-center mr-4">
+                    <FontAwesome5 name="cloud-download-alt" size={22} color="#FFF" />
+                  </View>
+                  <View>
+                    <Text className="text-white text-[18px] pt-1" style={{ fontFamily: 'BanglaBold' }}>কমিউনিটি জয়েন করুন</Text>
+                    <Text className="text-white/80 text-[13px]" style={{ fontFamily: 'BanglaRegular' }}>সিক্রেট কোড ব্যবহার করে</Text>
+                  </View>
+                </View>
               </View>
             </TouchableOpacity>
 

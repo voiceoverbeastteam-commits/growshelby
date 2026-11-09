@@ -1,11 +1,12 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Image, SafeAreaView, Alert, Linking, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager, DeviceEventEmitter } from 'react-native';
+import { View, Text, TouchableOpacity, Image, SafeAreaView, ActivityIndicator, Alert, Linking, ScrollView, Modal, TextInput, KeyboardAvoidingView, Platform, LayoutAnimation, UIManager, DeviceEventEmitter } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import Pusher from 'pusher-js/react-native';
 import * as ImagePicker from 'expo-image-picker';
 import * as ImageManipulator from 'expo-image-manipulator';
+import * as Clipboard from 'expo-clipboard'; // 🚀 কপি ফিচারের জন্য যুক্ত করা হলো
 import Bottombar from '../components/Bottombar';
 import PremiumUpgradeModal from '../components/PremiumUpgradeModal';
 import PorarPageEyeComfort from '../components/PorarPageEyeComfort';
@@ -88,6 +89,19 @@ export default function ProfileScreen() {
   // 🚀 Reader Specific Stats
   const [savedGuidesCount, setSavedGuidesCount] = useState(0);
   const [studyStreak, setStudyStreak] = useState(1);
+
+ // 🚀 Admin & CA Program States
+  const ADMIN_EMAIL = 'rumontrader662@gmail.com'; // ⚠️ এখানে আপনার আসল অ্যাডমিন জিমেইলটি দিন!
+ const [caStatus, setCaStatus] = useState(null);
+  const [isCaModalVisible, setIsCaModalVisible] = useState(false);
+  const [isAdminReviewModalVisible, setIsAdminReviewModalVisible] = useState(false);
+const [caApplications, setCaApplications] = useState([]);
+  const [caForm, setCaForm] = useState({ college: '', dept: '', batch: '', target: '২০ জন', social: '', phone: '', specialty: '', idImage: '' });
+  const targetDropdownOptions = ['২০ জন', '৫০ জন', '১০০ জন', '২০০ জন'];
+  const departmentOptions = ['সায়েন্স', 'হিউম্যানিটিজ', 'বিজনেস স্টাডিজ'];
+  
+  // 🚀 ইউজারের অ্যাকাডেমিক লেভেল স্টোর করার জন্য
+  const [userAcademicLevel, setUserAcademicLevel] = useState('এইচএসসি (HSC)');
 
   // 🚀 Community (Creator) States
   const [isCreator, setIsCreator] = useState(false);
@@ -234,28 +248,25 @@ export default function ProfileScreen() {
     fetchSettings();
   }, []);
 
-  // Modals
+ // Modals
   const [isSetupModalVisible, setIsSetupModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
+  
+  // 🚀 Admin Hub Modals
+  const [isAdminHubModalVisible, setIsAdminHubModalVisible] = useState(false);
+  const [adminHubTarget, setAdminHubTarget] = useState('এইচএসসি (HSC)');
   
   // Temp states for Community Forms
   const [tempCommName, setTempCommName] = useState("");
   const [tempCommBanner, setTempCommBanner] = useState("");
   const [tempCommDesc, setTempCommDesc] = useState("");
   
-  // 🚀 নতুন ক্যাটাগরি স্টেট ও লিস্ট
+// 🚀 নতুন ক্যাটাগরি স্টেট ও লিস্ট
   const [commNiche, setCommNiche] = useState("এইচএসসি (HSC)"); 
   const [tempCommNiche, setTempCommNiche] = useState("এইচএসসি (HSC)"); 
+  // 🚀 আপাতত সফট লঞ্চের জন্য শুধুমাত্র এইচএসসি অপশন রাখা হলো
   const targetCategories = [
-    'ষষ্ঠ-১০ম শ্রেণি', 
-    'এসএসসি (SSC)', 
-    'এইচএসসি (HSC)', 
-    'বিশ্ববিদ্যালয় ভর্তি', 
-    'মেডিকেল', 
-    'ইঞ্জিনিয়ারিং', 
-    'বিসিএস (BCS)', 
-    'আইইএলটিএস (IELTS)', 
-    'অন্যান্য'
+    'এইচএসসি (HSC)'
   ];
   const [setupStep, setSetupStep] = useState(1); // 🚀 Step Tracking
   // 🚀 Personal Profile Edit States
@@ -337,67 +348,68 @@ export default function ProfileScreen() {
           const uid = await AsyncStorage.getItem('@current_user_id') || 'guest';
           setUserEmail(uid);
           
-          let savedName = await AsyncStorage.getItem(`@user_name_${uid}`) || await AsyncStorage.getItem('@user_name') || "শিক্ষার্থী";
+      let savedName = await AsyncStorage.getItem(`@user_name_${uid}`) || await AsyncStorage.getItem('@user_name') || "শিক্ষার্থী";
           setUserName(savedName);
 
-          let savedAvatar = await AsyncStorage.getItem(`@user_avatar_${uid}`) || await AsyncStorage.getItem('@user_avatar') || "https://cdn-icons-png.flaticon.com/512/3135/3135715.png";
-          setAvatarUrl(savedAvatar);
+          // 🚀 FIX: স্টোরেজ থেকে প্রোফাইল পিকচার লোড করে স্টেটে সেট করা হচ্ছে
+          let savedAvatar = await AsyncStorage.getItem(`@user_avatar_${uid}`);
+          if (savedAvatar) {
+            setAvatarUrl(savedAvatar);
+          }
+
+          let savedAcademic = await AsyncStorage.getItem(`@user_academic_${uid}`) || await AsyncStorage.getItem('@user_academic') || "এইচএসসি (HSC)";
+          setUserAcademicLevel(savedAcademic);
           
           // Check Identity Status
           const creatorStatus = await AsyncStorage.getItem(`@is_creator_${uid}`);
           setIsCreator(creatorStatus === 'true');
 
-       // 🚀 Load Community Data (With Auto Restore Magic)
-          let needsServerSync = false;
-
+ // 🚀 Load Community Data (With Auto Restore Magic)
           if (creatorStatus === 'true') {
             let savedCommName = await AsyncStorage.getItem(`@comm_name_${uid}`);
             let savedBanner = await AsyncStorage.getItem(`@comm_banner_${uid}`);
             let savedDesc = await AsyncStorage.getItem(`@comm_desc_${uid}`);
-
             if (savedCommName) setCommName(savedCommName);
             if (savedBanner) setCommBanner(savedBanner);
             if (savedDesc) setCommDesc(savedDesc);
-
-            // 🚀 ম্যাজিক ফিক্স: অ্যান্ড্রয়েড ব্যাকআপ যদি বিশাল সাইজের ব্যানার রিস্টোর করতে না পারে, 
-            // তখন সার্ভার থেকে ফ্রেশ ডেটা টানতে হবে!
-            if (!savedBanner || !savedCommName) {
-              needsServerSync = true;
-            }
-          } else {
-            needsServerSync = true;
           }
 
-          if (needsServerSync) {
-            // 🚀 RESTORE LOGIC: সার্ভার থেকে ডাটা আনবে
-            try {
-              const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-                body: JSON.stringify({ action: 'sync_profile', email: uid })
-              });
-              const data = await res.json();
-              
-              // 🚀 স্মার্ট রিস্টোর: ডাটাবেস থেকে পারফেক্ট ব্যানার ও বায়ো রিসিভ করবে
-              if (data.success && (data.banner || data.communityName)) {
-                setIsCreator(true);
-                setCommName(data.communityName || "আমার কমিউনিটি"); 
-                
-              const defaultBanner = "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1000&auto=format&fit=crop";
+          try {
+            const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+              body: JSON.stringify({ action: 'sync_profile', email: uid })
+            });
+            const data = await res.json();
+            if (data.success) {
+              const isUserCreator = data.isCreator === true || data.banner || data.communityName ? true : false;
+              setIsCreator(isUserCreator);
+              setCaStatus(data.ca_status || null);
+
+              if (isUserCreator) {
+                setCommName(data.communityName || ""); 
+                const defaultBanner = "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1000&auto=format&fit=crop";
                 setCommBanner(data.banner || defaultBanner);
                 setCommDesc(data.bio || "");
-                setCommNiche(data.niche || "এইচএসসি (HSC)"); // 🔥 ক্যাটাগরি রিস্টোর হবে
+                setCommNiche(data.niche || "এইচএসসি (HSC)");
 
-
-                // লোকাল স্টোরেজে আবার সেভ করে দিচ্ছি
+                if (data.communityCode) await AsyncStorage.setItem(`@communityCode_${uid}`, data.communityCode);
                 await AsyncStorage.setItem(`@is_creator_${uid}`, 'true');
-                await AsyncStorage.setItem(`@comm_name_${uid}`, data.communityName || "আমার কমিউনিটি"); 
+                if (data.communityName) await AsyncStorage.setItem(`@comm_name_${uid}`, data.communityName); 
                 await AsyncStorage.setItem(`@comm_banner_${uid}`, data.banner || defaultBanner);
                 if(data.bio) await AsyncStorage.setItem(`@comm_desc_${uid}`, data.bio);
+              } else {
+                setCommName("");
+                setCommBanner("");
+                setCommDesc("");
+                await AsyncStorage.multiRemove([
+                  `@is_creator_${uid}`, `@comm_name_${uid}`, `@comm_banner_${uid}`, 
+                  `@comm_desc_${uid}`, `@comm_niche_${uid}`, `@communityCode_${uid}`
+                ]);
               }
-            } catch (e) {
-              console.log("Restore error:", e);
             }
+          } catch (e) {
+            console.log("Restore error:", e);
           }
           // Load Reader Stats
      // Load Reader Stats
@@ -407,7 +419,7 @@ export default function ProfileScreen() {
                setSavedGuidesCount(guides.length);
             }
 
-        // 🚀 Load Friends Network Data
+   // 🚀 Load Friends Network Data
             await fetchFriendsNetworkData(uid);
 
         } catch (error) {
@@ -470,15 +482,17 @@ export default function ProfileScreen() {
     }
   };
 
-  const handleEnterCommunity = () => {
+const handleEnterCommunity = async () => {
     // 🚀 ফিক্স: ডেটা পাঠানোর সময় নামগুলো সঠিক বক্সে প্যাক করা হচ্ছে
-    const myCommunityData = {
+    const savedCode = await AsyncStorage.getItem(`@communityCode_${userEmail}`);
+   const myCommunityData = {
       id: userEmail,
-      notebookName: commName,      // 🎯 কমিউনিটির অরিজিনাল নাম (যেমন: প্রি টেস্ট মাস্টারি...)
-      creatorName: userName,       // 🎯 আপনার নিজের নাম (যেমন: Sakib)
+      communityCode: savedCode || userEmail, 
+      notebookName: commName,  
+      creatorName: userName,       
       creatorAvatar: avatarUrl,
       creatorEmail: userEmail,
-      niche: "আমার কমিউনিটি", 
+      niche: commNiche || "এইচএসসি (HSC)", // 🚀 FIX: 'আমার কমিউনিটি' বাদ দিয়ে ইউজারের আসল টার্গেট (HSC) দেওয়া হলো, যাতে অ্যাডমিনের বইগুলো ঠিকমতো ম্যাচ করে!
       banner: commBanner,
       bio: commDesc,
       isFromExplore: true, 
@@ -509,7 +523,7 @@ export default function ProfileScreen() {
     }
   };
 
-  // 🚀 Create Community Action (Frontend & Backend Sync)
+// 🚀 Create Community Action (Frontend & Backend Sync)
   const handleCreateCommunity = async () => {
     LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
     
@@ -525,7 +539,13 @@ export default function ProfileScreen() {
     
     await AsyncStorage.setItem(`@is_creator_${userEmail}`, 'true');
 
-    // 🚀 ROOT CAUSE FIX: Syncing Immediately to Backend to wipe out old cache
+  // 🚀 ROOT CAUSE FIX: Syncing Immediately to Backend to wipe out old cache
+    const finalBanner = tempCommBanner || commBanner;
+    if (finalBanner && finalBanner.startsWith('data:')) {
+      Alert.alert("সতর্কতা", "ছবি আপলোড সম্পন্ন হয়নি। ইন্টারনেট সংযোগ চেক করুন।");
+      return; // 🚀 ফিক্স: Base64 সার্ভারে পাঠিয়ে 413 Payload Too Large এরর ঠেকানো হলো
+    }
+
     try {
       await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
@@ -534,11 +554,13 @@ export default function ProfileScreen() {
           action: 'update_channel_profile',
           channelId: userEmail,
           notebookName: tempCommName.trim(),
-          banner: tempCommBanner || commBanner,
+          banner: finalBanner,
           bio: tempCommDesc.trim(),
-          niche: tempCommNiche // 🔥 টার্গেট ক্যাটাগরি সার্ভারে সেভ হবে
+          niche: tempCommNiche 
         })
       });
+      // 🚀 ফিক্স: আপডেট হওয়ার পর হোম পেইজকে অটোমেটিক রিফ্রেশ করার সিগন্যাল পাঠানো হলো
+      DeviceEventEmitter.emit('FORCE_REFRESH_HOME_DATA');
     } catch (e) {
       console.log("Backend Sync Error:", e);
     }
@@ -593,9 +615,10 @@ export default function ProfileScreen() {
         { 
           text: "হ্যাঁ, মুছুন", 
           style: "destructive",
-          onPress: async () => {
+       onPress: async () => {
             LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
             setIsCreator(false);
+            setCaStatus(null); // 🚀 FIX: লোকাল স্টেট থেকেও CA স্ট্যাটাস মুছে ফেলছি, যাতে সাথে সাথে বাটন ফিরে আসে
             setCommName("");
             setCommDesc("");
             
@@ -632,24 +655,29 @@ export default function ProfileScreen() {
       [
         { text: "না", style: "cancel" },
         { 
-          text: "হ্যাঁ", 
+        text: "হ্যাঁ", 
           style: "destructive",
           onPress: async () => {
             // 🚀 FIX: Delete push token before logging out
           try {
               const uid = await AsyncStorage.getItem('@current_user_id');
-              const pushToken = await AsyncStorage.getItem('@device_push_token'); // 🚀 টোকেন নিয়ে আসা হলো
+              const pushToken = await AsyncStorage.getItem('@device_push_token'); 
               if (uid) {
                 await fetch('https://growshelby-api.vercel.app/api/update_coins', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-                  body: JSON.stringify({ action: 'delete_push_token', email: uid, token: pushToken }) // 🚀 টোকেন পাঠানো হলো
+                  body: JSON.stringify({ action: 'delete_push_token', email: uid, token: pushToken }) 
                 });
               }
             } catch(e) {}
 
-            await AsyncStorage.setItem('@is_logged_in', 'false');
+          await AsyncStorage.setItem('@is_logged_in', 'false');
             await AsyncStorage.removeItem('@current_user_id'); 
+            await AsyncStorage.removeItem('@auth_token'); // 🚀 লগআউটের সময় টোকেন মুছে ফেলা
+            
+            // 🚀 ম্যাজিক ফিক্স: লগআউট করার সাথে সাথে গ্লোবাল ইভেন্ট ট্রিগার করা হলো
+            DeviceEventEmitter.emit('USER_LOGGED_OUT_CLEAR_CACHE');
+            
             router.replace('/'); 
           }
         }
@@ -732,6 +760,81 @@ export default function ProfileScreen() {
     );
   };
 
+// 🚀 Pick ID Card Image
+  const handlePickIdCard = async () => {
+    let result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images, allowsEditing: true, aspect: [4, 3], quality: 0.8,
+    });
+    if (!result.canceled && result.assets[0].uri) {
+      const manipResult = await ImageManipulator.manipulateAsync(
+        result.assets[0].uri, [{ resize: { width: 800 } }],
+        { compress: 0.6, format: ImageManipulator.SaveFormat.JPEG, base64: true }
+      );
+      if (manipResult.base64) {
+        setIsImageUploading(true);
+        const imgUrl = await uploadToImgBB(manipResult.base64);
+        if (imgUrl) setCaForm({ ...caForm, idImage: imgUrl });
+        setIsImageUploading(false);
+      }
+    }
+  };
+
+// 🚀 Submit CA Form
+  const submitCaApplication = async () => {
+    if (!caForm.college || !caForm.dept || !caForm.batch || !caForm.specialty || !caForm.idImage || !caForm.social || !caForm.phone) {
+      return Alert.alert("সতর্কতা", "সবগুলো তথ্য, যোগাযোগের মাধ্যম এবং আইডি কার্ডের ছবি সঠিকভাবে দিন!");
+    }
+    setCaStatus('pending'); // Optimistic UI
+    setIsCaModalVisible(false);
+
+    try {
+      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({
+          action: 'submit_ca_application',
+          email: userEmail,
+          name: userName,
+          academicLevel: userAcademicLevel, 
+          collegeName: caForm.college,
+          department: caForm.dept,
+          batch: caForm.batch,
+       targetMembers: caForm.target,
+          specialty: caForm.specialty, // 🚀 বিশেষত্ব যোগ করা হলো
+          socialLink: caForm.social,
+          phone: caForm.phone, // 🚀 ফোন নাম্বার যোগ করা হলো
+          idCardImage: caForm.idImage
+        })
+      });
+    } catch (e) { console.log(e); }
+  };
+
+  // 🚀 Open Admin Panel
+  const openAdminReviewPanel = async () => {
+    setIsAdminReviewModalVisible(true);
+    try {
+      const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: 'fetch_ca_applications' })
+      });
+      const data = await res.json();
+      if (data.success) setCaApplications(data.applications);
+    } catch (e) {}
+  };
+
+  // 🚀 Admin Decision
+  const handleAdminDecision = async (targetEmail, decision) => {
+    setCaApplications(prev => prev.filter(app => app.email !== targetEmail)); // UI থেকে সাথে সাথে রিমুভ
+    try {
+      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: 'review_ca_application', email: targetEmail, decision })
+      });
+    } catch (e) {}
+  };
+
   return (
     <SafeAreaView className="flex-1 bg-[#F7F9FA]">
      <ScrollView className="flex-1" contentContainerStyle={{ paddingBottom: 130 }} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
@@ -799,16 +902,26 @@ export default function ProfileScreen() {
           )}
          
          </View>
-
-       {/* ==========================================
+{/* ==========================================
              COMMUNITY SECTION (Button or Card)
          ========================================== */}
          <View className="px-5 mb-6">
             <Text className="text-[18px] text-[#3C3C3C] mb-3 ml-1" style={{ fontFamily: 'BanglaBold' }}>আমার কমিউনিটি 🎯</Text>
             
-            {isProfileLoading ? (
+     {userEmail === ADMIN_EMAIL && (
+              <TouchableOpacity 
+                activeOpacity={0.8} 
+                onPress={openAdminReviewPanel}
+                className="bg-[#FF4B4B] p-4 rounded-[20px] flex-row items-center justify-center shadow-sm mb-4"
+              >
+                <FontAwesome5 name="user-shield" size={16} color="#FFFFFF" />
+                <Text className="text-white text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>কমিউনিটি রিকোয়েস্ট রিভিউ করুন ({caApplications.length || '...'})</Text>
+              </TouchableOpacity>
+            )}
+
+        {isProfileLoading ? (
               <CommunityCardSkeleton />
-            ) : isCreator ? (
+            ) : isCreator && commName ? (
                // 🚀 Community Card (Replaces the create button)
               <View className="bg-white rounded-[20px] border border-[#E5E5E5] overflow-hidden shadow-sm">
                  {/* Banner */}
@@ -872,13 +985,13 @@ export default function ProfileScreen() {
                          <FontAwesome5 name="sign-in-alt" size={14} color="#FFFFFF" />
                          <Text className="text-white text-[15px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>ইন্টার কমিউনিটি</Text>
                       </TouchableOpacity>
-                      <TouchableOpacity 
+                   <TouchableOpacity 
                           activeOpacity={0.8} 
                           onPress={() => {
                             setTempCommName(commName);
                              setTempCommBanner(commBanner);
                              setTempCommDesc(commDesc);
-                             setTempCommNiche(commNiche); // 🔥 অরিজিনাল টার্গেট সেট
+                             setTempCommNiche(commNiche); 
                              setIsEditModalVisible(true);
                           }}
                           className="bg-[#F9F9F9] py-3 px-5 rounded-[12px] items-center border border-[#E5E5E5] justify-center"
@@ -888,27 +1001,67 @@ export default function ProfileScreen() {
                     </View>
                  </View>
                </View>
-            ) : (
-               // 🚀 Create Community Button
+            ) : isCreator && !commName ? (
+               // 🚀 APPROVED CA - NEEDS TO SETUP COMMUNITY
                <TouchableOpacity 
                  activeOpacity={0.8} 
-                 onPress={() => {
-                  setTempCommName("");
-                 setTempCommDesc("");
-                 setTempCommBanner("");
-                 setTempCommNiche("এইচএসসি (HSC)"); // 🔥 ডিফল্ট টার্গেট সেট
-                 setSetupStep(1);
-                   setIsSetupModalVisible(true);
-                 }}
+                 onPress={() => setIsSetupModalVisible(true)}
+                 className="bg-white p-4 rounded-[20px] border-2 border-[#58A700] flex-row items-center justify-between shadow-sm py-6"
+               >
+                 <View className="flex-row items-center flex-1 pr-2">
+                   <View className="w-12 h-12 bg-[#58A700]/10 rounded-full items-center justify-center mr-4">
+                      <FontAwesome5 name="users" size={20} color="#58A700" />
+                   </View>
+                   <View className="flex-1">
+                      <Text className="text-[17px] text-[#3C3C3C] pt-1" style={{ fontFamily: 'BanglaBold' }}>কমিউনিটি তৈরি করুন 🎉</Text>
+                      <Text className="text-[12px] text-[#AFAFAF] pt-0.5" style={{ fontFamily: 'BanglaRegular' }}>আপনার আবেদন অ্যাপ্রুভ হয়েছে! এখন সেটআপ করুন</Text>
+                   </View>
+                 </View>
+                 <View className="bg-[#58A700] w-8 h-8 rounded-full items-center justify-center shadow-sm">
+                   <FontAwesome5 name="arrow-right" size={12} color="#FFFFFF" />
+                 </View>
+               </TouchableOpacity>
+            ) : caStatus === 'pending' ? (
+               // 🚀 PENDING STATE UI
+               <View className="bg-[#FFFDF8] p-5 rounded-[20px] border-2 border-[#EFE8D6] items-center justify-center shadow-sm py-8">
+                 <FontAwesome5 name="hourglass-half" size={32} color="#D47B00" className="mb-3" />
+                 <Text className="text-[18px] text-[#3C3C3C] pt-1 text-center" style={{ fontFamily: 'BanglaBold' }}>আপনার রিকোয়েস্টটি রিভিউ করা হচ্ছে ⏳</Text>
+                 <Text className="text-[13px] text-[#777777] text-center mt-2 px-2 leading-5" style={{ fontFamily: 'BanglaRegular' }}>আপনার ইনফরমেশন অ্যাডমিন প্যানেলে জমা হয়েছে। অ্যাপ্রুভ হলে আপনি কমিউনিটি তৈরি করতে পারবেন।</Text>
+               </View>
+            ) : userEmail === ADMIN_EMAIL ? (
+               // 🚀 MASTER ADMIN CREATE HUB BUTTON
+               <TouchableOpacity 
+                 activeOpacity={0.8} 
+                 onPress={() => setIsAdminHubModalVisible(true)}
                  className="bg-white p-4 rounded-[20px] border-2 border-[#1899D6]/30 border-dashed flex-row items-center justify-between shadow-sm py-6"
                >
-                 <View className="flex-row items-center">
+                 <View className="flex-row items-center flex-1 pr-2">
                    <View className="w-12 h-12 bg-[#1899D6]/10 rounded-full items-center justify-center mr-4">
-                      <FontAwesome5 name="users" size={20} color="#1899D6" />
+                      <FontAwesome5 name="plus" size={20} color="#1899D6" />
                    </View>
-                   <View>
-                      <Text className="text-[18px] text-[#3C3C3C] pt-1" style={{ fontFamily: 'BanglaBold' }}>কমিউনিটি তৈরি করুন</Text>
-                      <Text className="text-[13px] text-[#AFAFAF] pt-0.5" style={{ fontFamily: 'BanglaRegular' }}>স্টুডেন্টদের জন্য স্পেসিফিক টার্গেট</Text>
+                   <View className="flex-1">
+                      <Text className="text-[17px] text-[#3C3C3C] pt-1" style={{ fontFamily: 'BanglaBold' }}>মাস্টার হাব তৈরি করুন</Text>
+                      <Text className="text-[12px] text-[#AFAFAF] pt-0.5" style={{ fontFamily: 'BanglaRegular' }}>কনটেন্ট আপলোডের জন্য হাব তৈরি করুন</Text>
+                   </View>
+                 </View>
+                 <View className="bg-[#F5F5F5] w-8 h-8 rounded-full items-center justify-center">
+                   <FontAwesome5 name="chevron-right" size={12} color="#777777" />
+                 </View>
+               </TouchableOpacity>
+            ) : (
+               // 🚀 APPLY FOR CA BUTTON
+               <TouchableOpacity 
+                 activeOpacity={0.8} 
+                 onPress={() => setIsCaModalVisible(true)}
+                 className="bg-white p-4 rounded-[20px] border-2 border-[#1899D6]/30 border-dashed flex-row items-center justify-between shadow-sm py-6"
+               >
+                 <View className="flex-row items-center flex-1 pr-2">
+                   <View className="w-12 h-12 bg-[#1899D6]/10 rounded-full items-center justify-center mr-4">
+                      <FontAwesome5 name="id-badge" size={20} color="#1899D6" />
+                   </View>
+                   <View className="flex-1">
+                      <Text className="text-[17px] text-[#3C3C3C] pt-1" style={{ fontFamily: 'BanglaBold' }}>ক্যাম্পাস অ্যাম্বাসেডর হোন</Text>
+                      <Text className="text-[12px] text-[#AFAFAF] pt-0.5" style={{ fontFamily: 'BanglaRegular' }}>অফিসিয়াল কমিউনিটি তৈরি করতে এপ্লাই করুন</Text>
                    </View>
                  </View>
                  <View className="bg-[#F5F5F5] w-8 h-8 rounded-full items-center justify-center">
@@ -972,6 +1125,74 @@ export default function ProfileScreen() {
         </KeyboardAvoidingView>
       </Modal>
 
+
+    {/* 🚀 0. Master Admin Hub Create Modal (1-Step Simple) */}
+      <Modal visible={isAdminHubModalVisible} animationType="fade" transparent={true} onRequestClose={() => setIsAdminHubModalVisible(false)}>
+        <View className="flex-1 bg-black/60 justify-center px-5">
+          <View className="bg-white rounded-[24px] p-6 w-full border-b-4 border-[#E5E5E5] shadow-lg">
+            <View className="flex-row items-center justify-between pb-3 border-b border-[#E5E5E5] mb-5">
+              <Text className="text-[18px] text-[#3C3C3C] pt-1" style={{ fontFamily: 'BanglaBold' }}>মাস্টার হাব তৈরি করুন ⚙️</Text>
+              <TouchableOpacity onPress={() => setIsAdminHubModalVisible(false)} className="bg-[#F5F5F5] w-8 h-8 rounded-full items-center justify-center">
+                 <FontAwesome5 name="times" size={14} color="#777777" />
+              </TouchableOpacity>
+            </View>
+
+            <Text className="text-[#AFAFAF] text-[13px] mb-3 ml-1" style={{ fontFamily: 'BanglaBold' }}>কোন সেকশনের জন্য কনটেন্ট বানাবেন?</Text>
+            <View className="flex-row flex-wrap gap-2 mb-8">
+              {targetCategories.map((cat, index) => (
+                <TouchableOpacity
+                  key={index}
+                  activeOpacity={0.8}
+                  onPress={() => setAdminHubTarget(cat)}
+                  className={`px-4 py-2.5 rounded-full border ${adminHubTarget === cat ? 'bg-[#1899D6] border-[#1899D6]' : 'bg-[#F9F9F9] border-[#E5E5E5]'}`}
+                >
+                  <Text className={`text-[14px] pt-0.5 ${adminHubTarget === cat ? 'text-white' : 'text-[#777777]'}`} style={{ fontFamily: 'BanglaBold' }}>{cat}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <TouchableOpacity 
+              activeOpacity={0.8} 
+              onPress={async () => {
+                setIsAdminHubModalVisible(false);
+                setCommName("মাস্টার হাব");
+                setCommDesc("অফিসিয়াল কনটেন্ট হাব");
+                setCommBanner("https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1000");
+                setCommNiche(adminHubTarget);
+                setIsCreator(true);
+                
+                await AsyncStorage.setItem(`@is_creator_${userEmail}`, 'true');
+                await AsyncStorage.setItem(`@comm_name_${userEmail}`, "মাস্টার হাব");
+                await AsyncStorage.setItem(`@comm_niche_${userEmail}`, adminHubTarget);
+
+                try {
+                  await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                    body: JSON.stringify({
+                      action: 'update_channel_profile',
+                      channelId: userEmail,
+                      notebookName: "মাস্টার হাব",
+                      banner: "https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1000",
+                      bio: "অফিসিয়াল কনটেন্ট হাব",
+                      niche: adminHubTarget
+                    })
+                  });
+                } catch (e) {
+                  console.log("Admin Hub Sync Error:", e);
+                }
+              }} 
+              className="w-full"
+            >
+              <View className="bg-[#1899D6] rounded-[16px] pb-[6px]">
+                <View className="bg-[#1CB0F6] rounded-[16px] py-4 flex-row justify-center items-center">
+                  <Text className="text-white text-[18px] pt-1" style={{ fontFamily: 'BanglaBold' }}>হাব চালু করুন 🚀</Text>
+                </View>
+              </View>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
 
       {/* 🚀 1. Community Setup Modal (Step-by-Step) */}
       <Modal visible={isSetupModalVisible} animationType="slide" transparent={true} onRequestClose={() => setIsSetupModalVisible(false)}>
@@ -1324,6 +1545,182 @@ export default function ProfileScreen() {
                </ScrollView>
             </View>
          </View>
+      </Modal>
+
+   {/* 🚀 CA Application Form Modal */}
+      <Modal visible={isCaModalVisible} animationType="slide" transparent={true} onRequestClose={() => setIsCaModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-[#F7F9FA] justify-start pt-12">
+          <View className="flex-row items-center justify-between px-5 pb-4 bg-white border-b border-[#E5E5E5]">
+            <TouchableOpacity onPress={() => setIsCaModalVisible(false)} className="p-2 -ml-2">
+               <FontAwesome5 name="times" size={18} color="#777777" />
+            </TouchableOpacity>
+            <Text className="text-[18px] text-[#3C3C3C] pt-1" style={{ fontFamily: 'BanglaBold' }}>অ্যাম্বাসেডর অ্যাপ্লিকেশন</Text>
+            <View className="w-5" />
+          </View>
+
+  <ScrollView className="flex-1 px-5 pt-6" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+            
+            {/* 🚀 ইউজারের সিলেক্ট করা অ্যাকাডেমিক লেভেল (অপরিবর্তনযোগ্য) */}
+            <View className="bg-[#EAF2D7] p-4 rounded-[16px] border border-[#8BA85E] mb-5 flex-row items-center">
+              <FontAwesome5 name="check-circle" size={16} color="#58A700" />
+              <View className="ml-3">
+                <Text className="text-[#4A632D] text-[12px]" style={{ fontFamily: 'BanglaBold' }}>আপনার লেভেল</Text>
+                <Text className="text-[#4A632D] text-[15px]" style={{ fontFamily: 'BanglaBold' }}>{userAcademicLevel}</Text>
+              </View>
+            </View>
+
+            <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>কলেজের নাম <Text className="text-[#FF4B4B]">*</Text></Text>
+            <TextInput
+              className="bg-white p-4 rounded-[16px] text-[16px] text-[#3C3C3C] mb-5 border border-[#E5E5E5]"
+              style={{ fontFamily: 'BanglaBold' }}
+              value={caForm.college} onChangeText={t => setCaForm({...caForm, college: t})}
+              placeholder="যেমন: নটর ডেম কলেজ"
+            />
+
+            <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>ডিপার্টমেন্ট <Text className="text-[#FF4B4B]">*</Text></Text>
+            <View className="flex-row flex-wrap gap-2 mb-5">
+              {departmentOptions.map((opt, i) => (
+                <TouchableOpacity key={i} onPress={() => setCaForm({...caForm, dept: opt})} className={`px-4 py-2 rounded-full border ${caForm.dept === opt ? 'bg-[#1899D6] border-[#1899D6]' : 'bg-white border-[#E5E5E5]'}`}>
+                  <Text className={`text-[13px] pt-0.5 ${caForm.dept === opt ? 'text-white' : 'text-[#777777]'}`} style={{ fontFamily: 'BanglaBold' }}>{opt}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>ব্যাচ <Text className="text-[#FF4B4B]">*</Text></Text>
+            <TextInput
+              className="bg-white p-4 rounded-[16px] text-[16px] text-[#3C3C3C] mb-5 border border-[#E5E5E5]"
+              style={{ fontFamily: 'BanglaBold' }}
+              value={caForm.batch} onChangeText={t => setCaForm({...caForm, batch: t})}
+              keyboardType="numeric"
+              placeholder="যেমন: ২০২৬"
+              maxLength={4}
+            />
+
+        <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>টার্গেট মেম্বার (প্রথম ১ মাসে) <Text className="text-[#FF4B4B]">*</Text></Text>
+            <View className="flex-row flex-wrap gap-2 mb-5">
+              {targetDropdownOptions.map((opt, i) => (
+                <TouchableOpacity key={i} onPress={() => setCaForm({...caForm, target: opt})} className={`px-4 py-2 rounded-full border ${caForm.target === opt ? 'bg-[#1899D6] border-[#1899D6]' : 'bg-white border-[#E5E5E5]'}`}>
+                  <Text className={`text-[13px] pt-0.5 ${caForm.target === opt ? 'text-white' : 'text-[#777777]'}`} style={{ fontFamily: 'BanglaBold' }}>{opt}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+          <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>যোগাযোগের মাধ্যম (Facebook বা WhatsApp Link) <Text className="text-[#FF4B4B]">*</Text></Text>
+            <TextInput
+              className="bg-white p-4 rounded-[16px] text-[15px] text-[#3C3C3C] mb-5 border border-[#E5E5E5]"
+              style={{ fontFamily: 'BanglaRegular' }}
+              value={caForm.social} onChangeText={t => setCaForm({...caForm, social: t})}
+              placeholder="আপনার ফেসবুক প্রোফাইল বা হোয়াটসঅ্যাপ লিংক..."
+            />
+
+            <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>ফোন নাম্বার (সরাসরি কল করার জন্য) <Text className="text-[#FF4B4B]">*</Text></Text>
+            <TextInput
+              className="bg-white p-4 rounded-[16px] text-[16px] text-[#3C3C3C] mb-5 border border-[#E5E5E5]"
+              style={{ fontFamily: 'BanglaBold' }}
+              value={caForm.phone} onChangeText={t => setCaForm({...caForm, phone: t})}
+              keyboardType="phone-pad"
+              placeholder="যেমন: 017XXXXXXXX"
+            />
+
+            <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>আপনাকে কেন অ্যাম্বাসেডর হিসেবে সিলেক্ট করব? <Text className="text-[#FF4B4B]">*</Text></Text>
+            <TextInput
+              className="bg-white p-4 rounded-[16px] text-[15px] text-[#3C3C3C] mb-5 border border-[#E5E5E5] min-h-[80px]"
+              style={{ fontFamily: 'BanglaRegular', textAlignVertical: 'top' }}
+              value={caForm.specialty} onChangeText={t => setCaForm({...caForm, specialty: t})}
+              placeholder="আপনার লিডারশিপ স্কিল বা বিশেষত্ব সংক্ষেপে লিখুন..."
+              multiline
+            />
+
+            <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>স্টুডেন্ট আইডি কার্ডের ক্লিয়ার ছবি (হাতে নিয়ে) <Text className="text-[#FF4B4B]">*</Text></Text>
+            <TouchableOpacity activeOpacity={0.8} onPress={handlePickIdCard} className="mb-5">
+              <View className="w-full h-40 rounded-[16px] border-2 border-[#E5E5E5] border-dashed bg-[#F9F9F9] items-center justify-center relative overflow-hidden">
+                {caForm.idImage ? (
+                  <Image source={{ uri: caForm.idImage }} className="w-full h-full" resizeMode="cover" />
+                ) : (
+                  <View className="items-center">
+                    <FontAwesome5 name="id-card" size={28} color="#1CB0F6" className="mb-3" />
+                    <Text className="text-[#1899D6] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>ছবি সিলেক্ট করুন</Text>
+                  </View>
+                )}
+                {isImageUploading && <View className="absolute inset-0 bg-black/40 items-center justify-center"><ActivityIndicator color="#FFF" /></View>}
+              </View>
+            </TouchableOpacity>
+
+            <TouchableOpacity 
+              className={`py-4 rounded-[16px] items-center shadow-sm ${isImageUploading ? 'bg-[#E5E5E5]' : 'bg-[#1899D6]'}`} 
+              disabled={isImageUploading} onPress={submitCaApplication}
+            >
+              <Text style={{ fontFamily: 'BanglaBold' }} className={`text-[16px] pt-1 ${isImageUploading ? 'text-[#AFAFAF]' : 'text-white'}`}>সাবমিট করুন</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </KeyboardAvoidingView>
+      </Modal>
+
+      {/* 🚀 Admin Review Modal (Only for Admin) */}
+      <Modal visible={isAdminReviewModalVisible} animationType="slide" transparent={true} onRequestClose={() => setIsAdminReviewModalVisible(false)}>
+        <View className="flex-1 bg-black/80 justify-end pt-12">
+          <View className="bg-[#F7F9FA] rounded-t-[32px] h-[90%] w-full overflow-hidden">
+            <View className="flex-row items-center justify-between px-6 py-5 bg-white border-b border-[#E5E5E5]">
+              <Text className="text-[18px] text-[#3C3C3C] pt-1" style={{ fontFamily: 'BanglaBold' }}>পেন্ডিং অ্যাপ্লিকেশন ({caApplications.length})</Text>
+              <TouchableOpacity onPress={() => setIsAdminReviewModalVisible(false)} className="bg-[#E5E5E5] w-8 h-8 rounded-full items-center justify-center">
+                 <FontAwesome5 name="times" size={14} color="#777777" />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView className="flex-1 px-5 pt-4" contentContainerStyle={{ paddingBottom: 60 }}>
+              {caApplications.length === 0 ? (
+                <Text className="text-center text-[#777777] mt-10" style={{ fontFamily: 'BanglaBold' }}>কোনো নতুন রিকোয়েস্ট নেই।</Text>
+              ) : (
+                caApplications.map((app, idx) => (
+                  <View key={idx} className="bg-white p-4 rounded-[20px] border border-[#E5E5E5] mb-4 shadow-sm">
+                    <Text className="text-[18px] text-[#3C3C3C] mb-1" style={{ fontFamily: 'BanglaBold' }}>{app.name}</Text>
+                    <Text className="text-[14px] text-[#777777] mb-3" style={{ fontFamily: 'BanglaRegular' }}>{app.email}</Text>
+                    
+    <View className="bg-[#F9F9F9] p-3 rounded-xl mb-3">
+                      <Text className="text-[13px] text-[#3C3C3C]" style={{ fontFamily: 'BanglaBold' }}>🏫 {app.collegeName}</Text>
+                      <Text className="text-[13px] text-[#777777] mt-1" style={{ fontFamily: 'BanglaRegular' }}>🎓 {app.academicLevel} | {app.department} | ব্যাচ: {app.batch}</Text>
+                      <Text className="text-[13px] text-[#1899D6] mt-1" style={{ fontFamily: 'BanglaBold' }}>🎯 টার্গেট: {app.targetMembers}</Text>
+                      <Text className="text-[13px] text-[#3C3C3C] mt-1" style={{ fontFamily: 'BanglaBold' }}>📞 কল: {app.phone || 'দেওয়া হয়নি'}</Text>
+                      
+                      {/* 🚀 কপি করার সুবিধার্থে নতুন ব্লক */}
+                      <View className="flex-row items-center justify-between mt-2 bg-white p-2 rounded-lg border border-[#E5E5E5]">
+                        <Text className="text-[12px] text-[#777777] flex-1 mr-2" style={{ fontFamily: 'BanglaRegular' }} numberOfLines={1}>🔗 {app.socialLink || 'লিংক নেই'}</Text>
+                        <TouchableOpacity 
+                          onPress={async () => {
+                            if(app.socialLink) {
+                              await Clipboard.setStringAsync(app.socialLink);
+                              Alert.alert("সফল", "লিংকটি কপি করা হয়েছে!");
+                            }
+                          }}
+                          className="bg-[#E6F4FB] px-3 py-1.5 rounded-md border border-[#BCE3F5]"
+                        >
+                          <Text className="text-[12px] text-[#1073A4]" style={{ fontFamily: 'BanglaBold' }}>কপি</Text>
+                        </TouchableOpacity>
+                      </View>
+                    </View>
+
+                    <View className="bg-[#FFF4E5] p-3 rounded-xl mb-3 border border-[#FFDDAA]">
+                      <Text className="text-[12px] text-[#D47B00] mb-1" style={{ fontFamily: 'BanglaBold' }}>কেন সিলেক্ট করব?</Text>
+                      <Text className="text-[13px] text-[#3C3C3C] leading-5" style={{ fontFamily: 'BanglaRegular' }}>{app.specialty || 'কিছু লেখেনি'}</Text>
+                    </View>
+
+                    <Text className="text-[13px] text-[#777777] mb-2" style={{ fontFamily: 'BanglaBold' }}>আইডি কার্ড:</Text>
+                    <Image source={{ uri: app.idCardImage }} className="w-full h-48 rounded-xl bg-[#E5E5E5] mb-4" resizeMode="cover" />
+
+                    <View className="flex-row space-x-3">
+                      <TouchableOpacity onPress={() => handleAdminDecision(app.email, 'rejected')} className="flex-1 bg-[#FFF4E5] py-3 rounded-xl items-center border border-[#FFDDAA]">
+                        <Text className="text-[#FF4B4B] text-[14px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>Reject</Text>
+                      </TouchableOpacity>
+                      <TouchableOpacity onPress={() => handleAdminDecision(app.email, 'approved')} className="flex-1 bg-[#1899D6] py-3 rounded-xl items-center shadow-sm">
+                        <Text className="text-white text-[14px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>Approve</Text>
+                      </TouchableOpacity>
+                    </View>
+                  </View>
+                ))
+              )}
+            </ScrollView>
+          </View>
+        </View>
       </Modal>
 
       <Bottombar />

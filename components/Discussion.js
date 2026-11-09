@@ -111,7 +111,7 @@ const ChatSkeleton = () => {
   );
 };
 
-export default function Discussion({ visible, onClose, data, guideName, guideId = 'default_guide' }) {
+export default function Discussion({ visible, onClose, data, guideName, guideId = 'default_guide', isStaff = false }) {
   const insets = useSafeAreaInsets();
   const [inputText, setInputText] = useState('');
   const [joinedToast, setJoinedToast] = useState(false);
@@ -235,8 +235,8 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
       guideId,
       userEmail: currentUser.email,
       userName: currentUser.name,
-      userAvatar: currentUser.avatar,
-      isAuthor: currentUser.email === guideId, 
+    userAvatar: currentUser.avatar,
+      isAuthor: isStaff, 
       text: textToSend,
       isContextual: false,
       contextQuestion: null,
@@ -400,12 +400,19 @@ export default function Discussion({ visible, onClose, data, guideName, guideId 
         }
       });
 
-      channel.bind('delete_message', (deletedData) => {
-        // মেইন ফিড থেকে রিমুভ
+     channel.bind('delete_message', (deletedData) => {
         setComments(prev => prev.filter(msg => msg.messageId !== deletedData.messageId));
-        // 🟢 রিয়েল-টাইমে কমেন্ট ফিড থেকেও রিমুভ
         setPostComments(prev => prev.filter(msg => (msg.messageId || msg.id) !== deletedData.messageId));
       });
+
+      channel.bind('member_purged', (event) => {
+        if (event.userEmail === uid) onClose();
+        setComments(prev => prev.filter(msg => msg.userEmail !== event.userEmail && msg.parentId !== msg.id));
+        setPostComments(prev => prev.filter(msg => msg.userEmail !== event.userEmail));
+      });
+
+      channel.bind('community_deleted', () => onClose());
+      channel.bind('community_ownership_changed', () => onClose());
       
           channel.bind('typing', (data) => {
             if (data.userEmail !== uid) {
@@ -888,9 +895,9 @@ const handleSendCommentModal = async () => {
             />
           )}
 
-       {/* 🚀 স্মার্ট ইনপুট বক্স (শুধু ক্রিয়েটর পোস্ট/নোটিস দিতে পারবে) */}
+    {/* 🚀 স্মার্ট ইনপুট বক্স (শুধু ক্রিয়েটর পোস্ট/নোটিস দিতে পারবে) */}
           <View className="px-4 py-3 border-t-2 border-[#EFE8D6] bg-[#FDF6E3] flex-row items-end">
-            {currentUser.email === guideId ? (
+            {isStaff ? (
               <>
                 <View className="flex-1 bg-[#FFFDF8] border-2 border-b-[4px] border-[#EFE8D6] rounded-2xl px-4 py-2 min-h-[48px] max-h-[120px] justify-center mr-3">
                   <TextInput

@@ -22,6 +22,21 @@ import { DeviceEventEmitter, AppState } from 'react-native';
 import { useRef } from 'react'; // 🚀 useRef ইমপোর্ট করা হলো
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
+// 🚀 গ্লোবাল ফেচ ইন্টারসেপ্টর: অ্যাপের সব API রিকোয়েস্টের সাথে অটোমেটিক সিকিউরিটি টোকেন পাঠানো হবে
+const originalFetch = global.fetch;
+global.fetch = async (url, options = {}) => {
+  if (typeof url === 'string' && url.includes('growshelby-api')) {
+    const token = await AsyncStorage.getItem('@auth_token');
+    if (token) {
+      options.headers = {
+        ...options.headers,
+        'Authorization': `Bearer ${token}`
+      };
+    }
+  }
+  return originalFetch(url, options);
+};
+
 const BACKGROUND_NOTIFICATION_TASK = 'BACKGROUND-NOTIFICATION-TASK';
 
 TaskManager.defineTask(BACKGROUND_NOTIFICATION_TASK, async ({ data, error }) => {

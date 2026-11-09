@@ -18,7 +18,8 @@
       "icon": "./assets/notification-icon.png",
       "color": "#C6E615"
     },
-    "android": {
+   "android": {
+      "allowBackup": false,
       "package": "com.naim.growshelby",
       "googleServicesFile": "./google-services.json",
       "adaptiveIcon": {

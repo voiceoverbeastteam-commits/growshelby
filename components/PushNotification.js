@@ -106,7 +106,7 @@ export default function PushNotification({ onNotificationClick }) {
         let finalAvatar = rawPayload.senderAvatar || rawPayload.userAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
         let finalData = rawPayload;
 
-        if (rawPayload.body && typeof rawPayload.body === 'string' && rawPayload.body.startsWith('{')) {
+    if (rawPayload.body && typeof rawPayload.body === 'string' && rawPayload.body.startsWith('{')) {
           try {
             const parsed = JSON.parse(rawPayload.body);
             finalTitle = parsed.title || finalTitle;
@@ -115,6 +115,27 @@ export default function PushNotification({ onNotificationClick }) {
             finalData = { ...rawPayload, ...parsed };
           } catch (e) {}
         }
+
+        // 🚀 ম্যাজিক ফিক্স: নোটিফিকেশন মেমোরিতে সেভ করা হচ্ছে
+        try {
+          const existingNotifs = await AsyncStorage.getItem('@my_notifications');
+          const parsedNotifs = existingNotifs ? JSON.parse(existingNotifs) : [];
+          const newNotifItem = {
+            id: Date.now().toString(),
+            title: finalTitle,
+            body: finalBody,
+            avatar: finalAvatar,
+            data: finalData,
+            time: new Date().toISOString(),
+            isRead: false
+          };
+          // সর্বোচ্চ ৫০টি সেভ রাখবে, যাতে অ্যাপ স্লো না হয়
+          const updatedNotifs = [newNotifItem, ...parsedNotifs].slice(0, 50);
+          await AsyncStorage.setItem('@my_notifications', JSON.stringify(updatedNotifs));
+          
+          // টপবারের লাল বাতি জ্বালানোর সিগন্যাল
+          DeviceEventEmitter.emit('NEW_NOTIFICATION_RECEIVED');
+        } catch(e) { console.log("Notif Save Error", e); }
 
         const channelId = await notifee.createChannel({
           id: NEW_CHANNEL_ID,

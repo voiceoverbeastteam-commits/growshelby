@@ -30,10 +30,25 @@ const formatBnTime = (timestamp) => {
   const ampm = h >= 12 ? 'পিএম' : 'এএম';
   h = h % 12; h = h ? h : 12; 
   const bnNum = (num) => String(num).padStart(2, '0').replace(/[0-9]/g, w => '০১২৩৪৫৬৭৮৯'[w]);
-  return `${bnNum(h)}:${bnNum(m)} ${ampm}`;
+ return `${bnNum(h)}:${bnNum(m)} ${ampm}`;
 };
 
-// 🚀 রিয়েল-টাইম লাইভ কাউন্টডাউন কম্পোনেন্ট
+// 🚀 Quiz Phase Helper (ডাইনামিক লাইভ উইন্ডো)
+const getQuizPhase = (quiz, nowTime = Date.now()) => {
+  if (!quiz.targetTimestamp) return (quiz.questions?.length > 0 || quiz.questionCount > 0) ? 'live' : 'upcoming';
+  const liveDurationMS = (quiz.liveDuration || 60) * 60 * 1000;
+  if (nowTime < quiz.targetTimestamp) return 'upcoming';
+  if (nowTime < quiz.targetTimestamp + liveDurationMS) return 'live';
+  return 'past';
+};
+
+const getEffectiveQuizPhase = (quiz, nowTime, hasTaken) => {
+  const basePhase = getQuizPhase(quiz, nowTime);
+  if (basePhase === 'live' && hasTaken) return 'past';
+  return basePhase;
+};
+
+// 🚀 রিয়েল-টাইম লাইভ কাউন্টডাউন কম্পোনেন্ট
 const LiveCountdown = ({ targetTimestamp }) => {
   const [timeLeft, setTimeLeft] = useState('');
 
@@ -58,8 +73,28 @@ const LiveCountdown = ({ targetTimestamp }) => {
     return () => clearInterval(interval);
   }, [targetTimestamp]);
 
-  return <Text className="text-[#D47B00] text-[15px] ml-2 pt-0.5 tracking-wide" style={{ fontFamily: 'BanglaBold' }}>{timeLeft || 'হিসাব হচ্ছে...'}</Text>;
+ return <Text className="text-[#D47B00] text-[15px] ml-2 pt-0.5 tracking-wide" style={{ fontFamily: 'BanglaBold' }}>{timeLeft || 'হিসাব হচ্ছে...'}</Text>;
 };
+
+// 🚀 গ্লোবাল লাইভ ব্যাজ কম্পোনেন্ট
+const LiveBadge = () => {
+  const blinkAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 1, duration: 600, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+  return (
+    <View className="bg-[#FF4B4B] rounded-full px-3 py-1.5 flex-row items-center shadow-sm">
+      <Animated.View style={{ opacity: blinkAnim }} className="w-2 h-2 rounded-full bg-white" />
+      <Text className="text-white text-[11px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>লাইভ কুইজ</Text>
+    </View>
+  );
+};
+
 import SmartReaderEngine from './SmartReaderEnginebackup';
 
 if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -250,6 +285,51 @@ const GuideSkeleton = () => {
         <View className="w-2/3 h-4 bg-[#EAE4D4] rounded-full mb-3" />
         <View className="w-1/2 h-2 bg-[#EAE4D4] rounded-full" />
       </View>
+    </Animated.View>
+  );
+};
+
+// 🚀 Bank Card Skeleton (Chapter Tab)
+const BankCardSkeleton = () => {
+  const shimmerAnim = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: 0.4, duration: 600, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+  return (
+    <Animated.View style={{ opacity: shimmerAnim }} className="bg-white p-4 rounded-[20px] mb-4 border-2 border-[#EFE8D6] flex-row items-center">
+      <View className="w-12 h-12 bg-[#EAE4D4] rounded-full mr-4" />
+      <View className="flex-1 pr-2">
+        <View className="w-3/4 h-4 bg-[#EAE4D4] rounded-full mb-2.5" />
+        <View className="w-1/2 h-3 bg-[#EAE4D4] rounded-full" />
+      </View>
+      <View className="w-8 h-8 bg-[#EAE4D4] rounded-full ml-2" />
+    </Animated.View>
+  );
+};
+
+// 🚀 Special Card Skeleton
+const SpecialCardSkeleton = () => {
+  const shimmerAnim = useRef(new Animated.Value(0.4)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(shimmerAnim, { toValue: 1, duration: 600, useNativeDriver: true }),
+        Animated.timing(shimmerAnim, { toValue: 0.4, duration: 600, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+  return (
+    <Animated.View style={{ opacity: shimmerAnim }} className="bg-white p-4 rounded-[20px] mb-4 border-2 border-[#EFE8D6]">
+      <View className="flex-row items-center mb-3">
+        <View className="w-full h-5 bg-[#EAE4D4] rounded-full" />
+      </View>
+      <View className="w-1/3 h-6 bg-[#EAE4D4] rounded-md mb-4" />
+      <View className="w-full h-[46px] bg-[#EAE4D4] rounded-[16px]" />
     </Animated.View>
   );
 };
@@ -532,6 +612,8 @@ export default function PorarPageEyeComfort({ visible, onClose, lessonItem, isNa
 const [discussionVisible, setDiscussionVisible] = useState(false);
   const [activeDiscussionData, setActiveDiscussionData] = useState(null);
   const [pendingJoinRequests, setPendingJoinRequests] = useState([]); // 🚀 পেন্ডিং জয়েন রিকোয়েস্ট রাখার স্টেট
+  const [communityAdmins, setCommunityAdmins] = useState([]);
+  const [communityAdminList, setCommunityAdminList] = useState([]);
 
   const openDiscussion = (questionData = null) => {
     setActiveDiscussionData(questionData);
@@ -553,10 +635,10 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
     
     try {
       const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
-      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+  await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-        body: JSON.stringify({ action: actionType, guideId, userEmail: targetUserEmail })
+        body: JSON.stringify({ action: actionType, guideId, userEmail: targetUserEmail, actorEmail: currentUserEmail })
       });
       
       // 🚀 অ্যাকসেপ্ট করলে মেম্বার লিস্টটা রিফ্রেশ করে নতুন মেম্বারকে দেখানোর জন্য
@@ -568,9 +650,20 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
     }
   };
 
- // 🚀 কোশ্চেন ব্যাংক তৈরি হওয়ার পর ফ্রন্টএন্ডে রিয়েল-টাইম আপডেট করার লজিক
+ // 🚀 কোশ্চেন ব্যাংক তৈরি হওয়ার পর ফ্রন্টএন্ডে রিয়েল-টাইম আপডেট করার লজিক
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener('question_bank_added', ({ shareCode, newBankData }) => {
+      
+      // 🚀 স্পেশাল ব্যাংক তৈরি হলে মেইন বইতে না বসিয়ে স্পেশাল লিস্টে বসবে
+      if (shareCode.startsWith('SPECIAL_')) {
+        const body = shareCode.slice(8); const idx = body.lastIndexOf('_'); const actualShareCode = body.slice(idx + 1);
+        setSpecialBanks(prev => {
+          const existing = prev[actualShareCode] || [];
+          return { ...prev, [actualShareCode]: [...existing, newBankData] };
+        });
+        return;
+      }
+
       setChannelGuides(prevGuides => prevGuides.map(guide => {
         if (guide.shareCode === shareCode) {
           return {
@@ -593,9 +686,13 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
         return prevSubject;
       });
     });
-
-    // 🚀 নতুন: এক্সিস্টিং কোশ্চেন ব্যাংকে আপডেট হলে রিয়েল-টাইমে রিফ্রেশ করার ইভেন্ট
+// 🚀 নতুন: এক্সিস্টিং কোশ্চেন ব্যাংকে আপডেট হলে রিয়েল-টাইমে রিফ্রেশ করার ইভেন্ট
     const updateSubscription = DeviceEventEmitter.addListener('question_bank_updated', ({ shareCode, updatedSubject }) => {
+      if (shareCode.startsWith('SPECIAL_')) {
+        const body = shareCode.slice(8); const idx = body.lastIndexOf('_'); const actualShareCode = body.slice(idx + 1);
+        setSpecialBanks(prev => ({ ...prev, [actualShareCode]: updatedSubject.failedItems }));
+        return;
+      }
       setChannelGuides(prevGuides => prevGuides.map(guide => guide.shareCode === shareCode ? updatedSubject : guide));
       setSelectedSubject(prevSubject => (prevSubject && prevSubject.shareCode === shareCode) ? updatedSubject : prevSubject);
     });
@@ -653,6 +750,18 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
     fetchRealAdminName();
   }, [visible, lessonItem]);
   const [isVideoModalVisible, setIsVideoModalVisible] = useState(false);
+  const [isBanned, setIsBanned] = useState(false);
+  const [bannedList, setBannedList] = useState([]);
+  const [isBannedModalVisible, setIsBannedModalVisible] = useState(false);
+  const [isCaSelectModalVisible, setIsCaSelectModalVisible] = useState(false);
+  const [caSearchQuery, setCaSearchQuery] = useState('');
+  const [caCandidates, setCaCandidates] = useState([]);
+  const [selectedCa, setSelectedCa] = useState(null);
+  const [isCaSearching, setIsCaSearching] = useState(false);
+  const [isTransferring, setIsTransferring] = useState(false);
+  const [isBannedLoading, setIsBannedLoading] = useState(false);
+  const caSearchTimeout = useRef(null);
+  const caSearchReqId = useRef(0);
   const [isMember, setIsMember] = useState(false);
   // 🚀 Review & Rating States
   const [isReviewModalVisible, setIsReviewModalVisible] = useState(false);
@@ -675,13 +784,39 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
  // 🚀 Refresh States
   const [refreshing, setRefreshing] = useState(false);
 
- // 🚀 Quiz System States
  const [activeQuizTab, setActiveQuizTab] = useState('upcoming');
  const [isQuizCreateModalVisible, setIsQuizCreateModalVisible] = useState(false);
   const [communityQuizzes, setCommunityQuizzes] = useState([]);
   const [editingQuizId, setEditingQuizId] = useState(null); // 🚀 কুইজ এডিট ট্র্যাক করার স্টেট
-  
 
+  // 🚀 ম্যাজিক: কুইজের ফেজ বদলানোর ঠিক মুহূর্তে UI রি-রেন্ডার করার ক্লক
+  const [quizClock, setQuizClock] = useState(Date.now());
+  useEffect(() => {
+    if (!visible || !communityQuizzes || communityQuizzes.length === 0) return;
+    let nextTrigger = Infinity;
+    const now = Date.now();
+
+  communityQuizzes.forEach(q => {
+      if (q.targetTimestamp) {
+        if (q.targetTimestamp > now && q.targetTimestamp < nextTrigger) {
+          nextTrigger = q.targetTimestamp;
+        }
+        const liveDurationMS = (q.liveDuration || 60) * 60 * 1000;
+        const endLive = q.targetTimestamp + liveDurationMS;
+        if (endLive > now && endLive < nextTrigger) {
+          nextTrigger = endLive;
+        }
+      }
+    });
+
+    if (nextTrigger !== Infinity) {
+      let delay = nextTrigger - now;
+      if (delay > 2147483647) delay = 2147483647;
+      const timerId = setTimeout(() => setQuizClock(Date.now()), delay + 1000);
+      return () => clearTimeout(timerId);
+    }
+  }, [visible, communityQuizzes, quizClock]);
+  
 // 🚀 Creator AI Generator States
   const [quizJsonInput, setQuizJsonInput] = useState('');
   const [tempGeneratedQuestions, setTempGeneratedQuestions] = useState([]);
@@ -699,14 +834,15 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
   const [quizHistoryMap, setQuizHistoryMap] = useState({});
 
   // 🚀 Load Quiz History on Mount (Offline First + Server Sync)
+ // 🚀 Load Quiz History on Mount (Offline First + Server Sync)
   useEffect(() => {
     if (currentUserEmail && visible) {
       // ১. প্রথমে ইনস্ট্যান্ট UI এর জন্য লোকাল স্টোরেজ থেকে ডেটা লোড
-      AsyncStorage.getItem(`@quiz_history_v1_${currentUserEmail}`).then(data => {
+      AsyncStorage.getItem(`@quiz_history_v1_${currentUserEmail}_${lessonItem?.channelId}`).then(data => {
         if (data) setQuizHistoryMap(JSON.parse(data));
       }).catch(e => console.log(e));
 
-      // ২. ব্যাকগ্রাউন্ডে সার্ভার থেকে সব হিস্ট্রি টানবে (যাতে অন্য ফোনে খেললেও এখানে সিঙ্ক হয়)
+      // ২. ব্যাকগ্রাউন্ডে সার্ভার থেকে সব হিস্ট্রি টানবে (যাতে অন্য ফোনে খেললেও এখানে সিঙ্ক হয়)
       fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
@@ -717,18 +853,20 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
         if (data.success && data.history) {
           const serverMap = {};
           data.history.forEach(item => {
-            serverMap[item.quizId] = { score: item.score, failedItems: item.failedItems, completedAt: new Date(item.updatedAt).getTime() };
+            if (item.channelId === lessonItem?.channelId) {
+              serverMap[item.quizId] = { score: item.score, failedItems: item.failedItems, completedAt: new Date(item.updatedAt).getTime() };
+            }
           });
           setQuizHistoryMap(prev => {
             const mergedMap = { ...prev, ...serverMap };
-            AsyncStorage.setItem(`@quiz_history_v1_${currentUserEmail}`, JSON.stringify(mergedMap)).catch(()=>{});
+            AsyncStorage.setItem(`@quiz_history_v1_${currentUserEmail}_${lessonItem?.channelId}`, JSON.stringify(mergedMap)).catch(()=>{});
             return mergedMap;
           });
         }
       })
       .catch(e => console.log("Fetch History Error:", e));
     }
-  }, [currentUserEmail, visible]);
+  }, [currentUserEmail, visible, lessonItem?.channelId]);
   
   // 🚀 Timer & Performance States
   const [quizStartTime, setQuizStartTime] = useState(null);
@@ -767,6 +905,7 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
   const [quizBanner, setQuizBanner] = useState('');
  const [quizDate, setQuizDate] = useState('');
   const [quizTime, setQuizTime] = useState('');
+  const [quizLiveDuration, setQuizLiveDuration] = useState('60'); // 🚀 নতুন: লাইভ থাকার সময়
   const [isQuizImageUploading, setIsQuizImageUploading] = useState(false);
   
   // 🚀 স্মার্ট টাইমার স্টেট
@@ -775,10 +914,51 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
   const [showTimePicker, setShowTimePicker] = useState(false);
   const [tempDate, setTempDate] = useState(new Date());
   
-  // 🚀 Smart Resource Rules (টপিক ও টাইপ ফিল্টার সেভ রাখার জন্য)
- const [quizSelectedRules, setquizSelectedRules] = useState([]);
+ // 🚀 Smart Resource Rules (টপিক ও টাইপ ফিল্টার সেভ রাখার জন্য)
+  const [quizSelectedRules, setquizSelectedRules] = useState([]);
   const [isResourcePickerVisible, setIsResourcePickerVisible] = useState(false);
   const [expandedResourceGuide, setExpandedResourceGuide] = useState(null); // Accordion State
+
+  // 🚀 New Special Bank Resource States
+  const [resourcePickerTab, setResourcePickerTab] = useState('main');
+  const [specialPickerGroups, setSpecialPickerGroups] = useState([]);
+  const [isSpecialPickerLoading, setIsSpecialPickerLoading] = useState(false);
+  const [expandedSpecialBankKey, setExpandedSpecialBankKey] = useState(null);
+  const [isResourceOpening, setIsResourceOpening] = useState(false);
+
+  const loadSpecialPickerGroups = async () => {
+    setIsSpecialPickerLoading(true);
+    try {
+      const gIds = channelGuides.map(g => g.shareCode).filter(Boolean);
+      if (gIds.length === 0) {
+        setSpecialPickerGroups([]);
+        return;
+      }
+      const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: 'fetch_all_special_banks', guideIds: gIds })
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSpecialPickerGroups(data.groups || []);
+      }
+    } catch(e) {
+      console.log('Error loading special groups:', e);
+    } finally {
+      setIsSpecialPickerLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (isResourcePickerVisible) {
+      setResourcePickerTab('main');
+      setExpandedSpecialBankKey(null);
+      if (currentUserEmail === 'rumontrader662@gmail.com') {
+        loadSpecialPickerGroups();
+      }
+    }
+  }, [isResourcePickerVisible]);
 
   // 🚀 ব্যানার আপলোডার (ImgBB)
   const pickQuizBanner = async () => {
@@ -800,53 +980,121 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
     }
   };
 
+ // 🚀 Special Questions Resolver Helper (Shared Engine)
+  const resolveSpecialRuleQuestions = async (rule, cache) => {
+    const cacheKey = `${rule.guideShareCode}__${rule.communityId}`;
+    let banks = cache[cacheKey];
+    if (!banks) {
+      try {
+        const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'fetch_special_banks', guideId: rule.guideShareCode, communityId: rule.communityId })
+        });
+        const data = await res.json();
+        if (data.success) {
+          banks = data.banks || [];
+          cache[cacheKey] = banks;
+        } else { banks = []; }
+      } catch(e) { banks = []; }
+    }
+    const targetBank = banks.find(b => b.bankId === rule.bankId);
+    if (!targetBank || !targetBank.questions) return [];
+    return targetBank.questions.filter(q => {
+      const typeMatched = !rule.allowedTypes || rule.allowedTypes.length === 0 || rule.allowedTypes.includes(q.type);
+      const topicMatched = !rule.allowedTopics || rule.allowedTopics.length === 0 || rule.allowedTopics.includes(q.topic);
+      return typeMatched && topicMatched;
+    });
+  };
+
   // 🚀 ইউজারের জন্য স্মার্ট কুইজ সিলেবাস ওপেন করা (Locked Mode)
-  const handleOpenQuizResources = (quiz) => {
-    let filteredQuestions = [];
-    
-    // ক্রিয়েটরের সেট করা রুলস অনুযায়ী প্রশ্ন ফিল্টার করা হচ্ছে
-    if (quiz.resources && quiz.resources.length > 0) {
-      quiz.resources.forEach(rule => {
-        const sourceGuide = channelGuides.find(g => g.id === rule.guideId);
-        if (sourceGuide && sourceGuide.failedItems) {
-          sourceGuide.failedItems.forEach(bank => {
-            if (bank.questions) {
-              bank.questions.forEach(q => {
-                const typeMatched = rule.allowedTypes.length === 0 || rule.allowedTypes.includes(q.type);
-                const topicMatched = rule.allowedTopics.length === 0 || rule.allowedTopics.includes(q.topic);
-                
-                if (typeMatched && topicMatched) {
-                  filteredQuestions.push(q);
+  const handleOpenQuizResources = async (quiz) => {
+    setIsResourceOpening(true);
+    try {
+      let filteredQuestions = [];
+      let fetchCache = {};
+
+      // ক্রিয়েটরের সেট করা রুলস অনুযায়ী প্রশ্ন ফিল্টার করা হচ্ছে
+      if (quiz.resources && quiz.resources.length > 0) {
+        for (const rule of quiz.resources) {
+          if (rule.sourceType === 'special') {
+            const specialQs = await resolveSpecialRuleQuestions(rule, fetchCache);
+            filteredQuestions.push(...specialQs);
+          } else {
+            const sourceGuide = channelGuides.find(g => g.id === (rule.guideId || rule.id));
+            if (sourceGuide && sourceGuide.failedItems) {
+              sourceGuide.failedItems.forEach(bank => {
+                if (bank.questions) {
+                  bank.questions.forEach(q => {
+                    const typeMatched = rule.allowedTypes.length === 0 || rule.allowedTypes.includes(q.type);
+                    const topicMatched = rule.allowedTopics.length === 0 || rule.allowedTopics.includes(q.topic);
+                    if (typeMatched && topicMatched) {
+                      filteredQuestions.push(q);
+                    }
+                  });
                 }
               });
             }
-          });
+          }
         }
-      });
-    }
+      }
 
-    if (filteredQuestions.length === 0) {
-      return Alert.alert("রিসোর্স খালি!", "এই কুইজের জন্য কোনো প্রশ্ন ফিল্টার করা যায়নি।");
-    }
+      if (filteredQuestions.length === 0) {
+        return Alert.alert("রিসোর্স খালি!", "এই কুইজের জন্য কোনো প্রশ্ন ফিল্টার করা যায়নি।");
+      }
 
-    const tempSyllabusGuide = {
-      id: 'quiz_syllabus_' + quiz.id,
-      notebookName: quiz.title + ' (সিলেবাস)',
-      failedItems: filteredQuestions, 
-      channelId: lessonItem?.channelId,
-      creatorName: lessonItem?.creatorName,
-      isQuizResourceMode: true 
-    };
-    
-    openBookInReader(tempSyllabusGuide);
+      const tempSyllabusGuide = {
+        id: 'quiz_syllabus_' + quiz.id,
+        notebookName: quiz.title + ' (সিলেবাস)',
+        failedItems: filteredQuestions,
+        channelId: lessonItem?.channelId,
+        creatorName: lessonItem?.creatorName,
+        isQuizResourceMode: true
+      };
+
+      openBookInReader(tempSyllabusGuide);
+    } finally {
+      setIsResourceOpening(false);
+    }
   };
 
  // 🚀 2-Step Folder System States (Subject > Question Bank)
   const [selectedSubject, setSelectedSubject] = useState(null);
-  const [isSubjectViewVisible, setIsSubjectViewVisible] = useState(false);
+ const [isSubjectViewVisible, setIsSubjectViewVisible] = useState(false);
+  
+  // 🚀 নতুন: কমিউনিটি স্পেশাল ব্যাংক ম্যানেজ করার স্টেটসমূহ
+  const [specialBanks, setSpecialBanks] = useState({});
+  const [isManagingSpecialBank, setIsManagingSpecialBank] = useState(false);
+  const [isLoadingSpecialBanks, setIsLoadingSpecialBanks] = useState(false);
 
   // 🚀 ট্র্যাক করবে কোন কোশ্চেন ব্যাংক কখন পড়া হয়েছে
   const [bankReadTimestamps, setBankReadTimestamps] = useState({}); 
+
+  // 🚀 স্পেশাল ব্যাংক ফেচ করার লজিক
+  useEffect(() => {
+    if (isSubjectViewVisible && selectedSubject?.shareCode && lessonItem?.channelId) {
+      const fetchSpecial = async () => {
+        setIsLoadingSpecialBanks(true);
+        try {
+          const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+            body: JSON.stringify({
+              action: 'fetch_special_banks',
+              guideId: selectedSubject.shareCode,
+              communityId: lessonItem.channelId
+            })
+          });
+          const data = await res.json();
+          if (data.success) {
+            setSpecialBanks(prev => ({ ...prev, [selectedSubject.shareCode]: data.banks || [] }));
+          }
+        } catch (e) {}
+        setIsLoadingSpecialBanks(false);
+      };
+      fetchSpecial();
+    }
+  }, [isSubjectViewVisible, selectedSubject?.shareCode]);
 
   useEffect(() => {
     const loadReadData = async () => {
@@ -857,12 +1105,17 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
     };
     loadReadData();
   }, []);
-  // 🚀 Subject View (Study Pack) Bouncy Animations
+ // 🚀 Subject View (Study Pack) Bouncy Animations
   const subjectSlideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
   const subjectFadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (isSubjectViewVisible) {
+      // 🚀 Reset tabs & shimmer on open
+      setSubjectActiveTab('chapter');
+      setIsTabLoading(true);
+      setTimeout(() => setIsTabLoading(false), 600);
+
       subjectSlideAnim.setValue(Dimensions.get('window').height); // অ্যানিমেশন যেন আটকে না যায়
       Animated.parallel([
         Animated.timing(subjectFadeAnim, { toValue: 1, duration: 250, useNativeDriver: true }),
@@ -870,6 +1123,48 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
       ]).start();
     }
   }, [isSubjectViewVisible]);
+
+  // 🚀 Handle Pin Toggle for Special Banks
+  const handleTogglePinSpecialBank = async (bankToToggle) => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    const currentBanks = specialBanks[selectedSubject.shareCode] || [];
+    const isCurrentlyPinned = !!bankToToggle.isPinned;
+    
+    const updatedBanks = currentBanks.map(b => {
+      if (b.bankId === bankToToggle.bankId) {
+        return { ...b, isPinned: !isCurrentlyPinned, pinnedAt: !isCurrentlyPinned ? Date.now() : null };
+      }
+      return b;
+    });
+    
+    // Optimistic Update
+    setSpecialBanks(prev => ({ ...prev, [selectedSubject.shareCode]: updatedBanks }));
+
+    // Persist via Backend (Using existing save_guide endpoint)
+    try {
+      const fakeSubject = { 
+        ...selectedSubject, 
+        failedItems: updatedBanks, 
+        shareCode: `SPECIAL_${lessonItem?.channelId}_${selectedSubject.shareCode}` 
+      };
+      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: 'save_guide', guideData: fakeSubject })
+      });
+    } catch (error) {
+      console.log('Pin Error:', error);
+    }
+  };
+
+  // 🚀 Tab Switcher Helper
+  const handleTabSwitch = (tabName) => {
+    if (subjectActiveTab === tabName) return;
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setSubjectActiveTab(tabName);
+    setIsTabLoading(true);
+    setTimeout(() => setIsTabLoading(false), 600);
+  };
 
   const closeSubjectModalSmoothly = () => {
     Animated.parallel([
@@ -882,6 +1177,10 @@ const [isSubjectCreateVisible, setIsSubjectCreateVisible] = useState(false);
   const [newSubjectTitle, setNewSubjectTitle] = useState('');
   const [newSubjectThumbnail, setNewSubjectThumbnail] = useState('');
   
+// 🚀 Subject Tabs & Pin States
+  const [subjectActiveTab, setSubjectActiveTab] = useState('chapter'); // 'special' | 'chapter'
+  const [isTabLoading, setIsTabLoading] = useState(false);
+
  // 🚀 Manage Question Bank States
   const [isBankManageModalVisible, setIsBankManageModalVisible] = useState(false);
   const [managingBank, setManagingBank] = useState(null);
@@ -908,13 +1207,13 @@ const [activeBankTypeFilter, setActiveBankTypeFilter] = useState('সব');
     const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
     
     try {
-      // একসাথে গাইড, মেম্বার এবং রিভিউ ફેচ করবো
+    // একসাথে গাইড, মেম্বার এবং রিভিউ ફેচ করবো
       await Promise.all([
-        // ১. গাইড ফেচ
+   // 🚀 ১. গাইড ফেচ (মাস্টার অ্যাকাউন্ট থেকে + নির্দিষ্ট টার্গেট ট্যাগ অনুযায়ী)
         fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-          body: JSON.stringify({ action: 'fetch_channel_guides', channelId: lessonItem?.channelId })
+          body: JSON.stringify({ action: 'fetch_channel_guides', channelId: 'rumontrader662@gmail.com', targetCategory: lessonItem?.niche })
         }).then(res => res.json()).then(data => { if (data.success) setChannelGuides(data.guides); }),
         
         // ২. মেম্বার ফেচ
@@ -933,16 +1232,26 @@ const [activeBankTypeFilter, setActiveBankTypeFilter] = useState('সব');
           body: JSON.stringify({ action: 'get_reviews', guideId })
         }).then(res => res.json()).then(data => { if (data.success && data.reviews) setReviews(data.reviews); }),
 
-        // ৪. কুইজ ফেচ
+ // 🚀 ৪. কুইজ ফেচ (মাস্টার অ্যাকাউন্ট থেকে + নির্দিষ্ট টার্গেট ট্যাগ অনুযায়ী)
         fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-          body: JSON.stringify({ action: 'fetch_community_quizzes', channelId: lessonItem?.channelId })
-        }).then(res => res.json()).then(data => { if (data.success && data.quizzes) setCommunityQuizzes(data.quizzes); })
+          body: JSON.stringify({ action: 'fetch_community_quizzes', channelId: 'rumontrader662@gmail.com', targetCategory: lessonItem?.niche, userEmail: await AsyncStorage.getItem('@current_user_id') })
+        }).then(res => res.json()).then(data => { if (data.success && data.quizzes) setCommunityQuizzes(data.quizzes); }),
+
+        fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'get_community_admins', guideId })
+        }).then(res => res.json()).then(data => {
+          if (data.success) {
+            setCommunityAdminList(data.admins);
+            setCommunityAdmins(data.admins.map(a => a.email));
+          }
+        })
       ]);
 
-      // 🚀 ৪. রিফ্রেশের সময় রিকোয়েস্ট স্ট্যাটাস হার্ড-চেক করা
-      const uid = await AsyncStorage.getItem('@current_user_id');
+ const uid = await AsyncStorage.getItem('@current_user_id');
       if (uid) {
         const reqStatusRes = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
           method: 'POST',
@@ -950,7 +1259,8 @@ const [activeBankTypeFilter, setActiveBankTypeFilter] = useState('সব');
           body: JSON.stringify({ action: 'check_join_request', guideId, userEmail: uid })
         });
         const reqStatusData = await reqStatusRes.json();
-        setJoinRequestPending(!!reqStatusData.isPending);
+        setIsBanned(!!reqStatusData.isBanned);
+        setJoinRequestPending(!reqStatusData.isBanned && !!reqStatusData.isPending);
       }
 
     } catch (error) {
@@ -1055,22 +1365,24 @@ const pickGuideThumbnail = async () => {
     const fetchGuides = async () => {
       if (!visible) return;
       
-    if (lessonItem?.channelId) {
+ if (lessonItem?.channelId) {
         setIsLoadingGuides(true);
         try {
+        // 🚀 Master Account থেকে নির্দিষ্ট টার্গেটের (যেমন HSC) স্টাডি প্যাক ফেচ করা হচ্ছে
           const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-            body: JSON.stringify({ action: 'fetch_channel_guides', channelId: lessonItem.channelId })
+            body: JSON.stringify({ action: 'fetch_channel_guides', channelId: 'rumontrader662@gmail.com', targetCategory: lessonItem?.niche })
           });
           const data = await res.json();
           if (data.success) setChannelGuides(data.guides);
 
-          // 🚀 কুইজ ফেচ করা হচ্ছে
+      const uid = await AsyncStorage.getItem('@current_user_id');
+          // 🚀 Master Account থেকে নির্দিষ্ট টার্গেটের (যেমন HSC) কুইজ ফেচ করা হচ্ছে
           const quizRes = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-            body: JSON.stringify({ action: 'fetch_community_quizzes', channelId: lessonItem.channelId })
+            body: JSON.stringify({ action: 'fetch_community_quizzes', channelId: 'rumontrader662@gmail.com', targetCategory: lessonItem?.niche, userEmail: uid })
           });
           const quizData = await quizRes.json();
           if (quizData.success) setCommunityQuizzes(quizData.quizzes || []);
@@ -1408,39 +1720,57 @@ useEffect(() => {
             headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
             body: JSON.stringify({ action: 'get_community_members', guideId, limit: 10, skip: 0 })
           });
-          const data = await res.json();
+       const data = await res.json();
+          // ফেচ অ্যাডমিনস
+          const admRes = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+            body: JSON.stringify({ action: 'get_community_admins', guideId })
+          });
+          const admData = await admRes.json();
+          let tempAdmins = [];
+          
           if (data.success) {
             setMembers(data.members);
             if (data.totalMembers !== null) setTotalMemberCount(data.totalMembers);
             
-            const isUserMember = data.members.some(m => m.userEmail === uid);
-            setIsMember(isUserMember);
+            const isOwnerCheck = lessonItem?.creatorEmail === uid || lessonItem?.channelId === uid;
+            let tempStaff = isOwnerCheck || uid === 'rumontrader662@gmail.com';
+
+            if (admData.success) {
+               setCommunityAdminList(admData.admins);
+               tempAdmins = admData.admins.map(a => a.email);
+               setCommunityAdmins(tempAdmins);
+               if(tempAdmins.includes(uid)) tempStaff = true;
+            }
+
+          const isUserMember = data.members.some(m => m.userEmail === uid) || isOwnerCheck;
+            setIsMember(isUserMember || uid === 'rumontrader662@gmail.com');
             if (data.members.length < 10) setHasMoreMembers(false);
 
-            // 🚀 মেম্বার না হলে চেক করে দেখবে আগে থেকে রিকোয়েস্ট পেন্ডিং আছে কিনা
-          if (!isUserMember && uid) {
+         setIsBanned(false);
+            setJoinRequestPending(false);
+            if (!isUserMember && uid) {
               const reqStatusRes = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
                 body: JSON.stringify({ action: 'check_join_request', guideId, userEmail: uid })
               });
               const reqStatusData = await reqStatusRes.json();
-              if (reqStatusData.isPending) {
-                setJoinRequestPending(true);
-              }
+              if (reqStatusData.isBanned) setIsBanned(true);
+              else if (reqStatusData.isPending) setJoinRequestPending(true);
             }
 
-            // 🚀 ইউজার যদি অ্যাডমিন হয়, তবে পেন্ডিং রিকোয়েস্টগুলো ফেচ করবে
-            if (lessonItem?.creatorEmail === uid) {
+            // 🚀 ইউজার যদি অ্যাডমিন বা CA হয়, তবে পেন্ডিং রিকোয়েস্টগুলো ফেচ করবে
+            if (tempStaff) {
                fetch('https://growshelby-api.vercel.app/api/update_coins', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-                  body: JSON.stringify({ action: 'get_pending_join_requests', guideId })
+                  body: JSON.stringify({ action: 'get_pending_join_requests', guideId, actorEmail: uid })
                }).then(res => res.json()).then(reqData => {
                   if (reqData.success) setPendingJoinRequests(reqData.requests || []);
                }).catch(e => console.log(e));
             }
-
           }
         } catch (e) {} finally {
           setIsLoadingMembers(false); // 🚀 ডেটা লোড শেষ (আসল ছবি দেখাবে)
@@ -1529,13 +1859,14 @@ useEffect(() => {
 
 const [joinRequestPending, setJoinRequestPending] = useState(false);
 
- const handleJoinCommunity = async () => {
+const handleJoinCommunity = async () => {
+    if (isBanned) return;
     const uid = await AsyncStorage.getItem('@current_user_id');
     const name = await AsyncStorage.getItem(`@user_name_${uid}`) || 'শিক্ষার্থী';
     const avatar = await AsyncStorage.getItem(`@user_avatar_${uid}`) || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
     const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
 
-    setJoinRequestPending(true); // 🚀 আগে অপ্টিমিস্টিক লোডিং দেখাবো
+    setJoinRequestPending(true);
 
     try {
       const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
@@ -1545,54 +1876,92 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
       });
       const result = await response.json();
 
-      if (result.success) {
-        setCustomAlert({
-          visible: true,
-          title: "রিকোয়েস্ট পাঠানো হয়েছে! 🎉",
-          message: "অ্যাডমিন অ্যাপ্রুভ করলে আপনি এই কমিউনিটির মেম্বার হতে পারবেন।",
-          type: "success"
-        });
+      if (result.banned) {
+        setJoinRequestPending(false);
+        setIsBanned(true);
+      } else if (result.success) {
+        setCustomAlert({ visible: true, title: "রিকোয়েস্ট পাঠানো হয়েছে! 🎉", message: "অ্যাডমিন অ্যাপ্রুভ করলে আপনি এই কমিউনিটির মেম্বার হতে পারবেন।", type: "success" });
       } else {
-        setJoinRequestPending(false); // 🚀 সার্ভার ফেইল করলে আগের অবস্থায় ফেরত যাবে
-        setCustomAlert({
-          visible: true,
-          title: "দুঃখিত!",
-          message: "রিকোয়েস্ট পাঠানো সম্ভব হয়নি। আবার চেষ্টা করুন।",
-          type: "error"
-        });
+        setJoinRequestPending(false);
+        setCustomAlert({ visible: true, title: "দুঃখিত!", message: "রিকোয়েস্ট পাঠানো সম্ভব হয়নি। আবার চেষ্টা করুন।", type: "error" });
       }
     } catch (error) {
-      setJoinRequestPending(false); // 🚀 নেটওয়ার্ক এরর হলে আগের অবস্থায় ফেরত যাবে
-      setCustomAlert({
-        visible: true,
-        title: "কানেকশন এরর!",
-        message: "ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন।",
-        type: "error"
-      });
+      setJoinRequestPending(false);
+      setCustomAlert({ visible: true, title: "কানেকশন এরর!", message: "ইন্টারনেট কানেকশন চেক করে আবার চেষ্টা করুন।", type: "error" });
     }
   };
 
-  const handleRemoveMember = (memberEmail, memberName) => {
-    setCustomAlert({
-      visible: true,
-      title: "মেম্বার রিমুভ",
-      message: `আপনি কি সত্যিই ${memberName}-কে কমিউনিটি থেকে রিমুভ করতে চান?`,
-      type: "error",
-      showCancel: true,
-      onConfirm: async () => {
-        setCustomAlert(prev => ({...prev, visible: false}));
-        setMembers(prev => prev.filter(m => (m.userEmail || m.email || m.id) !== memberEmail));
-        setTotalMemberCount(prev => prev - 1);
-        try {
-          const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
-          await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-            body: JSON.stringify({ action: 'remove_community_member', guideId, memberEmail })
-          });
-        } catch(e) {}
+const handleRemoveMember = (memberEmail, memberName) => {
+    const doRemove = async (email, ban) => {
+      const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
+      try {
+        const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'remove_community_member', guideId, memberEmail: email, ban })
+        });
+        const data = await res.json();
+        if (data.success) {
+          setMembers(prev => prev.filter(m => (m.userEmail || m.email || m.id) !== email));
+          setTotalMemberCount(prev => prev - 1);
+        } else {
+          Alert.alert("দুঃখিত", data.error || "রিমুভ করা যায়নি");
+          handleMembersBadgeClick();
+        }
+      } catch(e) {
+        Alert.alert("দুঃখিত", "ইন্টারনেট সমস্যা, আবার চেষ্টা করুন");
       }
-    });
+    };
+
+    Alert.alert(
+      "মেম্বার রিমুভ",
+      `আপনি কি সত্যিই ${memberName}-কে রিমুভ করতে চান?`,
+      [
+        { text: "বাতিল", style: "cancel" },
+        { text: "রিমুভ করুন", style: "destructive", onPress: () => doRemove(memberEmail, false) },
+        { text: "পার্মানেন্ট ব্যান", style: "destructive", onPress: () => doRemove(memberEmail, true) }
+      ]
+    );
+  };
+ const fetchBannedList = async () => {
+    const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
+    setIsBannedLoading(true);
+    try {
+      const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+        body: JSON.stringify({ action: 'get_community_bans', guideId })
+      });
+      const data = await res.json();
+      if (data.success) setBannedList(data.bans);
+    } catch(e) {}
+    setIsBannedLoading(false);
+  };
+
+const searchCandidates = (text) => {
+    setCaSearchQuery(text);
+    setIsCaSearching(true);
+    
+    if (caSearchTimeout.current) clearTimeout(caSearchTimeout.current);
+    const reqId = ++caSearchReqId.current;
+
+    caSearchTimeout.current = setTimeout(async () => {
+      try {
+        const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
+        const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'search_ca_candidates', guideId, query: text })
+        });
+        const data = await res.json();
+        if (reqId === caSearchReqId.current) {
+          if (data.success) setCaCandidates(data.candidates || []);
+          setIsCaSearching(false);
+        }
+      } catch(e) {
+        if (reqId === caSearchReqId.current) setIsCaSearching(false);
+      }
+    }, 400);
   };
   // ==========================================================
   
@@ -1725,21 +2094,37 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
       });
       const data = await res.json();
       
-    if (data.success) {
+ if (data.success) {
         setMembers(data.members);
         if (data.totalMembers !== null) setTotalMemberCount(data.totalMembers);
         
-        const uid = await AsyncStorage.getItem('@current_user_id');
-        setIsMember(data.members.some(m => m.userEmail === uid));
+       const uid = await AsyncStorage.getItem('@current_user_id');
+        const isOwnerCheck = lessonItem?.creatorEmail === uid || lessonItem?.channelId === uid;
+        let tempStaff = isOwnerCheck || uid === 'rumontrader662@gmail.com';
+
+        const admRes = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'get_community_admins', guideId })
+        });
+        const admData = await admRes.json();
+        if (admData.success) {
+           setCommunityAdminList(admData.admins);
+           const tAdmins = admData.admins.map(a => a.email);
+           setCommunityAdmins(tAdmins);
+           if(tAdmins.includes(uid)) tempStaff = true;
+        }
+
+       setIsMember(data.members.some(m => m.userEmail === uid) || isOwnerCheck || uid === 'rumontrader662@gmail.com');
         
         if (data.members.length < 10) setHasMoreMembers(false);
 
-        // 🚀 অ্যাডমিন হলে মেম্বার লিস্ট ওপেন করার সময় পেন্ডিং রিকোয়েস্টও ফেচ করবে
-        if (lessonItem?.creatorEmail === uid) {
+        // 🚀 অ্যাডমিন বা CA হলে মেম্বার লিস্ট ওপেন করার সময় পেন্ডিং রিকোয়েস্টও ফেচ করবে
+        if (tempStaff) {
            fetch('https://growshelby-api.vercel.app/api/update_coins', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-              body: JSON.stringify({ action: 'get_pending_join_requests', guideId })
+              body: JSON.stringify({ action: 'get_pending_join_requests', guideId, actorEmail: uid })
            }).then(res => res.json()).then(reqData => {
               if (reqData.success) setPendingJoinRequests(reqData.requests || []);
            }).catch(e => console.log(e));
@@ -1754,7 +2139,7 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
 
  const handleShareCode = async () => { // 🚀 ফিক্স: async যুক্ত করা হলো
     // 🚀 কমিউনিটির কোড হিসেবে তার প্রথম গাইডের শেয়ার কোডটি ব্যবহার করা হবে
-    const communityCode = channelGuides.length > 0 ? channelGuides[0].shareCode : null;
+    const communityCode = lessonItem?.communityCode || lessonItem?.channelId || lessonItem?.creatorEmail || null;
     
     if (communityCode) {
       await Clipboard.setStringAsync(communityCode); // 🚀 ফিক্স: setStringAsync ব্যবহার করা হলো
@@ -1767,12 +2152,39 @@ const [joinRequestPending, setJoinRequestPending] = useState(false);
   };
 
  // 🚀 লিডারবোর্ড স্টেটস (Fix: Early return-এর আগে Hook কল করতে হবে)
-  const [isLeaderboardVisible, setIsLeaderboardVisible] = useState(false);
-  const [leaderboardData, setLeaderboardData] = useState([]);
-  const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(false);
-  const [activeLeaderboardQuiz, setActiveLeaderboardQuiz] = useState(null);
+ const [isLeaderboardVisible, setIsLeaderboardVisible] = useState(false);
+ const [leaderboardData, setLeaderboardData] = useState([]);
+ const [isLeaderboardLoading, setIsLeaderboardLoading] = useState(false);
+ const [activeLeaderboardQuiz, setActiveLeaderboardQuiz] = useState(null);
+ const isOwner = lessonItem?.creatorEmail === currentUserEmail || lessonItem?.channelId === currentUserEmail;
+ const isStaff = isOwner || communityAdmins.includes(currentUserEmail) || currentUserEmail === 'rumontrader662@gmail.com';
 
-  if (!visible) return null;
+ // 🚀 Quiz Action Sheet States (Duolingo Style)
+ const [pickedQuizForAction, setPickedQuizForAction] = useState(null);
+ const quizActionSlideAnim = useRef(new Animated.Value(Dimensions.get('window').height)).current;
+ const quizActionFadeAnim = useRef(new Animated.Value(0)).current;
+
+ useEffect(() => {
+   if (pickedQuizForAction) {
+     quizActionSlideAnim.setValue(Dimensions.get('window').height);
+     Animated.parallel([
+       Animated.timing(quizActionFadeAnim, { toValue: 1, duration: 200, useNativeDriver: true }),
+       Animated.spring(quizActionSlideAnim, { toValue: 0, friction: 9, tension: 60, useNativeDriver: true })
+     ]).start();
+   }
+ }, [pickedQuizForAction]);
+
+ const closeQuizActionSheet = (callback) => {
+   Animated.parallel([
+     Animated.timing(quizActionFadeAnim, { toValue: 0, duration: 200, useNativeDriver: true }),
+     Animated.timing(quizActionSlideAnim, { toValue: Dimensions.get('window').height, duration: 250, useNativeDriver: true })
+   ]).start(() => {
+     setPickedQuizForAction(null);
+     if (typeof callback === 'function') callback();
+   });
+ };
+
+ if (!visible) return null;
 
   const extractedData = lessonItem?.failedItems || lessonItem?.data || [];
   const categories = ['সব', ...Array.from(new Set(extractedData.map(item => item.type)))];
@@ -1794,11 +2206,11 @@ const openLeaderboard = async (quiz) => {
     setIsLeaderboardVisible(true);
     setIsLeaderboardLoading(true);
     
-    try {
+  try {
       const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-        body: JSON.stringify({ action: 'get_quiz_leaderboard', quizId: quiz.id || quiz._id })
+        body: JSON.stringify({ action: 'get_quiz_leaderboard', quizId: quiz.id || quiz._id, channelId: lessonItem?.channelId })
       });
       const data = await res.json();
       if (data.success) {
@@ -1811,61 +2223,329 @@ const openLeaderboard = async (quiz) => {
     }
   };
 
-  // 🚀 স্মার্ট অটো-শিফটিং লজিক (কুইজ শুরুর ৬০ মিনিট পর নিজে থেকেই Past-এ চলে যাবে)
-  const upcomingQuizzes = communityQuizzes.filter(q => !q.targetTimestamp || (Date.now() - q.targetTimestamp) < (60 * 60 * 1000));
-  const pastQuizzes = communityQuizzes.filter(q => q.targetTimestamp && (Date.now() - q.targetTimestamp) >= (60 * 60 * 1000));
+ // 🚀 স্মার্ট অটো-শিফটিং লজিক (Phase অনুযায়ী)
+  const upcomingQuizzes = communityQuizzes.filter(q => {
+    const hasTaken = !!quizHistoryMap[q.id || q._id];
+    const phase = getEffectiveQuizPhase(q, quizClock, hasTaken);
+    return phase === 'upcoming' || phase === 'live';
+  });
+  const pastQuizzes = communityQuizzes.filter(q => {
+    const hasTaken = !!quizHistoryMap[q.id || q._id];
+    return getEffectiveQuizPhase(q, quizClock, hasTaken) === 'past';
+  });
   const displayQuizzes = activeQuizTab === 'upcoming' ? upcomingQuizzes : pastQuizzes;
+  const takenLiveCount = communityQuizzes.filter(q => getQuizPhase(q, quizClock) === 'live' && !!quizHistoryMap[q.id || q._id]).length;
 
+ // ==========================================================
  // ==========================================================
   // 🚀 Creator AI Quiz Generator Logic (Robust Parsing)
   // ==========================================================
   const handleCreatorCopyAIPrompt = async () => {
     let filteredQuestions = [];
-    if (quizSelectedRules && quizSelectedRules.length > 0) {
-      quizSelectedRules.forEach(rule => {
-        const sourceGuide = channelGuides.find(g => g.id === (rule.guideId || rule.id));
-        if (sourceGuide && sourceGuide.failedItems) {
-          sourceGuide.failedItems.forEach(bank => {
-            if (bank.questions) {
-              bank.questions.forEach(q => {
-                filteredQuestions.push({ question: q.question || q.stem, answer: q.answer || q.correctAnswer || (q.options ? q.options[q.answer] : '') });
-              });
-            }
-          });
-        }
+    let fetchCache = {};
+
+    // 🚀 Prefill cache from the resource picker data to skip network hits if already loaded
+    if (specialPickerGroups && specialPickerGroups.length > 0) {
+      specialPickerGroups.forEach(g => {
+        fetchCache[`${g.guideId}__${g.communityId}`] = g.banks;
       });
     }
-    
+
+    // 1. Filter Questions based on rules
+    if (quizSelectedRules && quizSelectedRules.length > 0) {
+      for (const rule of quizSelectedRules) {
+        if (rule.sourceType === 'special') {
+          const specialQs = await resolveSpecialRuleQuestions(rule, fetchCache);
+          filteredQuestions.push(...specialQs);
+        } else {
+          const sourceGuide = channelGuides.find(g => g.id === (rule.guideId || rule.id));
+          if (sourceGuide && sourceGuide.failedItems) {
+            sourceGuide.failedItems.forEach(bank => {
+              if (bank.questions) {
+                bank.questions.forEach(q => {
+                  const typeMatched = !rule.allowedTypes || rule.allowedTypes.length === 0 || rule.allowedTypes.includes(q.type);
+                  const topicMatched = !rule.allowedTopics || rule.allowedTopics.length === 0 || rule.allowedTopics.includes(q.topic);
+                  
+                  if (typeMatched && topicMatched) {
+                    filteredQuestions.push(q);
+                  }
+                });
+              }
+            });
+          }
+        }
+      }
+    }
+
     if (filteredQuestions.length === 0) {
       return Alert.alert("রিসোর্স নেই", "প্রথমে সিলেবাস ও ফিল্টার থেকে রিসোর্স সিলেক্ট করুন।");
     }
 
-    const cleanDataForAI = filteredQuestions.map(q => ({ q: q.question, a: q.answer }));
-    const prompt = `Act as an expert examiner. Below is a dataset of questions and answers. Based ONLY on this data, create exactly 30 Multiple Choice Questions (MCQs) in Bengali. Output ONLY a valid JSON array of objects in this exact format: [{"question": "...", "options": ["A", "B", "C", "D"], "correctAnswerIndex": 0}]. Do not wrap in markdown tags like \`\`\`json. Just output the raw array. Here is the data: ${JSON.stringify(cleanDataForAI)}`;
-    
+    // 2. Clean Data Logic
+    let cleanData = [];
+    filteredQuestions.forEach(q => {
+      const mainText = q.type === 'সৃজনশীল' ? q.stem : (q.question || q.stem);
+      
+      // বাদ দেওয়া: টেক্সট ফাঁকা বা শুধু ছবি আছে
+      if (!mainText || String(mainText).trim() === '') return;
+
+      let item = { type: q.type, topic: q.topic };
+
+      if (q.options && Array.isArray(q.options)) {
+        // MCQ 
+        item.q = q.question;
+        item.options = q.options;
+        let correctText = '';
+        if (q.answer !== undefined && q.answer !== null && !isNaN(Number(q.answer)) && q.options[Number(q.answer)]) {
+           correctText = q.options[Number(q.answer)];
+        } else {
+           correctText = q.correctAnswer;
+        }
+        item.a = correctText;
+      } else if (q.questions && Array.isArray(q.questions)) {
+        // সৃজনশীল
+        item.stem = q.stem;
+        item.parts = q.questions.map(p => {
+           let part = { label: p.label, q: p.question, a: p.answer };
+           Object.keys(part).forEach(k => (!part[k] || String(part[k]).trim() === '') && delete part[k]);
+           return part;
+        });
+      } else {
+        // শর্ট প্রশ্ন বা অন্যান্য
+        item.q = q.question || q.stem;
+        item.a = q.answer || q.correctAnswer;
+      }
+
+      // ফাঁকা এবং undefined ফিল্ডগুলো ডিলিট করা
+      Object.keys(item).forEach(key => {
+        if (item[key] === undefined || item[key] === null || String(item[key]).trim() === '') {
+          delete item[key];
+        }
+      });
+
+      cleanData.push(item);
+    });
+
+    if (cleanData.length === 0) {
+       return Alert.alert("রিসোর্স নেই", "বাছাই করা প্রশ্নগুলোর টেক্সট ফাঁকা, পর্যাপ্ত ডেটা পাওয়া যায়নি।");
+    }
+
+    // 3. Limit to 120 questions evenly distributed across topics
+    const originalCount = cleanData.length;
+    if (cleanData.length > 120) {
+       const byTopic = {};
+       cleanData.forEach(item => {
+          const t = item.topic || 'Unknown';
+          if (!byTopic[t]) byTopic[t] = [];
+          byTopic[t].push(item);
+       });
+
+       // Shuffle arrays inside topics
+       for (let t in byTopic) {
+          byTopic[t].sort(() => Math.random() - 0.5);
+       }
+
+       const selected = [];
+       let topics = Object.keys(byTopic);
+       let i = 0;
+       
+       while (selected.length < 120 && topics.length > 0) {
+          const currentTopic = topics[i % topics.length];
+          if (byTopic[currentTopic].length > 0) {
+             selected.push(byTopic[currentTopic].shift());
+          } else {
+             topics.splice(i % topics.length, 1);
+             continue; 
+          }
+          i++;
+       }
+       cleanData = selected;
+    }
+
+    // 4. Prompt injection 
+    const prompt = `You are an expert Bangladeshi HSC exam setter. Create exactly 30 high-quality Multiple Choice Questions (MCQs) in Bengali, based ONLY on the study material given at the end.
+
+## About the material
+The material is a JSON array. Each item has a "type" (e.g. MCQ, short question, creative/সৃজনশীল, etc.), a "topic", and the content:
+- Short/knowledge questions: "q" with its model answer "a".
+- MCQ items: "q", "options", and "a" (the correct answer text).
+- Creative (সৃজনশীল) items: "stem" (the stimulus passage) and "parts" (ক, খ, গ, ঘ), each with a question and its answer.
+Read ALL items. Every fact in the answers is a source of truth.
+
+## Rules for creating the 30 MCQs
+1. Cover ALL topics in the material as evenly as possible. Do not repeat the same fact twice.
+2. Use a mix: about 40% recall (knowledge), 40% understanding/application, 20% higher-order (reasoning, comparison, multi-statement style like "i, ii, iii" combinations). Stimulus-based questions: you may write a short stimulus inside the question text.
+3. Convert creative and short questions into MCQs by testing the key fact, concept, reason or calculation in their answers.
+4. Only one option must be clearly correct. The 3 wrong options (distractors) must be plausible, similar in length and style, and based on common student mistakes. Never use "all of the above" or "none of the above".
+5. The correct answer must be supported by the material. Do not invent facts, numbers or formulas that are not in the material. Do not use outside knowledge to change an answer.
+6. Spread the correct answer positions evenly: roughly 7-8 questions each for position 0, 1, 2 and 3. Do not make a pattern.
+7. Questions must be self-contained. Never write "according to the text/above/given passage" unless the stimulus is included in the question itself.
+8. Write everything in clear Bengali (subject terms may stay in English where the textbook uses them). Keep each question under 3 lines and each option short.
+9. Skip any item whose question text is empty or unclear.
+10. If the material has fewer than 30 usable facts, create more questions by testing the same facts from different angles (definition, reason, example, comparison), but still never invent new facts.
+
+## Output format (VERY IMPORTANT)
+- Output ONLY plain text lines. No JSON, no brackets, no markdown, no code fences, no numbering, no headings, no explanation before or after.
+- Exactly 30 lines. One question per line, in exactly this format:
+  question text | option 1 | option 2 | option 3 | option 4 | correct option number
+- Use the pipe character | ONLY as the separator. Never use | inside the question or options.
+- The correct option number is a single digit 1, 2, 3 or 4 (1 = option 1, 4 = option 4), written in English digits.
+- Do NOT write ক/খ/গ/ঘ or A/B/C/D labels before options.
+- No line breaks inside a question. Do not leave blank lines between questions.
+- You may use any quote characters inside the text freely.
+- Example of one line:
+  বাংলাদেশের স্বাধীনতা ঘোষণা কবে করা হয়? | ২৫ মার্চ ১৯৭১ | ২৬ মার্চ ১৯৭১ | ১৬ ডিসেম্বর ১৯৭১ | ১৭ এপ্রিল ১৯৭১ | 2
+- Before answering, silently check: exactly 30 lines, each line has exactly 6 parts separated by |, the correct number matches the right option, and correct positions are spread evenly across 1-4.
+
+## Study material
+${JSON.stringify(cleanData)}`;
+
+    // 5. Clipboard & Alert logic
     await Clipboard.setStringAsync(prompt);
-    Alert.alert("প্রম্পট কপি হয়েছে! 🚀", "এখন ChatGPT বা Claude-এ গিয়ে পেস্ট করুন এবং যে JSON দিবে তা নিচে পেস্ট করুন।");
+    
+    if (originalCount > 120) {
+      Alert.alert("প্রম্পট কপি হয়েছে! 🚀", `লিমিট ঠিক রাখতে ${originalCount} টি থেকে সমানভাবে ১২০ টি প্রশ্ন নেওয়া হয়েছে।\n\nএখন ChatGPT বা Claude-এ গিয়ে পেস্ট করুন।`);
+    } else {
+      Alert.alert("প্রম্পট কপি হয়েছে! 🚀", "এখন ChatGPT বা Claude-এ গিয়ে পেস্ট করুন এবং যে JSON দিবে তা নিচে পেস্ট করুন।");
+    }
   };
 
-  const handleCreatorParseQuizJson = () => {
+ const handleCreatorParseQuizJson = () => {
     try {
-      // 🚀 ম্যাজিক ফিক্স: AI-এর রেসপন্সে থাকা সব লাইনব্রেক ও এন্টার রিমুভ করে ক্লিন জেসন বানানো হচ্ছে।
-      let safeJsonString = quizJsonInput.replace(/[\n\r\t]/g, ' ').trim();
+      if (!quizJsonInput || !quizJsonInput.trim()) {
+        return Alert.alert("পার্স এরর", "AI-কে বলুন: প্রতি লাইনে একটা প্রশ্ন, | দিয়ে ভাগ করে দিন");
+      }
+
+      // ১. টেক্সট ক্লিন করা
+      let text = quizJsonInput;
+      text = text.replace(/```json/gi, '').replace(/```/g, ''); // Remove code fences
+      text = text.replace(/[\u200B-\u200D\uFEFF]/g, ''); // Remove zero-width characters & BOM
       
-      const jsonMatch = safeJsonString.match(/\[[\s\S]*\]/);
-      if (!jsonMatch) throw new Error("No JSON array found");
-      
-      const parsedData = JSON.parse(jsonMatch[0]);
-      if (Array.isArray(parsedData) && parsedData.length > 0 && parsedData[0].question && parsedData[0].options) {
+      // শুধু নির্দিষ্ট এস্কেপ করা মার্কডাউন ফিক্স (যাতে JSON এর ভেতরে থাকা " এবং \n নষ্ট না হয়)
+      text = text.replace(/\\\[/g, '[').replace(/\\\]/g, ']')
+                 .replace(/\\_/g, '_').replace(/\\\*/g, '*')
+                 .replace(/\\\|/g, '|');
+
+      let validQuestions = [];
+      let rejectedCount = 0;
+
+      // প্রিফিক্স মুছে ফেলার রেগুলার এক্সপ্রেশন
+      const cleanQuestionText = (str) => str.replace(/^[\s\d১-৯]+[.)\-]\s*/, '').replace(/^-\s*/, '').trim();
+      const cleanOptionText = (str) => str.replace(/^[\sকখগঘABCD]+[.)]\s*/, '').replace(/^\([কখগঘABCD]\)\s*/, '').trim();
+
+   // ২. মোড ১ (পাইপ-ফরম্যাট পার্সিং - টানা লাইন বা মাল্টি-লাইন সব সাপোর্ট করবে)
+      if (text.includes('|')) {
+        const parts = text.split('|').map(p => p.trim());
+        if (parts.length >= 6) {
+          let currentQText = cleanQuestionText(parts[0]);
+          
+          for (let i = 0; i < parts.length - 5; i += 5) {
+            const o1 = cleanOptionText(parts[i + 1]);
+            const o2 = cleanOptionText(parts[i + 2]);
+            const o3 = cleanOptionText(parts[i + 3]);
+            const o4 = cleanOptionText(parts[i + 4]);
+            
+            const mixedPart = parts[i + 5]; // এখানে উত্তর + পরের প্রশ্ন (যদি লাইনব্রেক না থাকে) একসাথেই থাকতে পারে
+            
+            // উত্তর (প্রথম সংখ্যা) এবং পরের প্রশ্ন আলাদা করা
+            const ansMatch = mixedPart ? mixedPart.match(/^([0-9০-৯]+)\s*([\s\S]*)$/) : null;
+            
+            if (ansMatch) {
+              const ansNum = parseInt(toEnglishNumber(ansMatch[1]), 10);
+              const nextQText = cleanQuestionText(ansMatch[2]);
+              
+              if (currentQText && o1 && o2 && o3 && o4 && ansNum >= 1 && ansNum <= 4) {
+                validQuestions.push({
+                  question: currentQText,
+                  options: [o1, o2, o3, o4],
+                  correctAnswerIndex: ansNum - 1
+                });
+              } else {
+                rejectedCount++;
+              }
+              currentQText = nextQText; // পরের প্রশ্নের জন্য সেট করা
+            } else {
+              rejectedCount++;
+              break; // উত্তর না পেলে এই ব্লক ব্রেক করবে
+            }
+          }
+        }
+      }
+
+      // ৩. মোড ২ (JSON ফ্যালব্যাক) - যদি লাইন মোডে কিছুই না পাওয়া যায়
+      if (validQuestions.length === 0) {
+        rejectedCount = 0;
+        let jsonStr = text;
+        const firstBracket = jsonStr.indexOf('[');
+        const lastBracket = jsonStr.lastIndexOf(']');
+        if (firstBracket !== -1 && lastBracket !== -1 && lastBracket > firstBracket) {
+          jsonStr = jsonStr.substring(firstBracket, lastBracket + 1);
+        }
+
+        // স্মার্ট কোট ফিক্স ও ট্রেইলিং কমা রিমুভ
+        jsonStr = jsonStr.replace(/[“”]/g, '"').replace(/[‘’]/g, "'");
+        jsonStr = jsonStr.replace(/,\s*([\]}])/g, '$1');
+
+        let parsedArray = null;
+        try {
+          parsedArray = JSON.parse(jsonStr);
+        } catch (e1) {
+          try {
+            // যদি key গুলোতে single quote বা quote না থাকে
+            jsonStr = jsonStr.replace(/['"]?question['"]?\s*:/g, '"question":')
+                             .replace(/['"]?options['"]?\s*:/g, '"options":')
+                             .replace(/['"]?correctAnswerIndex['"]?\s*:/g, '"correctAnswerIndex":');
+            parsedArray = JSON.parse(jsonStr);
+          } catch (e2) {
+            // শেষ চেষ্টা: রেজেক্স দিয়ে আলাদা আলাদা অবজেক্ট বের করা
+            parsedArray = [];
+            const objRegex = /\{[^{}]*\}/g;
+            const matches = jsonStr.match(objRegex);
+            if (matches) {
+              for (const match of matches) {
+                try {
+                  parsedArray.push(JSON.parse(match));
+                } catch (e3) {} // ইনভ্যালিড অবজেক্টগুলো স্কিপ
+              }
+            }
+          }
+        }
+
+        // ৪. JSON ডেটা ভ্যালিডেশন
+        if (Array.isArray(parsedArray)) {
+          for (let item of parsedArray) {
+            let qText = (item.question || '').toString().trim();
+            let opts = Array.isArray(item.options) ? item.options.map(o => (o || '').toString().trim()) : [];
+            
+            // প্রিফিক্স ক্লিন
+            qText = cleanQuestionText(qText);
+            opts = opts.map(cleanOptionText);
+
+            let cIndex = item.correctAnswerIndex;
+            if (typeof cIndex === 'string') cIndex = parseInt(toEnglishNumber(cIndex), 10);
+
+            if (qText && opts.length === 4 && opts.every(o => o.length > 0) && Number.isInteger(cIndex) && cIndex >= 0 && cIndex <= 3) {
+              validQuestions.push({ question: qText, options: opts, correctAnswerIndex: cIndex });
+            } else {
+              rejectedCount++;
+            }
+          }
+        }
+      }
+
+      // ৫. ফলাফল
+      if (validQuestions.length > 0) {
         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-        setTempGeneratedQuestions(parsedData);
-        Alert.alert("সফল!", `${parsedData.length} টি প্রশ্ন সফলভাবে পার্স হয়েছে। এখন কুইজ সেভ করুন।`);
+        setTempGeneratedQuestions(validQuestions);
+        let msg = `${validQuestions.length} টি প্রশ্ন পার্স হয়েছে`;
+        if (rejectedCount > 0) msg += `\n(${rejectedCount} টি প্রশ্ন ভুল ফরম্যাটের কারণে বাদ গেছে)`;
+        Alert.alert("সফল!", msg);
       } else {
-        Alert.alert("ইনভ্যালিড ডেটা", "আপনার পেস্ট করা ডেটা সঠিক JSON ফরম্যাটে নেই।");
+        Alert.alert("পার্স এরর", "AI-কে বলুন: প্রতি লাইনে একটা প্রশ্ন, | দিয়ে ভাগ করে দিন");
       }
     } catch (error) {
-      console.log("JSON Parse Error: ", error);
-      Alert.alert("পার্স এরর", "এআই-এর রেসপন্সে কোনো সমস্যা আছে অথবা সঠিক JSON পেস্ট করেননি।");
+      console.log("Parse Error: ", error);
+      Alert.alert("পার্স এরর", "AI-কে বলুন: প্রতি লাইনে একটা প্রশ্ন, | দিয়ে ভাগ করে দিন");
     }
   };
 
@@ -1918,16 +2598,16 @@ const handleQuizFinish = () => {
       setQuizHistoryMap(prev => {
         const existingHistory = prev[quizId]; // চেক করছি আগে কুইজ দিয়েছে কিনা
         const newMap = {
-          ...prev,
-          [quizId]: { 
-            // 🚀 যদি আগে কুইজ দিয়ে থাকে, তবে আগের অরিজিনাল স্কোরটাই লক থাকবে। শুধু রিভিশন প্যাকের জন্য ভুলগুলো আপডেট হবে।
-            score: existingHistory ? existingHistory.score : finalResultObj, 
-            failedItems: failedItemsToSave, 
-            completedAt: Date.now() 
-          }
-        };
-        AsyncStorage.setItem(`@quiz_history_v1_${currentUserEmail}`, JSON.stringify(newMap)).catch(()=>{});
-        return newMap;
+                          ...prev,
+                          [quizId]: { 
+                            // 🚀 যদি আগে কুইজ দিয়ে থাকে, তবে আগের অরিজিনাল স্কোরটাই লক থাকবে। শুধু রিভিশন প্যাকের জন্য ভুলগুলো আপডেট হবে।
+                            score: existingHistory ? existingHistory.score : finalResultObj, 
+                            failedItems: failedItemsToSave, 
+                            completedAt: Date.now() 
+                          }
+                        };
+                        AsyncStorage.setItem(`@quiz_history_v1_${currentUserEmail}_${lessonItem?.channelId}`, JSON.stringify(newMap)).catch(()=>{});
+                        return newMap;
       });
 
       // 🚀 Background Sync to Server for Future Leaderboard & Cloud Save
@@ -2076,48 +2756,54 @@ const handleCreateRevisionPack = () => {
                </View>
             )}
             
-            <View className="px-5 mt-4">
-              <Text className="text-[22px] text-[#3D382F] leading-8" style={{ fontFamily: 'BanglaBold' }}>
-               {lessonItem?.notebookName || lessonItem?.creatorName || 'স্মার্ট কমিউনিটি'}
-              </Text>
+          <View className="px-5 mt-4">
+              <View className="flex-row items-center flex-wrap">
+                <Text className="text-[22px] text-[#3D382F] leading-8 mr-3" style={{ fontFamily: 'BanglaBold' }}>
+                 {lessonItem?.notebookName || lessonItem?.creatorName || 'স্মার্ট কমিউনিটি'}
+                </Text>
+                {/* 🚀 কমিউনিটি টাইটেলের পাশে লাইভ ব্যাজ (যদি কোনো কুইজ লাইভ থাকে) */}
+                {communityQuizzes?.some(q => q.targetTimestamp && getEffectiveQuizPhase(q, quizClock, !!quizHistoryMap[q.id || q._id]) === 'live') && (
+                  <View className="mt-1"><LiveBadge /></View>
+                )}
+              </View>
               
-              <View className="flex-row items-center justify-between mt-4">
-                <View className="flex-row items-center flex-1">
-                  <Image source={{ uri: lessonItem?.creatorAvatar || 'https://i.pravatar.cc/150?img=12' }} className="w-12 h-12 rounded-full border-2 border-[#EFE8D6]" />
-<View className="ml-3 flex-1">
-  <Text className="text-[15px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1} ellipsizeMode="tail">
- {lessonItem?.creatorEmail === currentUserEmail ? 'আমি' : (realAdminName || lessonItem?.creatorName || 'অ্যাডমিন')}
-  </Text>
-                    <Text className="text-[12px] text-[#827B6E] mt-0.5" style={{ fontFamily: 'BanglaBold' }}>
-  {lessonItem?.isFromExplore ? `${channelGuides.length || 1} টি বই` : `${lessonItem?.views || 0} জন পড়েছে`}
-</Text>
-                  </View>
+      <View className="flex-row items-center mt-4">
+                <Image source={{ uri: lessonItem?.creatorAvatar || 'https://i.pravatar.cc/150?img=12' }} className="w-12 h-12 rounded-full border-2 border-[#EFE8D6]" />
+                <View className="ml-3 flex-1" style={{ minWidth: 0 }}>
+                  <Text className="text-[15px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1} ellipsizeMode="tail">
+                   {(lessonItem?.creatorEmail === currentUserEmail || lessonItem?.channelId === currentUserEmail) ? currentUserName : (realAdminName || lessonItem?.creatorName || 'অ্যাডমিন')}
+                  </Text>
+                  <Text className="text-[12px] text-[#827B6E] mt-0.5" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>
+                    {lessonItem?.isFromExplore ? `${channelGuides.length || 1} টি বই` : `${lessonItem?.views || 0} জন পড়েছে`}
+                  </Text>
                 </View>
+              </View>
 
-           {/* 🚀 রেটিং ও রিভিউ বাটন */}
-                <TouchableOpacity activeOpacity={0.8} onPress={() => setIsReviewModalVisible(true)} className="ml-2">
+              <View className="flex-row mt-4">
+                {/* 🚀 রেটিং ও রিভিউ বাটন */}
+                <TouchableOpacity activeOpacity={0.8} onPress={() => setIsReviewModalVisible(true)} className="flex-1 mr-2">
                   <View className="rounded-[16px] pb-[4px] bg-[#D47B00]">
-                    <View className="px-4 py-2 rounded-[16px] flex-row items-center justify-center bg-[#FF9600]">
+                    <View className="w-full justify-center px-4 py-2 rounded-[16px] flex-row items-center bg-[#FF9600]">
                       <FontAwesome5 name="star" size={13} color="#FFFFFF" solid />
-                     <Text className="text-white text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>
-  {averageRating > 0 ? toEnglishNumber(averageRating) : '0.0'} ({toEnglishNumber(reviews.length)})
-</Text>
+                      <Text className="text-white text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>
+                        {averageRating > 0 ? toEnglishNumber(averageRating) : '0.0'} ({toEnglishNumber(reviews.length)})
+                      </Text>
                     </View>
                   </View>
                 </TouchableOpacity>
-                
-         {/* 🚀 Join / Community Button */}
+
+                {/* 🚀 Join / Community Button */}
                 <TouchableOpacity 
                   activeOpacity={0.8} 
+                  disabled={isBanned}
                   onPress={() => {
                     if (isMember) {
                       openDiscussion(null);
                     } else if (joinRequestPending) {
-                      // 🚀 পেন্ডিং রিকোয়েস্ট ক্যানসেল করার অপশন
                       Alert.alert("রিকোয়েস্ট বাতিল", "আপনি কি জয়েন রিকোয়েস্ট ক্যানসেল করতে চান?", [
                         { text: "না", style: "cancel" },
                         { text: "হ্যাঁ", style: "destructive", onPress: async () => {
-                           setJoinRequestPending(false); // Optimistic UI
+                           setJoinRequestPending(false);
                            try {
                              const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
                              await fetch('https://growshelby-api.vercel.app/api/update_coins', {
@@ -2132,18 +2818,28 @@ const handleCreateRevisionPack = () => {
                       handleJoinCommunity();
                     }
                   }} 
-                  className="ml-2"
+                  className="flex-1 ml-2"
                 >
-                  <View className={`rounded-[16px] pb-[4px] ${isMember ? 'bg-[#1073A4]' : (joinRequestPending ? 'bg-[#D63939]' : 'bg-[#D47B00]')}`}>
-                    <View className={`px-4 py-2 rounded-[16px] flex-row items-center justify-center ${isMember ? 'bg-[#1CB0F6]' : (joinRequestPending ? 'bg-[#FF4B4B]' : 'bg-[#FF9600]')}`}>
-                      <FontAwesome5 name={isMember ? "users" : (joinRequestPending ? "times" : "user-plus")} size={13} color="#FFFFFF" />
-                      <Text className="text-white text-[14px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>
-                        {isMember ? 'কমিউনিটি' : (joinRequestPending ? 'ক্যানসেল' : 'জয়েন করুন')}
+                  <View className={`rounded-[16px] pb-[4px] ${isBanned ? 'bg-[#AFAFAF]' : isMember ? 'bg-[#1073A4]' : (joinRequestPending ? 'bg-[#D63939]' : 'bg-[#D47B00]')}`}>
+                    <View className={`w-full justify-center px-4 py-2 rounded-[16px] flex-row items-center ${isBanned ? 'bg-[#D7D7D7]' : isMember ? 'bg-[#1CB0F6]' : (joinRequestPending ? 'bg-[#FF4B4B]' : 'bg-[#FF9600]')}`}>
+                      <FontAwesome5 name={isBanned ? "ban" : isMember ? "users" : (joinRequestPending ? "times" : "user-plus")} size={13} color={isBanned ? "#777777" : "#FFFFFF"} />
+                      <Text className={`text-[14px] ml-2 pt-0.5 ${isBanned ? 'text-[#777777]' : 'text-white'}`} style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>
+                        {isBanned ? 'ব্যানড' : isMember ? 'কমিউনিটি' : (joinRequestPending ? 'ক্যানসেল' : 'জয়েন করুন')}
                       </Text>
                     </View>
                   </View>
                 </TouchableOpacity>
               </View>
+
+              {isBanned && (
+                <View className="mt-4 w-full bg-[#FF4B4B]/10 p-4 rounded-2xl border border-[#FF4B4B]/30 flex-row items-start">
+                  <FontAwesome5 name="ban" size={16} color="#FF4B4B" style={{ marginTop: 4 }} />
+                  <View className="ml-3 flex-1">
+                    <Text className="text-[#D63939] text-[15px]" style={{ fontFamily: 'BanglaBold', lineHeight: 22 }}>আপনাকে এই কমিউনিটি থেকে ব্যান করা হয়েছে</Text>
+                    <Text className="text-[#D63939]/70 text-[12px] mt-1" style={{ fontFamily: 'BanglaRegular' }}>আপনি আর জয়েন রিকোয়েস্ট পাঠাতে বা রিভিউ দিতে পারবেন না।</Text>
+                  </View>
+                </View>
+              )}
 
               {/* Bio or Description (With See More) */}
               {(lessonItem?.bio || lessonItem?.description) ? (
@@ -2168,13 +2864,70 @@ const handleCreateRevisionPack = () => {
             </View>
           </View>
           )}
+
+ {currentUserEmail === 'rumontrader662@gmail.com' && lessonItem?.channelId !== 'rumontrader662@gmail.com' && (
+              <View className="px-5 mt-4">
+                <View className="bg-white p-4 rounded-[20px] border-2 border-[#1899D6]/30 shadow-sm">
+                  <View className="flex-row items-center mb-3">
+                    <View className="w-8 h-8 bg-[#1899D6]/10 rounded-full items-center justify-center mr-2">
+                      <FontAwesome5 name="shield-alt" size={12} color="#1899D6" />
+                    </View>
+                    <View>
+                      <Text className="text-[16px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>মাস্টার কন্ট্রোল</Text>
+                      <Text className="text-[12px] text-[#827B6E]" style={{ fontFamily: 'BanglaRegular' }}>শুধু আপনি এটা দেখতে পাচ্ছেন</Text>
+                    </View>
+                  </View>
+                  <View className="flex-row">
+                    <TouchableOpacity onPress={() => { setCaSearchQuery(''); setSelectedCa(null); setCaCandidates([]); setIsCaSelectModalVisible(true); searchCandidates(''); }} className="flex-1 mr-2">
+                      <View className="rounded-[16px] pb-[4px] bg-[#1073A4]">
+                        <View className="w-full justify-center px-2 py-2.5 rounded-[16px] flex-row items-center bg-[#1CB0F6]">
+                          <FontAwesome5 name="exchange-alt" size={12} color="#FFF" />
+                          <Text className="text-white text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>সিএ পরিবর্তন</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                    <TouchableOpacity onPress={() => {
+                      Alert.alert("সতর্কতা", "এই কমিউনিটির সব মেম্বার, মেসেজ, রিভিউ ও ডাটা চিরতরে মুছে যাবে। এটা ফেরানো যাবে না।", [
+                        { text: "বাতিল", style: "cancel" },
+                        { text: "মুছে ফেলুন", style: "destructive", onPress: async () => {
+                          const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
+                          try {
+                            const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                              body: JSON.stringify({ action: 'delete_whole_community', channelId: guideId })
+                            });
+                            const data = await res.json();
+                            if(data.success) {
+                              closePageWithAnimation();
+                              DeviceEventEmitter.emit('FORCE_REFRESH_HOME_DATA');
+                            } else {
+                              Alert.alert("দুঃখিত", data.error || "ডিলিট করা যায়নি।");
+                            }
+                          } catch(e) {
+                            Alert.alert("দুঃখিত", "ইন্টারনেট কানেকশন চেক করুন।");
+                          }
+                        }}
+                      ]);
+                    }} className="flex-1 ml-2">
+                      <View className="rounded-[16px] pb-[4px] bg-[#D63939]">
+                        <View className="w-full justify-center px-2 py-2.5 rounded-[16px] flex-row items-center bg-[#FF4B4B]">
+                          <FontAwesome5 name="trash-alt" size={12} color="#FFF" />
+                          <Text className="text-white text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>কমিউনিটি ডিলিট</Text>
+                        </View>
+                      </View>
+                    </TouchableOpacity>
+                  </View>
+                </View>
+              </View>
+            )}
+
                  {/* 🚀 Books List (Study Packs) */}
           <View className="px-5 pt-6">
             <View className="flex-row items-center justify-between mb-4">
               <Text className="text-[18px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>📚 স্টাডি প্যাক সমুহ ({channelGuides.length})</Text>
-              
-         {/* 🚀 ক্রিয়েটর হলে নতুন সাবজেক্ট বানানোর বাটন দেখাবে */}
-              {lessonItem?.creatorEmail === currentUserEmail && channelGuides.length > 0 && (
+      {/* 🚀 শুধুমাত্র মেইন অ্যাডমিন হলে নতুন সাবজেক্ট বানানোর বাটন দেখাবে */}
+              {currentUserEmail === 'rumontrader662@gmail.com' && channelGuides.length > 0 && (
                 <TouchableOpacity 
                   activeOpacity={0.8}
                   onPress={() => setIsSubjectCreateVisible(true)}
@@ -2197,8 +2950,17 @@ const handleCreateRevisionPack = () => {
               <View className="flex-row flex-wrap justify-between mt-2">
                {[...channelGuides].sort((a, b) => (b.views || 0) - (a.views || 0)).map((guide, idx) => (
                   <View key={idx} className="bg-white rounded-[20px] mb-4 border border-[#EFE8D6] shadow-sm overflow-hidden" style={{ width: '48%' }}>
-              {/* 🚀 Pinterest Style Card (Two-Column) */}
+            {/* 🚀 Pinterest Style Card (Two-Column) */}
                <TouchableOpacity activeOpacity={0.9} onPress={() => {
+                    if (isBanned) {
+                      setCustomAlert({
+                        visible: true,
+                        title: "ব্যানড!",
+                        message: "আপনাকে এই কমিউনিটি থেকে ব্যান করা হয়েছে।",
+                        type: "error"
+                      });
+                      return;
+                    }
                     if (!isMember && lessonItem?.creatorEmail !== currentUserEmail) {
                       setCustomAlert({
                         visible: true,
@@ -2229,8 +2991,8 @@ const handleCreateRevisionPack = () => {
                     </View>
                   </TouchableOpacity>
 
-                  {/* 🚀 শুধুমাত্র ক্রিয়েটরের জন্য এডিট ও ডিলিট অপশন (ছোট আইকন) */}
-                  {lessonItem?.creatorEmail === currentUserEmail && (
+             {/* 🚀 শুধুমাত্র মেইন অ্যাডমিনের জন্য এডিট ও ডিলিট অপশন (ছোট আইকন) */}
+                  {currentUserEmail === 'rumontrader662@gmail.com' && (
                     <View className="flex-row justify-between px-3 pb-3">
                       <TouchableOpacity activeOpacity={0.7} onPress={() => handleEditGuideClick(guide)} className="w-8 h-8 rounded-full bg-[#FDF6E3] border border-[#EFE8D6] items-center justify-center">
                         <FontAwesome5 name="pen" size={10} color="#D47B00" />
@@ -2248,8 +3010,8 @@ const handleCreateRevisionPack = () => {
             
            {channelGuides.length === 0 && !isLoadingGuides && (
               <View className="py-2">
-                {/* 🚀 চেক করা হচ্ছে ইউজার নিজে এই কমিউনিটির ক্রিয়েটর কিনা */}
-                {lessonItem?.creatorEmail === currentUserEmail ? (
+             {/* 🚀 চেক করা হচ্ছে ইউজার নিজে মেইন অ্যাডমিন কিনা */}
+                {currentUserEmail === 'rumontrader662@gmail.com' ? (
                   <>
                     {/* 🚀 ভিডিও টিউটোরিয়াল কার্ড */}
                     <TouchableOpacity 
@@ -2299,17 +3061,18 @@ const handleCreateRevisionPack = () => {
             <View className="flex-row items-center justify-between mb-5 mt-2">
               <Text className="text-[19px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>🏆 কুইজ প্রতিযোগিতা</Text>
               
-         {/* ক্রিয়েটরের জন্য কুইজ অ্যাড করার বাটন */}
-              {lessonItem?.creatorEmail === currentUserEmail && (
+       {/* শুধুমাত্র মেইন অ্যাডমিনের জন্য কুইজ অ্যাড করার বাটন */}
+              {currentUserEmail === 'rumontrader662@gmail.com' && (
                 <TouchableOpacity 
                   activeOpacity={0.8}
                   onPress={() => {
                     // 🚀 নতুন কুইজের জন্য ফিল্ড ক্লিয়ার রাখা
-                  setEditingQuizId(null);
+                setEditingQuizId(null);
                     setQuizTitle('');
                     setQuizBanner('');
                     setQuizDate('');
                     setQuizTime('');
+                    setQuizLiveDuration('60'); // 🚀 ডিফল্ট ৬০ মিনিট
                     setquizSelectedRules([]);
                     setQuizTimestamp(null);
                     setTempDate(new Date());
@@ -2342,7 +3105,7 @@ const handleCreateRevisionPack = () => {
               displayQuizzes.map((quiz, idx) => (
                 <View key={idx} className="mb-8">
             {/* Edge-to-edge rounded image (Pinterest style) */}
-                  <View className="w-full aspect-[16/9] bg-[#EAE4D4] rounded-[24px] overflow-hidden mb-4 shadow-sm relative">
+                 <View className="w-full aspect-[16/9] bg-[#EAE4D4] rounded-[24px] overflow-hidden mb-4 shadow-sm relative">
                     <Image source={{ uri: quiz.banner || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?q=80&w=1000' }} className="w-full h-full" resizeMode="cover" />
                     {/* রিসোর্সের পরিমাণ দেখানোর জন্য ছোট্ট একটি ব্যাজ */}
                     <View className="absolute top-3 left-3 bg-black/60 px-3 py-1.5 rounded-full z-10 backdrop-blur-md">
@@ -2350,6 +3113,12 @@ const handleCreateRevisionPack = () => {
                          {quiz.resources?.length || 0} টি প্যাক
                        </Text>
                     </View>
+                    {/* 🚀 লাইভ কুইজ ব্যাজ (শর্ত: targetTimestamp আছে এবং ইউজারের জন্য এখনো লাইভ) */}
+                    {quiz.targetTimestamp && getEffectiveQuizPhase(quiz, quizClock, !!quizHistoryMap[quiz.id || quiz._id]) === 'live' && (
+                      <View className="absolute top-3 right-3 z-10">
+                        <LiveBadge />
+                      </View>
+                    )}
                   </View>
 
                   {/* Details Area */}
@@ -2357,16 +3126,17 @@ const handleCreateRevisionPack = () => {
                     <View className="flex-row items-start justify-between mb-2">
                       <Text className="text-[#3D382F] text-[20px] leading-7 flex-1 pr-2" style={{ fontFamily: 'BanglaBold' }}>{quiz.title}</Text>
                       
-              {/* 🚀 ক্রিয়েটরের জন্য এডিট ও ডিলিট বাটন (টাইটেলের পাশে ক্লিন UI) */}
-                      {lessonItem?.creatorEmail === currentUserEmail && (
+          {/* 🚀 শুধুমাত্র মেইন অ্যাডমিনের জন্য এডিট ও ডিলিট বাটন (টাইটেলের পাশে ক্লিন UI) */}
+                      {currentUserEmail === 'rumontrader662@gmail.com' && (
                         <View className="flex-row space-x-2 mt-1">
                           <TouchableOpacity activeOpacity={0.7} onPress={() => {
                             const currentQuizId = quiz._id || quiz.id;
-                            setEditingQuizId(currentQuizId);
+                        setEditingQuizId(currentQuizId);
                             setQuizTitle(quiz.title || '');
                             setQuizBanner(quiz.banner || '');
                         setQuizDate(quiz.dateText !== 'শীঘ্রই' ? quiz.dateText : '');
                             setQuizTime(quiz.timeText !== '--:--' ? quiz.timeText : '');
+                            setQuizLiveDuration(quiz.liveDuration ? String(quiz.liveDuration) : '60'); // 🚀 পুরনো টাইম লোড
                             setquizSelectedRules(quiz.resources || []);
                             setQuizTimestamp(quiz.targetTimestamp || null);
                             if (quiz.targetTimestamp) setTempDate(new Date(quiz.targetTimestamp));
@@ -2411,88 +3181,94 @@ const handleCreateRevisionPack = () => {
                       <Text className="text-[#827B6E] text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaRegular' }}>{quiz.timeText || '--:--'}</Text>
                     </View>
                     
-       {/* Action Buttons */}
+   {/* Action Buttons */}
                 <View className="flex-row items-center justify-between w-full space-x-3">
                   {(() => {
                     const history = quizHistoryMap[quiz.id || quiz._id];
                     const hasTaken = !!history; 
                     const hasMistakes = history?.failedItems && history.failedItems.length > 0;
-                    const isQuizPlayable = quiz.isReady || (quiz.targetTimestamp && quiz.targetTimestamp <= Date.now());
+                    const phase = getEffectiveQuizPhase(quiz, quizClock, hasTaken);
+                    const questionCount = quiz.questionCount !== undefined ? quiz.questionCount : (quiz.questions ? quiz.questions.length : 0);
 
-                    return (
-                      <>
-                        {/* 🚀 বাম পাশ: রিভিশন / রিসোর্স (ছোট আইকন) */}
-                        <TouchableOpacity 
-                          activeOpacity={0.8}
-                          onPress={() => {
-                            if (hasTaken) {
-                              if (hasMistakes) {
-                                openBookInReader({
-                                  id: 'revision_' + Date.now(),
-                                  notebookName: quiz.title + ' (রিভিশন)',
-                                  failedItems: history.failedItems,
-                                  channelId: lessonItem?.channelId,
-                                  creatorName: 'Smart AI Revision',
-                                  isQuizResourceMode: true
-                                });
-                              } else {
-                                Alert.alert("অভিনন্দন!", "আপনার কোনো ভুল নেই, রিভিশন করার দরকার নেই!");
-                              }
+                    // বাঁ পাশের বাটন: রিসোর্স বা রিভিশন
+                    const ResourceButton = (
+                      <TouchableOpacity 
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          if (hasTaken) {
+                            if (hasMistakes) {
+                              openBookInReader({
+                                id: 'revision_' + Date.now(),
+                                notebookName: quiz.title + ' (রিভিশন)',
+                                failedItems: history.failedItems,
+                                channelId: lessonItem?.channelId,
+                                creatorName: 'Smart AI Revision',
+                                isQuizResourceMode: true 
+                              });
                             } else {
-                              handleOpenQuizResources(quiz);
+                              Alert.alert("অভিনন্দন!", "আপনার কোনো ভুল নেই, রিভিশন করার দরকার নেই!");
                             }
-                          }}
-                          className={`w-[52px] ${
-                            hasTaken ? (hasMistakes ? 'bg-[#1073A4]' : 'bg-[#D7D7D7]') : 'bg-[#4A8C00]'
-                          } rounded-[16px] pb-[4px]`} // 🚀 Duolingo 3D Bottom Shadow
-                        >
-                          <View className={`w-full h-[46px] rounded-[16px] items-center justify-center border-2 border-b-0 ${
+                          } else {
+                            handleOpenQuizResources(quiz);
+                          }
+                        }}
+                        className={`w-[52px] ${
+                          hasTaken ? (hasMistakes ? 'bg-[#1073A4]' : 'bg-[#D7D7D7]') : 'bg-[#4A8C00]'
+                        } rounded-[16px] pb-[4px]`}
+                      >
+                      <View className={`w-full h-[46px] rounded-[16px] items-center justify-center border-2 border-b-0 ${
                             hasTaken ? (hasMistakes ? 'bg-[#1CB0F6] border-[#1899D6]' : 'bg-[#F9F9F9] border-[#E5E5E5]') : 'bg-[#58CC02] border-[#58A700]'
                           }`}>
                             <FontAwesome5 name={hasTaken ? (hasMistakes ? "sync-alt" : "check-double") : "book-reader"} size={16} color={hasTaken && !hasMistakes ? "#AFAFAF" : "#FFF"} />
                           </View>
                         </TouchableOpacity>
+                      );
 
-                        {/* 🚀 মাঝখানে: লিডারবোর্ড (মেইন ফোকাস) */}
+                      const PastResourceButton = (
                         <TouchableOpacity 
                           activeOpacity={0.8}
-                          onPress={() => openLeaderboard(quiz)}
-                          className="flex-1 bg-[#D47B00] rounded-[16px] pb-[4px]" // 🚀 Duolingo 3D Bottom Shadow
+                          onPress={() => handleOpenQuizResources(quiz)}
+                          className="w-[52px] bg-[#4A8C00] rounded-[16px] pb-[4px]"
                         >
-                          <View className="w-full h-[46px] bg-[#FFC800] rounded-[16px] flex-row items-center justify-center border-2 border-b-0 border-[#FF9600]">
-                            <FontAwesome5 name="crown" size={16} color="#FFFFFF" solid />
-                            <Text className="text-white text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>লিডারবোর্ড</Text>
+                          <View className="w-full h-[46px] rounded-[16px] items-center justify-center border-2 border-b-0 bg-[#58CC02] border-[#58A700]">
+                            <FontAwesome5 name="book-reader" size={16} color="#FFF" />
                           </View>
                         </TouchableOpacity>
+                      );
 
-                        {/* 🚀 ডান পাশ: কুইজ এন্ট্রি / রিটেক / টাইমার */}
-                        {hasTaken ? (
-                          <TouchableOpacity 
-                            activeOpacity={0.8}
-                            onPress={() => {
-                              setLiveQuizActiveQuiz(quiz);
-                              setParsedQuizData(quiz.questions);
-                              setCurrentQuizIndex(0);
-                              setQuizAnswers({});
-                              setIsQuizFinished(false);
-                              setQuizStartTime(Date.now());
-                              setQuizTimeLeft(quiz.questions.length * 60); 
-                              setIsLiveQuizModalVisible(true);
-                            }}
-                            className="w-[52px] bg-[#D7D7D7] rounded-[16px] pb-[4px]" // 🚀 Duolingo 3D Bottom Shadow
-                          >
-                            <View className="w-full h-[46px] bg-[#F9F9F9] rounded-[16px] items-center justify-center border-2 border-b-0 border-[#E5E5E5]">
-                              <FontAwesome5 name="redo-alt" size={16} color="#AFAFAF" />
+                      // Phase A: Not Started
+                    if (phase === 'upcoming') {
+                      return (
+                        <>
+                          {ResourceButton}
+                          <View className="flex-1 h-[50px] bg-[#F5F5F5] rounded-[16px] flex-row items-center justify-center border-2 border-[#E5E5E5] px-2">
+                            <FontAwesome5 name="clock" size={12} color="#AFAFAF" />
+                            {quiz.targetTimestamp ? (
+                              <LiveCountdown targetTimestamp={quiz.targetTimestamp} />
+                            ) : (
+                              <Text className="text-[#AFAFAF] text-[12px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>টাইম সেট হয়নি</Text>
+                            )}
+                          </View>
+                        </>
+                      );
+                    }
+
+               // Phase B: Live Window
+                    if (phase === 'live') {
+                      return (
+                        <>
+                          {ResourceButton}
+                          {questionCount === 0 ? (
+                            <View className="flex-1 bg-[#F5F5F5] rounded-[16px] pb-[4px]">
+                              <View className="w-full h-[46px] bg-[#EAE4D4] rounded-[16px] items-center justify-center border-2 border-b-0 border-[#D7D7D7] flex-row">
+                                <FontAwesome5 name="lock" size={14} color="#AFAFAF" />
+                                <Text className="text-[#AFAFAF] text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>প্রশ্ন সেট হয়নি</Text>
+                              </View>
                             </View>
-                          </TouchableOpacity>
-                        ) : (
-                          isQuizPlayable ? (
-                            <TouchableOpacity 
+                          ) : (
+                            <TouchableOpacity
                               activeOpacity={0.8}
                               onPress={() => {
-                                if (!quiz.questions || quiz.questions.length === 0) {
-                                  return Alert.alert("অপেক্ষা করুন", "অ্যাডমিন এখনো কুইজের প্রশ্ন সেট করেননি।");
-                                }
                                 setLiveQuizActiveQuiz(quiz);
                                 setParsedQuizData(quiz.questions);
                                 setCurrentQuizIndex(0);
@@ -2502,24 +3278,60 @@ const handleCreateRevisionPack = () => {
                                 setQuizTimeLeft(quiz.questions.length * 60); 
                                 setIsLiveQuizModalVisible(true);
                               }}
-                              className="w-[52px] bg-[#1073A4] rounded-[16px] pb-[4px]" // 🚀 Duolingo 3D Bottom Shadow
+                              className="flex-1 bg-[#1073A4] rounded-[16px] pb-[4px]"
                             >
-                              <View className="w-full h-[46px] bg-[#1CB0F6] rounded-[16px] items-center justify-center border-2 border-b-0 border-[#1899D6]">
-                                <FontAwesome5 name="play" size={16} color="#FFF" style={{ marginLeft: 3 }} />
+                              <View className="w-full h-[46px] bg-[#1CB0F6] rounded-[16px] items-center justify-center border-2 border-b-0 border-[#1899D6] flex-row">
+                                <FontAwesome5 name="play" size={14} color="#FFF" />
+                                <Text className="text-white text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }}>এন্ট্রি নিন</Text>
                               </View>
                             </TouchableOpacity>
-                          ) : (
-                            <View className="flex-1 max-w-[105px] h-[50px] bg-[#F5F5F5] rounded-[16px] flex-row items-center justify-center border-2 border-[#E5E5E5] px-2">
-                              <FontAwesome5 name="clock" size={12} color="#AFAFAF" />
-                              {quiz.targetTimestamp ? (
-                                <LiveCountdown targetTimestamp={quiz.targetTimestamp} />
-                              ) : (
-                                <Text className="text-[#AFAFAF] text-[11px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>টাইম সেট হয়নি</Text>
-                              )}
-                            </View>
-                          )
-                        )}
-                      </>
+                          )}
+                        </>
+                      );
+                    }
+
+                  // Phase C: Past Quiz
+                      return (
+                        <>
+                          {PastResourceButton}
+                          <TouchableOpacity 
+                            activeOpacity={0.8}
+                            onPress={() => openLeaderboard(quiz)}
+                          className="flex-1 bg-[#D47B00] rounded-[16px] pb-[4px]"
+                        >
+                          <View className="w-full h-[46px] bg-[#FFC800] rounded-[16px] flex-row items-center justify-center border-2 border-b-0 border-[#FF9600]">
+                            <FontAwesome5 name="crown" size={16} color="#FFFFFF" solid />
+                            <Text className="text-white text-[16px] ml-2 pt-1" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>লিডারবোর্ড</Text>
+                          </View>
+                        </TouchableOpacity>
+
+                     <TouchableOpacity 
+                          activeOpacity={0.8}
+                          onPress={() => {
+                            if (questionCount === 0) {
+                              return Alert.alert("দুঃখিত", "এই কুইজে কোনো প্রশ্ন নেই।");
+                            }
+                            
+                            if (hasTaken) {
+                              setPickedQuizForAction(quiz);
+                            } else {
+                              setLiveQuizActiveQuiz(quiz);
+                              setParsedQuizData(quiz.questions);
+                              setCurrentQuizIndex(0);
+                              setQuizAnswers({});
+                              setIsQuizFinished(false);
+                              setQuizStartTime(Date.now());
+                              setQuizTimeLeft(quiz.questions.length * 60); 
+                              setIsLiveQuizModalVisible(true);
+                            }
+                          }}
+                          className={`w-[52px] ${hasTaken ? 'bg-[#D7D7D7]' : 'bg-[#1073A4]'} rounded-[16px] pb-[4px]`}
+                        >
+                          <View className={`w-full h-[46px] ${hasTaken ? 'bg-[#F9F9F9] border-[#E5E5E5]' : 'bg-[#1CB0F6] border-[#1899D6]'} rounded-[16px] items-center justify-center border-2 border-b-0`}>
+                            <FontAwesome5 name={hasTaken ? "redo-alt" : "play"} size={16} color={hasTaken ? "#AFAFAF" : "#FFF"} style={!hasTaken ? { marginLeft: 3 } : {}} />
+                          </View>
+                        </TouchableOpacity>
+                   </>
                     );
                   })()}
                 </View>
@@ -2528,10 +3340,32 @@ const handleCreateRevisionPack = () => {
           ))
             ) : (
               <View className="items-center justify-center py-12 mt-2">
-                <FontAwesome5 name={activeQuizTab === 'upcoming' ? "clock" : "trophy"} size={36} color="#EAE4D4" />
-                <Text className="text-[#827B6E] text-[15px] mt-4 pt-1" style={{ fontFamily: 'BanglaBold' }}>
-                  {activeQuizTab === 'upcoming' ? 'আপকামিং কোনো কুইজ নেই' : 'কোনো অতীতের কুইজ নেই'}
-                </Text>
+                {activeQuizTab === 'upcoming' && takenLiveCount > 0 ? (
+                  <>
+                    <FontAwesome5 name="check-circle" size={36} color="#58A700" solid />
+                    <Text className="text-[#3D382F] text-[18px] mt-4 pt-1" style={{ fontFamily: 'BanglaBold' }}>তুমি ইতিমধ্যে কুইজ দিয়েছো! 🎉</Text>
+                    <Text className="text-[#827B6E] text-[13px] mt-2 px-6 text-center leading-5" style={{ fontFamily: 'BanglaRegular' }}>এখানে আর কোনো কুইজ পাওয়া যায়নি। তোমার কুইজের রেজাল্ট ও লিডারবোর্ড দেখো অতীতের কুইজে।</Text>
+                    <TouchableOpacity 
+                      activeOpacity={0.8} 
+                      onPress={() => {
+                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                        setActiveQuizTab('past');
+                      }} 
+                      className="mt-6 w-[200px] bg-[#1073A4] rounded-[16px] pb-[4px]"
+                    >
+                      <View className="w-full py-3 bg-[#1CB0F6] rounded-[16px] items-center justify-center border-2 border-b-0 border-[#1899D6]">
+                        <Text className="text-white text-[15px] pt-1" style={{ fontFamily: 'BanglaBold' }}>অতীতের কুইজ দেখো</Text>
+                      </View>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <FontAwesome5 name={activeQuizTab === 'upcoming' ? "clock" : "trophy"} size={36} color="#EAE4D4" />
+                    <Text className="text-[#827B6E] text-[15px] mt-4 pt-1" style={{ fontFamily: 'BanglaBold' }}>
+                      {activeQuizTab === 'upcoming' ? 'আপকামিং কোনো কুইজ নেই' : 'কোনো অতীতের কুইজ নেই'}
+                    </Text>
+                  </>
+                )}
               </View>
             )}
           </View>
@@ -2639,9 +3473,9 @@ const handleCreateRevisionPack = () => {
                 </View>
                 <Text className="text-[22px] text-[#3D382F] text-center mb-2" style={{ fontFamily: 'BanglaBold' }}>কপি হয়েছে! 🎉</Text>
                 
-                <View className="bg-[#FDF6E3] px-6 py-3 rounded-xl mb-4 border-2 border-[#EFE8D6] border-dashed">
+     <View className="bg-[#FDF6E3] px-6 py-3 rounded-xl mb-4 border-2 border-[#EFE8D6] border-dashed">
                   <Text className="text-[22px] text-[#D47B00] tracking-[4px]" style={{ fontFamily: 'BanglaBold' }}>
-                    {channelGuides.length > 0 ? channelGuides[0].shareCode : ''}
+                    {lessonItem?.communityCode || lessonItem?.channelId || ''}
                   </Text>
                 </View>
 
@@ -2688,16 +3522,29 @@ const handleCreateRevisionPack = () => {
             {/* Dragger */}
             <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mt-5 mb-4" />
             
-            {/* Header */}
+       {/* Header */}
             <View className="flex-row justify-between items-center px-6 pb-3 border-b border-[#EFE8D6]">
-                <View>
-                  <Text className="text-[18px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>স্টাডি স্কোয়াড 🎯</Text>
-                 <Text className="text-[13px] text-[#827B6E]" style={{ fontFamily: 'BanglaRegular' }}>মোট {toEnglishNumber(totalMemberCount)} জন মেম্বার যুক্ত আছেন</Text>
-                </View>
+              <View className="flex-1 pr-2">
+                <Text className="text-[18px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>স্টাডি স্কোয়াড 🎯</Text>
+                <Text className="text-[13px] text-[#827B6E]" style={{ fontFamily: 'BanglaRegular' }} numberOfLines={1}>মোট {toEnglishNumber(totalMemberCount)} জন মেম্বার যুক্ত আছেন</Text>
+              </View>
+              <View className="flex-row space-x-2 flex-shrink-0">
+                {isStaff && (
+                  <TouchableOpacity onPress={() => { 
+                    closeMembersModalSmoothly();
+                    setTimeout(() => {
+                      fetchBannedList();
+                      setIsBannedModalVisible(true);
+                    }, 300);
+                  }} className="bg-[#FFF4E5] w-9 h-9 rounded-full items-center justify-center border border-[#FFDDAA]">
+                    <FontAwesome5 name="ban" size={14} color="#D47B00" />
+                  </TouchableOpacity>
+                )}
                 <TouchableOpacity onPress={closeMembersModalSmoothly} className="bg-[#FFF4E5] w-9 h-9 rounded-full items-center justify-center border border-[#FFDDAA]">
                   <FontAwesome5 name="times" size={14} color="#D47B00" />
                 </TouchableOpacity>
               </View>
+            </View>
 
             {/* 🔍 Search Bar (Vibe Coder Fix) */}
               <View className="pb-3 border-b border-[#EFE8D6] mb-2 px-6 mt-3">
@@ -2723,8 +3570,8 @@ const handleCreateRevisionPack = () => {
               onEndReachedThreshold={0.5}
            ListHeaderComponent={
                 <View>
-                  {/* 🚀 অ্যাডমিনের জন্য পেন্ডিং রিকোয়েস্ট লিস্ট UI */}
-                  {lessonItem?.creatorEmail === currentUserEmail && pendingJoinRequests.length > 0 && (
+           {/* 🚀 অ্যাডমিন বা CA-এর জন্য পেন্ডিং রিকোয়েস্ট লিস্ট UI */}
+                  {(isStaff) && pendingJoinRequests.length > 0 && (
                     <View className="mb-4 pt-2 px-1">
                       <Text className="text-[16px] text-[#3D382F] mb-3" style={{ fontFamily: 'BanglaBold' }}>পেন্ডিং রিকোয়েস্ট ({pendingJoinRequests.length})</Text>
                       {pendingJoinRequests.map((req, idx) => (
@@ -2751,23 +3598,33 @@ const handleCreateRevisionPack = () => {
                   )}
                 </View>
              }
-             ListEmptyComponent={
-                <View className="pt-2">
-                  <MemberSkeleton />
-                  <MemberSkeleton />
-                  <MemberSkeleton />
-                </View>
+           ListEmptyComponent={
+                isLoadingMembers ? (
+                  <View className="pt-2">
+                    <MemberSkeleton />
+                    <MemberSkeleton />
+                    <MemberSkeleton />
+                  </View>
+                ) : (
+                  <View className="items-center py-10 mt-5">
+                    <FontAwesome5 name="users" size={40} color="#EAE4D4" />
+                    <Text className="text-[#827B6E] text-[15px] mt-4" style={{ fontFamily: 'BanglaBold' }}>এখনো কোনো মেম্বার যুক্ত হয়নি!</Text>
+                  </View>
+                )
               }
              ListFooterComponent={
                 // 🚀 স্পিনার শুধু তখন দেখাবে যখন লিস্টে আগে থেকে মেম্বার থাকবে (অর্থাৎ নিচে স্ক্রল করে লোড করার সময়)
                 (isLoadingMembers && members.length > 0) ? <ActivityIndicator size="small" color="#D47B00" style={{ marginVertical: 10 }} /> : null
               }
     renderItem={({ item, index }) => {
-              const targetEmail = item.userEmail || item.id;
+            const targetEmail = item.userEmail || item.id;
               const isMe = targetEmail === currentUserEmail;
               const isFriend = myFriends.some(f => f.email === targetEmail);
               const isPending = pendingRequests.includes(targetEmail);
-              const isReceived = receivedRequests.includes(targetEmail); // 🚀 নতুন চেক
+              const isReceived = receivedRequests.includes(targetEmail);
+
+              const isThisUserOwner = targetEmail === lessonItem?.channelId || targetEmail === lessonItem?.creatorEmail;
+              const isThisUserCoAdmin = communityAdmins.includes(targetEmail);
 
               return (
                 <View className="mb-4 bg-white rounded-[24px] border-2 border-[#EFE8D6] shadow-sm p-4 mx-1">
@@ -2786,18 +3643,55 @@ const handleCreateRevisionPack = () => {
                         )}
                       </View>
                       <View className="ml-3 flex-1 pr-2">
-                        <Text className="text-[#3D382F] text-[15px] pt-0.5" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>{item.userName || 'শিক্ষার্থী'}</Text>
+                      <View className="flex-row items-center">
+                          <Text className="text-[#3D382F] text-[15px] pt-0.5" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>{item.userName || 'শিক্ষার্থী'}</Text>
+                          {(isThisUserOwner || isThisUserCoAdmin) && (
+                            <View className="ml-2 bg-[#FF9600]/10 border border-[#FF9600]/30 px-2 py-0.5 rounded">
+                              <Text className="text-[#D47B00] text-[9px]" style={{ fontFamily: 'BanglaBold' }}>
+                                {isThisUserOwner ? (targetEmail === 'rumontrader662@gmail.com' ? 'অ্যাডমিন' : 'সিএ') : 'কো-অ্যাডমিন'}
+                              </Text>
+                            </View>
+                          )}
+                        </View>
                         <Text className="text-[#827B6E] text-[11px] mt-0.5" style={{ fontFamily: 'BanglaRegular' }}>স্টাডি স্কোয়াড মেম্বার</Text>
                       </View>
                     </TouchableOpacity>
                     
-                    {/* 🚀 অ্যাডমিন হলে রিমুভ করার অপশন */}
-                    {lessonItem?.creatorEmail === currentUserEmail && targetEmail !== currentUserEmail && (
+             {/* 🚀 রিমুভ করার অপশন */}
+                    {(isStaff && targetEmail !== currentUserEmail && !isThisUserOwner && targetEmail !== 'rumontrader662@gmail.com' && (currentUserEmail === 'rumontrader662@gmail.com' || (!isThisUserCoAdmin || isOwner))) && (
                       <TouchableOpacity activeOpacity={0.7} onPress={() => handleRemoveMember(targetEmail, item.userName || item.name)} className="bg-[#FFF4E5] w-8 h-8 rounded-full items-center justify-center border border-[#FFDDAA] ml-2">
                         <FontAwesome5 name="user-minus" size={10} color="#FF4B4B" />
                       </TouchableOpacity>
                     )}
                   </View>
+
+                  {/* 🚀 Admin Controls for Owner */}
+                  {(isOwner && !isThisUserOwner) && (
+                    <TouchableOpacity activeOpacity={0.8} onPress={async () => {
+                      if (!isThisUserCoAdmin && communityAdmins.length >= 5) {
+                        return Alert.alert("সতর্কতা", "আপনি সর্বোচ্চ ৫ জন কো-অ্যাডমিন বানাতে পারবেন।");
+                      }
+                      const actionType = isThisUserCoAdmin ? 'remove_community_admin' : 'add_community_admin';
+                      if (isThisUserCoAdmin) {
+                        setCommunityAdmins(prev => prev.filter(e => e !== targetEmail));
+                        setCommunityAdminList(prev => prev.filter(a => a.email !== targetEmail));
+                      } else {
+                        setCommunityAdmins(prev => [...prev, targetEmail]);
+                        setCommunityAdminList(prev => [...prev, { email: targetEmail, name: item.userName }]);
+                      }
+                      try {
+                        const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
+                        await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                          body: JSON.stringify({ action: actionType, guideId, actorEmail: currentUserEmail, targetEmail })
+                        });
+                      } catch(e) {}
+                    }} className={`w-full py-2.5 rounded-[16px] flex-row justify-center items-center shadow-sm border mb-2 ${isThisUserCoAdmin ? 'bg-[#FFF4E5] border-[#FFDDAA]' : 'bg-[#EAF2D7] border-[#8BA85E]'}`}>
+                      <FontAwesome5 name="user-shield" size={14} color={isThisUserCoAdmin ? "#D47B00" : "#58A700"} />
+                      <Text className={`text-[14px] ml-2 pt-1 ${isThisUserCoAdmin ? 'text-[#D47B00]' : 'text-[#4A632D]'}`} style={{ fontFamily: 'BanglaBold' }}>{isThisUserCoAdmin ? 'অ্যাডমিন সরান' : 'অ্যাডমিন বানান'}</Text>
+                    </TouchableOpacity>
+                  )}
 
                   {/* 🚀 বটম সেকশন: ফুল-উইডথ ডাইনামিক বাটন */}
                 {isMe ? (
@@ -2868,12 +3762,14 @@ const handleCreateRevisionPack = () => {
 
                     {/* ২. অ্যাভাটার ও বেসিক ইনফো */}
                     <View className="items-center -mt-16 px-5 relative z-10">
-                      <View className="w-[110px] h-[110px] rounded-full border-[5px] border-white shadow-sm bg-[#EAE4D4]">
-                        <Image source={{ uri: selectedLiveMember.userAvatar || selectedLiveMember.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-full h-full rounded-full" />
-                      </View>
-                      <Text className="text-[#3D382F] text-[22px] pt-2 mb-1" style={{ fontFamily: 'BanglaBold' }}>{selectedLiveMember.userName || selectedLiveMember.name}</Text>
-                      <Text className="text-[#777777] text-[13px]" style={{ fontFamily: 'BanglaRegular' }}>স্টাডি স্কোয়াড মেম্বার</Text>
-                    </View>
+  <View className="w-[110px] h-[110px] rounded-full border-[5px] border-white shadow-sm bg-[#EAE4D4]">
+    <Image source={{ uri: selectedLiveMember.userAvatar || selectedLiveMember.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-full h-full rounded-full" />
+  </View>
+  <Text className="text-[#3D382F] text-[22px] pt-2 mb-1" style={{ fontFamily: 'BanglaBold' }}>
+    {(selectedLiveMember.userEmail === currentUserEmail || selectedLiveMember.email === currentUserEmail || selectedLiveMember.id === currentUserEmail) ? 'আমি' : (selectedLiveMember.userName || selectedLiveMember.name)}
+  </Text>
+  <Text className="text-[#777777] text-[13px]" style={{ fontFamily: 'BanglaRegular' }}>স্টাডি স্কোয়াড মেম্বার</Text>
+</View>
 
                  {isProfileLoading ? (
                       <View className="px-5 mt-6 w-full">
@@ -3036,6 +3932,171 @@ const handleCreateRevisionPack = () => {
         </View>
       </Modal>
 
+<Modal visible={isCaSelectModalVisible} transparent animationType="slide" onRequestClose={() => setIsCaSelectModalVisible(false)}>
+        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-black/60 justify-end">
+          <View className="bg-[#FFFDF8] rounded-t-[32px] h-[85%] overflow-hidden relative" style={{ paddingBottom: insets.bottom }}>
+            <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mt-5 mb-4" />
+            <View className="flex-row justify-between items-center px-6 pb-3">
+              <Text className="text-[20px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>নতুন সিএ বাছুন</Text>
+              <TouchableOpacity onPress={() => setIsCaSelectModalVisible(false)} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
+                <FontAwesome5 name="times" size={14} color="#6B655B" />
+              </TouchableOpacity>
+            </View>
+            <View className="px-6 pb-2 border-b border-[#EFE8D6]">
+              <View className="bg-white rounded-[16px] border border-[#EFE8D6] px-4 py-1.5 flex-row items-center shadow-sm">
+                <FontAwesome5 name="search" size={14} color="#AFAFAF" />
+                <TextInput 
+                  className="flex-1 ml-3 text-[15px] pt-1 text-[#3D382F]" 
+                  style={{ fontFamily: 'BanglaRegular' }}
+                  placeholder="নাম বা ইমেইল দিয়ে খুঁজুন..."
+                  placeholderTextColor="#AFAFAF"
+                  value={caSearchQuery}
+                  onChangeText={searchCandidates}
+                />
+              </View>
+            </View>
+            <ScrollView className="flex-1 px-6 pt-3" showsVerticalScrollIndicator={false}>
+              {isCaSearching ? (
+                <View className="pt-2">
+                  <MemberSkeleton />
+                  <MemberSkeleton />
+                  <MemberSkeleton />
+                </View>
+              ) : caCandidates.length === 0 ? (
+                <View className="items-center justify-center py-10 mt-10">
+                  <FontAwesome5 name="search-minus" size={40} color="#EAE4D4" />
+                  <Text className="text-[#827B6E] text-[15px] mt-4" style={{ fontFamily: 'BanglaBold' }}>কোনো যোগ্য ব্যক্তি পাওয়া যায়নি</Text>
+                </View>
+              ) : caCandidates.map(c => (
+                <TouchableOpacity key={c.email} activeOpacity={0.8} onPress={() => setSelectedCa(c)} className={`flex-row items-center p-4 mb-3 border-[2px] rounded-[16px] ${selectedCa?.email === c.email ? 'bg-[#EAF2D7] border-[#8BA85E]' : 'bg-white border-[#EFE8D6]'}`}>
+                  <Image source={{ uri: c.avatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-12 h-12 rounded-full border border-[#EFE8D6] bg-[#EAE4D4]" />
+                  <View className="ml-3 flex-1 pr-2">
+                    <View className="flex-row items-center">
+                      <Text className="text-[15px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>{c.name}</Text>
+                      {c.isMember && (
+                        <View className="ml-2 bg-[#1899D6]/10 px-1.5 py-0.5 rounded border border-[#1899D6]/30">
+                          <Text className="text-[#1899D6] text-[9px]" style={{ fontFamily: 'BanglaBold' }}>মেম্বার</Text>
+                        </View>
+                      )}
+                    </View>
+                    <Text className="text-[11px] text-[#827B6E] mt-0.5" style={{ fontFamily: 'BanglaRegular' }} numberOfLines={1}>{c.email}</Text>
+                  </View>
+                  <View className={`w-6 h-6 rounded-full border-2 items-center justify-center ${selectedCa?.email === c.email ? 'bg-[#58A700] border-[#58A700]' : 'bg-white border-[#D7D7D7]'}`}>
+                    {selectedCa?.email === c.email && <FontAwesome5 name="check" size={10} color="#FFF" />}
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+            <View className="px-6 py-4 bg-white border-t border-[#EFE8D6]">
+              <TouchableOpacity 
+                activeOpacity={0.8}
+                disabled={!selectedCa || isTransferring} 
+                onPress={() => {
+                  const doTransfer = async (banOld) => {
+                    setIsTransferring(true);
+                    const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
+                    try {
+                      const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                        body: JSON.stringify({ action: 'transfer_community_ownership', channelId: guideId, newOwnerEmail: selectedCa.email, banOldOwner: banOld })
+                      });
+                      const data = await res.json();
+                      setIsTransferring(false);
+                      if (data.success) {
+                        setIsCaSelectModalVisible(false);
+                        Alert.alert("সফল!", "নতুন সিএ নিয়োগ সম্পন্ন হয়েছে।");
+                        closePageWithAnimation(); 
+                        DeviceEventEmitter.emit('FORCE_REFRESH_HOME_DATA');
+                      } else {
+                        Alert.alert("দুঃখিত", data.error || "ট্রান্সফার করা যায়নি।");
+                      }
+                    } catch(e) {
+                      setIsTransferring(false);
+                      Alert.alert("দুঃখিত", "ইন্টারনেট সমস্যা, আবার চেষ্টা করুন।");
+                    }
+                  };
+
+                  Alert.alert("সিএ পরিবর্তন", "বর্তমান সিএ-র পজিশন বাতিল হবে এবং নতুন সিএ দায়িত্ব পাবে। আপনি কি শিওর?", [
+                    { text: "বাতিল", style: "cancel" },
+                    { text: "শুধু সরান", onPress: () => doTransfer(false) },
+                    { text: "সরিয়ে ব্যান করুন", style: "destructive", onPress: () => doTransfer(true) }
+                  ]);
+                }} 
+                className={`py-3.5 rounded-[16px] flex-row justify-center items-center shadow-sm ${selectedCa ? 'bg-[#1899D6]' : 'bg-[#EAE4D4]'}`}
+              >
+                {isTransferring ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Text className={`text-[16px] pt-0.5 ${selectedCa ? 'text-white' : 'text-[#AFAFAF]'}`} style={{ fontFamily: 'BanglaBold' }}>পরবর্তী</Text>
+                )}
+              </TouchableOpacity>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
+
+   <Modal visible={isBannedModalVisible} transparent animationType="slide" onRequestClose={() => {
+        setIsBannedModalVisible(false);
+        handleMembersBadgeClick();
+      }}>
+        <View className="flex-1 bg-black/60 justify-end">
+          <View className="bg-[#FFFDF8] rounded-t-[32px] h-[85%] overflow-hidden relative" style={{ paddingBottom: insets.bottom }}>
+            <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mt-5 mb-4" />
+            <View className="flex-row justify-between items-center px-6 pb-4 border-b border-[#EFE8D6]">
+              <View className="flex-1 pr-2">
+                <Text className="text-[20px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>ব্যানড লিস্ট</Text>
+                <Text className="text-[13px] text-[#827B6E]" style={{ fontFamily: 'BanglaRegular' }}>মোট {toEnglishNumber(bannedList.length)} জন</Text>
+              </View>
+              <TouchableOpacity onPress={() => { setIsBannedModalVisible(false); handleMembersBadgeClick(); }} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
+                <FontAwesome5 name="times" size={14} color="#6B655B" />
+              </TouchableOpacity>
+            </View>
+            <ScrollView className="flex-1 px-6 pt-5" showsVerticalScrollIndicator={false}>
+              {isBannedLoading ? (
+                <View>
+                  <MemberSkeleton />
+                  <MemberSkeleton />
+                  <MemberSkeleton />
+                </View>
+              ) : bannedList.length === 0 ? (
+                <View className="items-center justify-center py-10 mt-10">
+                  <FontAwesome5 name="user-slash" size={40} color="#EAE4D4" />
+                  <Text className="text-[#827B6E] text-[15px] mt-4" style={{ fontFamily: 'BanglaBold' }}>কেউ ব্যানড নেই</Text>
+                </View>
+              ) : bannedList.map(b => (
+                <View key={b.userEmail} className="flex-row items-center p-4 mb-3 border-2 border-[#EFE8D6] rounded-[16px] bg-white shadow-sm">
+                  <Image source={{ uri: b.userAvatar || 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png' }} className="w-12 h-12 rounded-full border border-[#EFE8D6] bg-[#EAE4D4]" />
+                  <View className="ml-3 flex-1 pr-2">
+                    <Text className="text-[15px] text-[#3D382F] pt-0.5" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>{b.userName}</Text>
+                    <Text className="text-[12px] text-[#FF4B4B] mt-0.5" style={{ fontFamily: 'BanglaRegular' }} numberOfLines={1}>ব্যান করেছেন: {b.bannedBy}</Text>
+                    <Text className="text-[11px] text-[#827B6E] mt-0.5" style={{ fontFamily: 'BanglaRegular' }}>{formatBnDate(new Date(b.bannedAt).getTime())}</Text>
+                  </View>
+                  {(currentUserEmail === 'rumontrader662@gmail.com' || isOwner) && (
+                    <TouchableOpacity activeOpacity={0.8} onPress={() => {
+                      Alert.alert("আনব্যান", "আপনি কি সত্যিই এই মেম্বারকে আনব্যান করতে চান?", [
+                        { text: "না", style: "cancel" },
+                        { text: "হ্যাঁ", onPress: async () => {
+                          setBannedList(prev => prev.filter(x => x.userEmail !== b.userEmail));
+                          try {
+                            const guideId = lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode;
+                            await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                              method: 'POST', headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                              body: JSON.stringify({ action: 'unban_community_member', guideId, userEmail: b.userEmail })
+                            });
+                          } catch(e) {}
+                        }}
+                      ]);
+                    }} className="bg-[#EAF2D7] px-3 py-2 rounded-xl border border-[#8BA85E] flex-shrink-0">
+                      <Text className="text-[#4A632D] text-[13px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>আনব্যান</Text>
+                    </TouchableOpacity>
+                  )}
+                </View>
+              ))}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
       {/* 🚀 Review & Rating Modal */}
       <Modal visible={isReviewModalVisible} transparent animationType="none" onRequestClose={closeReviewModalSmoothly}>
         <View className="flex-1 justify-end">
@@ -3074,7 +4135,7 @@ const handleCreateRevisionPack = () => {
               </View>
               <View className="flex-1">
                 <Text className="text-[14px] text-[#6B655B] leading-5" style={{ fontFamily: 'BanglaRegular' }}>
-                  এই গাইডটি পড়ে অন্যান্য স্টুডেন্টদের কেমন লেগেছে, তা এখান থেকে দেখে নিতে পারো। 
+                  এই কমিউনিটি অন্যান্য স্টুডেন্টদের কেমন লেগেছে, তা এখান থেকে দেখে নিতে পারো। 
                 </Text>
               </View>
             </View>
@@ -3113,10 +4174,18 @@ const handleCreateRevisionPack = () => {
             </ScrollView>
             
      {/* 🚀 ফ্লোটিং অ্যাকশন এরিয়া (নিচে ফিক্সড থাকবে) */}
-            <View className="absolute bottom-0 w-full bg-white px-6 py-4 border-t border-[#EFE8D6]">
+       <View className="absolute bottom-0 w-full bg-white px-6 py-4 border-t border-[#EFE8D6]">
             {!hasUserReviewed ? (
                 !showReviewForm ? (
-                  // 🚀 মতামত দেওয়ার বাটন
+                  // 🚀 মতামত দেওয়ার বাটন
+                  isBanned ? (
+                    <View className="w-full px-4 py-3.5 rounded-[16px] flex-row items-center justify-center bg-[#F5F5F5] border-2 border-[#E5E5E5]">
+                      <FontAwesome5 name="ban" size={14} color="#AFAFAF" />
+                      <Text className="text-[#AFAFAF] text-[15px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>
+                        ব্যানড থাকায় রিভিউ দেওয়া যাবে না।
+                      </Text>
+                    </View>
+                  ) : (
                   <TouchableOpacity 
                     activeOpacity={0.8} 
                     onPress={() => {
@@ -3141,6 +4210,7 @@ const handleCreateRevisionPack = () => {
                       আপনার মতামত দিন
                     </Text>
                   </TouchableOpacity>
+                  )
                 ) : (
                   // 🚀 ফর্ম সেকশন
                   <View>
@@ -3269,6 +4339,15 @@ const handleCreateRevisionPack = () => {
         }}
       />
 
+<Modal visible={isResourceOpening} transparent animationType="fade">
+        <View className="flex-1 bg-black/60 items-center justify-center">
+          <View className="bg-white p-6 rounded-3xl items-center shadow-lg border-2 border-[#EFE8D6]">
+            <ActivityIndicator size="large" color="#FF9600" className="mb-3" />
+            <Text className="text-[#3D382F] text-[15px]" style={{ fontFamily: 'BanglaBold' }}>রিসোর্স লোড হচ্ছে...</Text>
+          </View>
+        </View>
+      </Modal>
+      
    {/* 🚀 Guide Edit Modal for Community Creators */}
       <Modal visible={isGuideEditModalVisible} animationType="slide" transparent={true} onRequestClose={() => setIsGuideEditModalVisible(false)}>
         <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-black/60 justify-end">
@@ -3315,13 +4394,14 @@ const handleCreateRevisionPack = () => {
       </Modal>
 
    {/* 🚀 Discussion Modal */}
-      <Discussion 
+   <Discussion 
         key={activeDiscussionData ? activeDiscussionData.question : 'general_community'}
         visible={discussionVisible} 
         onClose={() => setDiscussionVisible(false)} 
         data={activeDiscussionData} 
         guideName={lessonItem?.notebookName}
-       guideId={lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode || 'default_guide'}
+        guideId={lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode || 'default_guide'}
+        isStaff={isStaff}
       />
 
       {/* 🚀 ১. নতুন সাবজেক্ট তৈরির মডাল (Instant Create) */}
@@ -3358,15 +4438,16 @@ const handleCreateRevisionPack = () => {
               className="bg-[#1899D6] py-3.5 rounded-[16px] items-center shadow-sm" 
               onPress={() => {
                 if(!newSubjectTitle) return Alert.alert("সতর্কতা", "নাম দিন!");
-                const newSubjectData = {
+          const newSubjectData = {
                   id: 'guide_' + Date.now(),
                   shareCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
                   notebookName: newSubjectTitle,
                   thumbnail: tempGuideThumbnail,
                   isPublic: true,
                   creatorEmail: currentUserEmail,
-                  channelId: lessonItem?.channelId,
-                  failedItems: [] 
+                  channelId: currentUserEmail, // 🚀 সবসময় নিজের (Master) অ্যাকাউন্টে সেভ হবে
+                  target: lessonItem?.niche || 'এইচএসসি (HSC)', // 🚀 কমিউনিটির টার্গেট ট্যাগ হিসেবে সেভ হবে!
+                  failedItems: []
                 };
                 setChannelGuides(prev => [newSubjectData, ...prev]);
                 setIsSubjectCreateVisible(false);
@@ -3401,142 +4482,316 @@ const handleCreateRevisionPack = () => {
             {/* Dragger */}
             <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mt-5 mb-4" />
             
-            {/* Header */}
+         
+         {/* Header */}
             <View className="flex-row justify-between items-center px-6 pb-3 border-b border-[#EFE8D6]">
               <Text className="text-[18px] text-[#3D382F] pt-1" style={{ fontFamily: 'BanglaBold' }}>{selectedSubject?.notebookName}</Text>
               <TouchableOpacity onPress={closeSubjectModalSmoothly} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
                 <FontAwesome5 name="times" size={14} color="#6B655B" />
               </TouchableOpacity>
             </View>
+
+          {/* 🚀 Segmented Tab Bar (Duolingo Style - Fix: Button exact shape and swapped order) */}
+            <View className="px-6 py-4 bg-[#FFFDF8]">
+              <View className="flex-row bg-[#EAE4D4] p-1.5 rounded-[20px]">
+                
+                {/* 🚀 Left Tab: Chapter */}
+                <TouchableOpacity 
+                  activeOpacity={0.8} 
+                  onPress={() => handleTabSwitch('chapter')} 
+                  className={`flex-1 items-center justify-center py-2.5 rounded-[16px] border-2 ${subjectActiveTab === 'chapter' ? 'bg-[#1CB0F6] border-[#1899D6] border-b-[4px]' : 'border-transparent'}`}
+                >
+                  <Text className={`text-[14px] pt-1 ${subjectActiveTab === 'chapter' ? 'text-white' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaBold' }}>অধ্যায় ভিত্তিক ব্যাংক</Text>
+                </TouchableOpacity>
+                
+                {/* 🚀 Right Tab: Special */}
+                <TouchableOpacity 
+                  activeOpacity={0.8} 
+                  onPress={() => handleTabSwitch('special')} 
+                  className={`flex-1 items-center justify-center py-2.5 rounded-[16px] border-2 ${subjectActiveTab === 'special' ? 'bg-white border-[#D7D7D7] border-b-[4px]' : 'border-transparent'}`}
+                >
+                  <Text className={`text-[14px] pt-1 ${subjectActiveTab === 'special' ? 'text-[#3D382F]' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaBold' }}>স্পেশাল সাজেশন 🌟</Text>
+                </TouchableOpacity>
+
+              </View>
+            </View>
             
-            <ScrollView className="flex-1 px-6 pt-5" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
-             <View className="flex-row justify-between items-center mb-4">
-               <Text className="text-[16px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>কোশ্চেন ব্যাংক সমূহ</Text>
-               {lessonItem?.creatorEmail === currentUserEmail && (
-                 <TouchableOpacity 
-                   activeOpacity={0.8}
-                   onPress={() => {
-                      AsyncStorage.setItem('@target_subject', JSON.stringify(selectedSubject));
-                      setIsSubjectViewVisible(false);
-                      DeviceEventEmitter.emit('open_create_guide_modal'); 
-                   }} 
-                   className="bg-[#58A700]/10 px-3 py-1.5 rounded-full border border-[#58CC02]/30 flex-row items-center"
-                 >
-                   <FontAwesome5 name="plus" size={12} color="#58A700" />
-                   <Text className="text-[#58A700] text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>অ্যাড কোশ্চেন ব্যাংক</Text>
-                 </TouchableOpacity>
-               )}
-             </View>
-
-   {selectedSubject?.failedItems?.length > 0 && selectedSubject.failedItems[0].isBank ? (
-                selectedSubject.failedItems.map((bank, idx) => (
-                  <View key={idx} className="bg-[#FFFDF8] p-4 rounded-[20px] mb-4 border-2 border-[#EFE8D6] shadow-sm flex-row items-center justify-between mx-1">
-                     <TouchableOpacity activeOpacity={0.8} onPress={() => {
-                        // 🚀 ব্যাংকে ক্লিক করলেই ওই ব্যাংকের রিড টাইমস্ট্যাম্প সেভ হয়ে যাবে (যাতে ব্যাজ গায়েব হয়ে যায়)
-                        const now = Date.now();
-                        const updatedTimestamps = { ...bankReadTimestamps, [bank.bankId]: now };
-                        setBankReadTimestamps(updatedTimestamps);
-                        AsyncStorage.setItem('@bank_read_history', JSON.stringify(updatedTimestamps)).catch(()=>{});
-
-                        const tempGuide = { ...selectedSubject, failedItems: bank.questions };
-                        openBookInReader(tempGuide);
-                     }} className="flex-row items-center flex-1">
-                       <View className="w-11 h-11 bg-[#FFF4E5] rounded-full items-center justify-center mr-3 border border-[#FFDDAA]">
-                         <FontAwesome5 name="folder-open" size={16} color="#D47B00" />
-                       </View>
-                  <View className="flex-1 pr-2">
-                         <Text className="text-[#3D382F] text-[16px]" style={{ fontFamily: 'BanglaBold' }}>{bank.bankName}</Text>
-                         <View className="flex-row items-center mt-0.5">
-                           <Text className="text-[#827B6E] text-[12px]" style={{ fontFamily: 'BanglaRegular' }}>{bank.questions?.length || 0} টি প্রশ্ন</Text>
-                           
-                           {/* 🚀 ফোল্ডার লেভেলে নতুন প্রশ্নের স্মার্ট ব্যাজ */}
-                           {(() => {
-                             const lastRead = bankReadTimestamps[bank.bankId] || 0;
-                             const newQCount = bank.questions?.filter(q => 
-                               q.addedAt && 
-                               (Date.now() - q.addedAt) < (7 * 24 * 60 * 60 * 1000) && 
-                               q.addedAt > lastRead // 🚀 যদি পড়ার সময়ের চেয়ে প্রশ্নটা নতুন হয়, তবেই দেখাবে
-                             ).length || 0;
-
-                             if (newQCount > 0) {
-                               return (
-                                 <View className="ml-2 bg-[#FF4B4B]/10 px-1.5 py-0.5 rounded border border-[#FF4B4B]/30">
-                                   <Text className="text-[9px] text-[#FF4B4B]" style={{ fontFamily: 'BanglaBold' }}>
-                                     {newQCount} টি নতুন 💥
-                                   </Text>
-                                 </View>
-                               );
-                             }
-                             return null;
-                           })()}
-                         </View>
-                       </View>
-                     </TouchableOpacity>
-                     
-                     {/* 🚀 ক্রিয়েটরের জন্য এডিট এবং ডিলিট বাটন, বাকিদের জন্য শুধু অ্যারো আইকন */}
-                     {lessonItem?.creatorEmail === currentUserEmail ? (
-                       <View className="flex-row items-center space-x-2">
-                     {/* 🚀 এডিট বাটন (হিস্ট্রি ট্র্যাকারসহ) */}
-                         <TouchableOpacity activeOpacity={0.7} onPress={() => {
-                            setManagingBank(bank);
-                            setBankHistory([bank.questions || []]); // 🚀 আনডু/রিডু হিস্ট্রি শুরু
-                            setHistoryStep(0);
-                            setIsBankManageModalVisible(true);
-                         }} className="w-9 h-9 rounded-full bg-[#FDF6E3] border border-[#EFE8D6] items-center justify-center">
-                           <FontAwesome5 name="pen" size={12} color="#D47B00" />
-                         </TouchableOpacity>
-
-                         {/* 🚀 ডিলিট বাটন */}
-                         <TouchableOpacity activeOpacity={0.7} onPress={() => {
-                            Alert.alert("ডিলিট করুন", "আপনি কি সত্যিই এই কোশ্চেন ব্যাংকটি ডিলিট করতে চান?", [
-                              { text: "না", style: "cancel" },
-                              { text: "হ্যাঁ, মুছুন", style: "destructive", onPress: async () => {
-                                  // ১. ব্যাংক রিমুভ করে লোকাল স্টেট আপডেট করা
-                                  const updatedFailedItems = selectedSubject.failedItems.filter(b => b.bankId !== bank.bankId);
-                                  const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
-                                  setSelectedSubject(updatedSubject);
-                                  setChannelGuides(prev => prev.map(g => g.id === updatedSubject.id ? updatedSubject : g));
-                                  
-                                  // ২. সার্ভারে আপডেট পাঠানো
-                                  try {
-                                    await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-                                      body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
-                                    });
-                                    DeviceEventEmitter.emit('refresh_library');
-                                  } catch (e) { console.log("Delete Bank Error:", e); }
-                              }}
-                            ]);
-                         }} className="w-9 h-9 rounded-full bg-[#FFF4E5] border border-[#FFDDAA] items-center justify-center ml-1">
-                           <FontAwesome5 name="trash" size={12} color="#FF4B4B" />
-                         </TouchableOpacity>
-                       </View>
-                     ) : (
-                       <View className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
-                         <FontAwesome5 name="chevron-right" size={12} color="#827B6E" />
-                       </View>
-                     )}
+           <ScrollView className="flex-1 px-6 pt-2" contentContainerStyle={{ paddingBottom: 100 }} showsVerticalScrollIndicator={false}>
+              
+              {/* ==============================
+                  🌟 স্পেশাল সাজেশন ট্যাব 
+              ============================== */}
+              {subjectActiveTab === 'special' && (
+                <View>
+                  <View className="flex-row justify-between items-center mb-4">
+                    <Text className="text-[16px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>স্পেশাল সাজেশন 🌟</Text>
+                    
+                   {(isStaff) && (
+                      <TouchableOpacity 
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          const specialSubject = {
+                            ...selectedSubject,
+                            shareCode: `SPECIAL_${lessonItem?.channelId}_${selectedSubject.shareCode}`
+                          };
+                          AsyncStorage.setItem('@target_subject', JSON.stringify(specialSubject));
+                          setIsSubjectViewVisible(false);
+                          DeviceEventEmitter.emit('open_create_guide_modal'); 
+                        }} 
+                        className="bg-[#1899D6]/10 px-3 py-1.5 rounded-full flex-row items-center"
+                      >
+                        <FontAwesome5 name="plus" size={10} color="#1899D6" />
+                        <Text className="text-[#1899D6] text-[12px] ml-1.5 pt-1" style={{ fontFamily: 'BanglaBold' }}>অ্যাড করুন</Text>
+                      </TouchableOpacity>
+                    )}
                   </View>
-                ))
-             ) : (
-                <View className="items-center justify-center py-10 bg-[#FFFDF8] rounded-[20px] border-2 border-[#EFE8D6] border-dashed mx-1">
-                  <FontAwesome5 name="folder-open" size={36} color="#EAE4D4" />
-                  <Text className="text-[#827B6E] text-[15px] mt-4" style={{ fontFamily: 'BanglaBold' }}>এখনো কোনো কোশ্চেন ব্যাংক নেই</Text>
+
+                  {isTabLoading || isLoadingSpecialBanks ? (
+                    <View>
+                      <SpecialCardSkeleton />
+                      <SpecialCardSkeleton />
+                    </View>
+                  ) : (specialBanks[selectedSubject?.shareCode] || []).length > 0 ? (
+                    <View>
+                      {(() => {
+                        const currentSpecialBanks = specialBanks[selectedSubject?.shareCode] || [];
+                        const sortedSpecialBanks = [...currentSpecialBanks].sort((a, b) => {
+                          if (a.isPinned && !b.isPinned) return -1;
+                          if (!a.isPinned && b.isPinned) return 1;
+                          if (a.isPinned && b.isPinned) return (b.pinnedAt || 0) - (a.pinnedAt || 0); // newest first
+                          return 0; // maintain existing order
+                        });
+
+                        return sortedSpecialBanks.map((bank, idx) => (
+                          <View key={`sp_${idx}`} className={`bg-white p-4 rounded-[20px] mb-4 border-2 shadow-sm ${bank.isPinned ? 'border-[#F0D5A3] bg-[#FFF8EB]' : 'border-[#EFE8D6]'}`}>
+                            
+                            {/* Header of Card */}
+                            <View className="flex-row items-center justify-between mb-3">
+                              {bank.isPinned ? (
+                                <View className="bg-[#FF9600]/10 px-2.5 py-1 rounded-md border border-[#FF9600]/30 flex-row items-center">
+                                  <FontAwesome5 name="thumbtack" size={10} color="#D47B00" />
+                                  <Text className="text-[#D47B00] text-[11px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>পিনড</Text>
+                                </View>
+                              ) : <View />}
+
+                              <View className="flex-row items-center space-x-2">
+                                {isStaff && (
+                                  <TouchableOpacity activeOpacity={0.7} onPress={() => handleTogglePinSpecialBank(bank)} className="w-8 h-8 rounded-full bg-[#FDF6E3] border border-[#EFE8D6] items-center justify-center shadow-sm">
+                                    <FontAwesome5 name="thumbtack" size={11} color={bank.isPinned ? "#D47B00" : "#827B6E"} />
+                                  </TouchableOpacity>
+                                )}
+                                {(isStaff) && (
+                                  <>
+                                    <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                                      setManagingBank(bank);
+                                      setBankHistory([bank.questions || []]);
+                                      setHistoryStep(0);
+                                      setIsManagingSpecialBank(true);
+                                      setIsBankManageModalVisible(true);
+                                    }} className="w-8 h-8 rounded-full bg-[#FDF6E3] border border-[#EFE8D6] items-center justify-center shadow-sm">
+                                      <FontAwesome5 name="pen" size={11} color="#D47B00" />
+                                    </TouchableOpacity>
+                                    <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                                      Alert.alert("ডিলিট করুন", "আপনি কি সত্যিই এই স্পেশাল ব্যাংকটি ডিলিট করতে চান?", [
+                                        { text: "না", style: "cancel" },
+                                        { text: "হ্যাঁ, মুছুন", style: "destructive", onPress: async () => {
+                                          const updatedBanks = specialBanks[selectedSubject.shareCode].filter(b => b.bankId !== bank.bankId);
+                                          setSpecialBanks(prev => ({ ...prev, [selectedSubject.shareCode]: updatedBanks }));
+                                          try {
+                                            await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                                              body: JSON.stringify({ action: 'delete_special_bank', guideId: selectedSubject.shareCode, communityId: lessonItem?.channelId, bankId: bank.bankId })
+                                            });
+                                          } catch (e) {}
+                                        }}
+                                      ]);
+                                    }} className="w-8 h-8 rounded-full bg-[#FFF4E5] border border-[#FFDDAA] items-center justify-center shadow-sm">
+                                      <FontAwesome5 name="trash" size={11} color="#FF4B4B" />
+                                    </TouchableOpacity>
+                                  </>
+                                )}
+                              </View>
+                            </View>
+
+                            <Text className="text-[#3D382F] text-[18px] mb-3 leading-[26px]" style={{ fontFamily: 'BanglaBold' }}>{bank.bankName}</Text>
+                            
+                            <View className="flex-row items-center mb-4">
+                              <View className="bg-[#1899D6]/10 px-2.5 py-1 rounded-md border border-[#1899D6]/30">
+                                <Text className="text-[#1899D6] text-[12px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>{bank.questions?.length || 0} টি প্রশ্ন 🎯</Text>
+                              </View>
+                            </View>
+
+                            <TouchableOpacity activeOpacity={0.8} onPress={() => {
+                              const now = Date.now();
+                              const updatedTimestamps = { ...bankReadTimestamps, [bank.bankId]: now };
+                              setBankReadTimestamps(updatedTimestamps);
+                              AsyncStorage.setItem('@bank_read_history', JSON.stringify(updatedTimestamps)).catch(()=>{});
+                              const tempGuide = { ...selectedSubject, failedItems: bank.questions };
+                              openBookInReader(tempGuide);
+                            }} className="w-full bg-[#1073A4] rounded-[16px] pb-[4px]">
+                              <View className="w-full bg-[#1CB0F6] rounded-[16px] py-3.5 flex-row justify-center items-center border-2 border-b-0 border-[#1899D6]">
+                                <FontAwesome5 name="book-reader" size={14} color="#FFFFFF" />
+                                <Text className="text-white text-[15px] ml-2 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>
+                                  পড়া শুরু করো
+                                </Text>
+                              </View>
+                            </TouchableOpacity>
+
+                          </View>
+                        ));
+                      })()}
+                    </View>
+                  ) : (
+                    <View className="items-center justify-center py-10 bg-white rounded-[20px] border-2 border-[#EFE8D6] border-dashed">
+                      <FontAwesome5 name="star" size={36} color="#EAE4D4" solid />
+                      <Text className="text-[#827B6E] text-[15px] mt-4" style={{ fontFamily: 'BanglaBold' }}>এখনো কোনো স্পেশাল সাজেশন নেই</Text>
+                    </View>
+                  )}
                 </View>
-             )}
+              )}
+
+              {/* ==============================
+                  📚 অধ্যায় ভিত্তিক ব্যাংক ট্যাব 
+              ============================== */}
+              {subjectActiveTab === 'chapter' && (
+                <View>
+                  <View className="flex-row justify-between items-center mb-4">
+                    <Text className="text-[16px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>অধ্যায় ভিত্তিক ব্যাংক</Text>
+                    {currentUserEmail === 'rumontrader662@gmail.com' && (
+                      <TouchableOpacity 
+                        activeOpacity={0.8}
+                        onPress={() => {
+                          AsyncStorage.setItem('@target_subject', JSON.stringify(selectedSubject));
+                          setIsSubjectViewVisible(false);
+                          DeviceEventEmitter.emit('open_create_guide_modal'); 
+                        }} 
+                        className="bg-[#58A700]/10 px-3 py-1.5 rounded-full border border-[#58CC02]/30 flex-row items-center"
+                      >
+                        <FontAwesome5 name="plus" size={12} color="#58A700" />
+                        <Text className="text-[#58A700] text-[13px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>অ্যাড কোশ্চেন ব্যাংক</Text>
+                      </TouchableOpacity>
+                    )}
+                  </View>
+
+                  {isTabLoading ? (
+                    <View>
+                      <BankCardSkeleton />
+                      <BankCardSkeleton />
+                      <BankCardSkeleton />
+                    </View>
+                  ) : selectedSubject?.failedItems?.length > 0 && selectedSubject.failedItems[0].isBank ? (
+                    selectedSubject.failedItems.map((bank, idx) => {
+                      const chapterColors = ['#1899D6', '#FF9600', '#58A700', '#A559D6', '#FF4B4B'];
+                      const activeColor = chapterColors[idx % chapterColors.length];
+                      
+                      return (
+                      <View key={idx} className="bg-white p-4 rounded-[20px] mb-4 border-2 border-[#EFE8D6] border-b-[4px] shadow-sm flex-row items-center justify-between">
+                        <TouchableOpacity activeOpacity={0.8} onPress={() => {
+                          const now = Date.now();
+                          const updatedTimestamps = { ...bankReadTimestamps, [bank.bankId]: now };
+                          setBankReadTimestamps(updatedTimestamps);
+                          AsyncStorage.setItem('@bank_read_history', JSON.stringify(updatedTimestamps)).catch(()=>{});
+                          const tempGuide = { ...selectedSubject, failedItems: bank.questions };
+                          openBookInReader(tempGuide);
+                        }} className="flex-row items-center flex-1">
+                          
+                          <View className="w-12 h-12 rounded-full items-center justify-center mr-4" style={{ backgroundColor: `${activeColor}15`, borderColor: `${activeColor}30`, borderWidth: 1 }}>
+                            <Text className="text-[16px] pt-1" style={{ color: activeColor, fontFamily: 'BanglaBold' }}>{toEnglishNumber(idx + 1)}</Text>
+                          </View>
+
+                          <View className="flex-1 pr-2">
+                            <Text className="text-[#3D382F] text-[16px] leading-[24px]" style={{ fontFamily: 'BanglaBold' }}>{bank.bankName}</Text>
+                            <View className="flex-row items-center mt-1.5">
+                              <Text className="text-[#827B6E] text-[12px]" style={{ fontFamily: 'BanglaRegular' }}>{bank.questions?.length || 0} টি প্রশ্ন</Text>
+                              
+                              {(() => {
+                                const lastRead = bankReadTimestamps[bank.bankId] || 0;
+                                const newQCount = bank.questions?.filter(q => 
+                                  q.addedAt && 
+                                  (Date.now() - q.addedAt) < (7 * 24 * 60 * 60 * 1000) && 
+                                  q.addedAt > lastRead
+                                ).length || 0;
+
+                                if (newQCount > 0) {
+                                  return (
+                                    <View className="ml-2 bg-[#FF4B4B]/10 px-1.5 py-0.5 rounded border border-[#FF4B4B]/30">
+                                      <Text className="text-[9px] text-[#FF4B4B]" style={{ fontFamily: 'BanglaBold' }}>
+                                        {newQCount} টি নতুন 💥
+                                      </Text>
+                                    </View>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </View>
+                          </View>
+                        </TouchableOpacity>
+                        
+                     {currentUserEmail === 'rumontrader662@gmail.com' ? (
+                          <View className="flex-row items-center space-x-2">
+                            <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                              setManagingBank(bank);
+                              setBankHistory([bank.questions || []]);
+                              setHistoryStep(0);
+                              setIsManagingSpecialBank(false); // 🚀 normal bank edit
+                              setIsBankManageModalVisible(true);
+                            }} className="w-8 h-8 rounded-full bg-[#FDF6E3] border border-[#EFE8D6] items-center justify-center">
+                              <FontAwesome5 name="pen" size={11} color="#D47B00" />
+                            </TouchableOpacity>
+
+                            <TouchableOpacity activeOpacity={0.7} onPress={() => {
+                              Alert.alert("ডিলিট করুন", "আপনি কি সত্যিই এই কোশ্চেন ব্যাংকটি ডিলিট করতে চান?", [
+                                { text: "না", style: "cancel" },
+                                { text: "হ্যাঁ, মুছুন", style: "destructive", onPress: async () => {
+                                    const updatedFailedItems = selectedSubject.failedItems.filter(b => b.bankId !== bank.bankId);
+                                    const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
+                                    setSelectedSubject(updatedSubject);
+                                    setChannelGuides(prev => prev.map(g => g.id === updatedSubject.id ? updatedSubject : g));
+                                    
+                                    try {
+                                      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                                        body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
+                                      });
+                                      DeviceEventEmitter.emit('refresh_library');
+                                    } catch (e) {}
+                                }}
+                              ]);
+                            }} className="w-8 h-8 rounded-full bg-[#FFF4E5] border border-[#FFDDAA] items-center justify-center ml-1">
+                              <FontAwesome5 name="trash" size={11} color="#FF4B4B" />
+                            </TouchableOpacity>
+                          </View>
+                        ) : (
+                          <View className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center ml-2">
+                            <FontAwesome5 name="chevron-right" size={12} color="#827B6E" />
+                          </View>
+                        )}
+                      </View>
+                    )})
+                  ) : (
+                    <View className="items-center justify-center py-10 bg-white rounded-[20px] border-2 border-[#EFE8D6] border-dashed">
+                      <FontAwesome5 name="folder-open" size={36} color="#EAE4D4" />
+                      <Text className="text-[#827B6E] text-[15px] mt-4" style={{ fontFamily: 'BanglaBold' }}>এখনো কোনো কোশ্চেন ব্যাংক নেই</Text>
+                    </View>
+                  )}
+                </View>
+              )}
             </ScrollView>
           </Animated.View>
         </View>
       </Modal>
 
-     {/* 🚀 ৩. কোশ্চেন ব্যাংক ম্যানেজমেন্ট মডাল (Smart Bulk Management) */}
+ {/* 🚀 ৩. কোশ্চেন ব্যাংক ম্যানেজমেন্ট মডাল (Smart Bulk Management) */}
+
     <Modal 
         visible={isBankManageModalVisible} 
         animationType="slide" 
         transparent={true} 
         onRequestClose={() => {
           setIsBankManageModalVisible(false);
+          setIsManagingSpecialBank(false); // 🚀 Fix 3: Reset on close
           setIsBankSelectionMode(false);
           setSelectedBankQuestions({});
           setBankSearchQuery('');
@@ -3598,21 +4853,38 @@ const handleCreateRevisionPack = () => {
             const uniqueTopics = ['সব', ...new Set(allQuestions.map(q => q.topic).filter(Boolean))];
             const uniqueTypes = ['সব', ...new Set(allQuestions.map(q => q.type).filter(Boolean))]; // 🚀 টাইপ লিস্ট
             
-            // 🚀 ২. আনডু/রিডু লজিক (আপডেট মেকানিজম)
+       // 🚀 ২. আনডু/রিডু লজিক (আপডেট মেকানিজম)
             const updateBankWithQuestions = async (questions) => {
               const updatedBank = { ...managingBank, questions };
               setManagingBank(updatedBank);
-              const updatedFailedItems = selectedSubject.failedItems.map(b => b.bankId === managingBank.bankId ? updatedBank : b);
-              const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
-              setSelectedSubject(updatedSubject);
-              setChannelGuides(prev => prev.map(g => g.shareCode === updatedSubject.shareCode ? updatedSubject : g));
-              try {
-                await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-                  body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
-                });
-              } catch (e) {}
+
+              // 🚀 যদি এটা স্পেশাল ব্যাংক হয়, তবে ফেক শেয়ারকোড দিয়ে API তে পুশ করবো
+              if (isManagingSpecialBank) {
+                const currentBanks = specialBanks[selectedSubject.shareCode] || [];
+                const updatedBanks = currentBanks.map(b => b.bankId === managingBank.bankId ? updatedBank : b);
+                setSpecialBanks(prev => ({ ...prev, [selectedSubject.shareCode]: updatedBanks }));
+                
+                const fakeSubject = { ...selectedSubject, failedItems: updatedBanks, shareCode: `SPECIAL_${lessonItem?.channelId}_${selectedSubject.shareCode}` };
+                try {
+                  await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                    body: JSON.stringify({ action: 'save_guide', guideData: fakeSubject })
+                  });
+                } catch (e) {}
+              } else {
+                const updatedFailedItems = selectedSubject.failedItems.map(b => b.bankId === managingBank.bankId ? updatedBank : b);
+                const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
+                setSelectedSubject(updatedSubject);
+                setChannelGuides(prev => prev.map(g => g.shareCode === updatedSubject.shareCode ? updatedSubject : g));
+                try {
+                  await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                    body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
+                  });
+                } catch (e) {}
+              }
             };
 
             const handleUndo = () => {
@@ -3674,7 +4946,7 @@ const handleCreateRevisionPack = () => {
               }
             };
 
-         const handleBulkDelete = () => {
+       const handleBulkDelete = () => {
               Alert.alert("বাল্ক ডিলিট", `আপনি কি সত্যিই সিলেক্ট করা ${selectedCount} টি প্রশ্ন ডিলিট করতে চান?`, [
                 { text: "না", style: "cancel" },
                 { text: "হ্যাঁ, মুছুন", style: "destructive", onPress: async () => {
@@ -3686,26 +4958,11 @@ const handleCreateRevisionPack = () => {
                     setBankHistory(newHistory);
                     setHistoryStep(newHistory.length - 1);
 
-                    // Optimistic UI Update: জিরো ল্যাগ এক্সপেরিয়েন্সের জন্য সাথে সাথে স্ক্রিন থেকে মুছে ফেলা
-                    const updatedBank = { ...managingBank, questions: updatedQuestions };
-                    setManagingBank(updatedBank);
-
-                    const updatedFailedItems = selectedSubject.failedItems.map(b => b.bankId === managingBank.bankId ? updatedBank : b);
-                    const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
-                    setSelectedSubject(updatedSubject);
-                    setChannelGuides(prev => prev.map(g => g.shareCode === updatedSubject.shareCode ? updatedSubject : g));
+                    // 🚀 Fix 3: Use updateBankWithQuestions to properly handle both normal and special banks
+                    await updateBankWithQuestions(updatedQuestions);
                     
                     setIsBankSelectionMode(false);
                     setSelectedBankQuestions({});
-
-                    // ব্যাকগ্রাউন্ডে সার্ভার সিঙ্ক[cite: 2]
-                    try {
-                      await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-                        body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
-                      });
-                    } catch (e) { console.log(e); }
                 }}
               ]);
             };
@@ -3715,8 +4972,9 @@ const handleCreateRevisionPack = () => {
                 {/* 🚀 টপ বার, সার্চ এবং ফিল্টার চিপস */}
                 <View style={{ paddingTop: Math.max(insets.top, 15) }} className="px-5 pb-3 bg-[#FFFDF8] border-b border-[#EFE8D6]">
                   <View className="flex-row items-center justify-between mb-3">
-                <TouchableOpacity onPress={() => {
+             <TouchableOpacity onPress={() => {
                       setIsBankManageModalVisible(false);
+                      setIsManagingSpecialBank(false); // 🚀 Fix 3: Reset on close
                       setIsBankSelectionMode(false);
                       setSelectedBankQuestions({});
                       setBankSearchQuery('');
@@ -3727,30 +4985,48 @@ const handleCreateRevisionPack = () => {
                     </TouchableOpacity>
                     
                     {/* 🚀 ফিক্স: কোশ্চেন ব্যাংকের নাম সরাসরি এডিট করার অপশন */}
-                    <TextInput 
+                   <TextInput 
                       className="text-[18px] text-[#3D382F] pt-1 flex-1 text-center px-3 border-b-2 border-[#D7D7D7] mx-2 pb-1" 
                       style={{ fontFamily: 'BanglaBold' }} 
                       value={managingBank?.bankName}
                       onChangeText={(text) => setManagingBank(prev => ({...prev, bankName: text}))}
                       onEndEditing={async () => {
                         if (!managingBank?.bankName?.trim()) return;
-                        const updatedFailedItems = selectedSubject.failedItems.map(b => b.bankId === managingBank.bankId ? managingBank : b);
-                        const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
-                        setSelectedSubject(updatedSubject);
-                        setChannelGuides(prev => prev.map(g => g.shareCode === updatedSubject.shareCode ? updatedSubject : g));
-                        try {
-                          await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-                            body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
-                          });
-                        } catch (e) {}
+                        
+                        if (isManagingSpecialBank) {
+                          const currentBanks = specialBanks[selectedSubject.shareCode] || [];
+                          const updatedBanks = currentBanks.map(b => b.bankId === managingBank.bankId ? managingBank : b);
+                          setSpecialBanks(prev => ({ ...prev, [selectedSubject.shareCode]: updatedBanks }));
+                          const fakeSubject = { ...selectedSubject, failedItems: updatedBanks, shareCode: `SPECIAL_${lessonItem?.channelId}_${selectedSubject.shareCode}` };
+                          try {
+                            await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                              body: JSON.stringify({ action: 'save_guide', guideData: fakeSubject })
+                            });
+                          } catch (e) {}
+                        } else {
+                          const updatedFailedItems = selectedSubject.failedItems.map(b => b.bankId === managingBank.bankId ? managingBank : b);
+                          const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
+                          setSelectedSubject(updatedSubject);
+                          setChannelGuides(prev => prev.map(g => g.shareCode === updatedSubject.shareCode ? updatedSubject : g));
+                          try {
+                            await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                              method: 'POST',
+                              headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                              body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
+                            });
+                          } catch (e) {}
+                        }
                       }}
                     />
                     
                     {/* 🚀 প্লাস আইকন (নতুন প্রশ্ন অ্যাড করার জন্য) */}
                     <TouchableOpacity activeOpacity={0.8} onPress={async () => {
-                        await AsyncStorage.setItem('@target_subject', JSON.stringify(selectedSubject));
+                        const targetSubj = isManagingSpecialBank 
+                          ? { ...selectedSubject, shareCode: `SPECIAL_${lessonItem?.channelId}_${selectedSubject.shareCode}` } 
+                          : selectedSubject;
+                        await AsyncStorage.setItem('@target_subject', JSON.stringify(targetSubj));
                         await AsyncStorage.setItem('@target_bank_to_update', JSON.stringify(managingBank));
                         setIsBankManageModalVisible(false);
                         setIsSubjectViewVisible(false);
@@ -3974,7 +5250,7 @@ const handleCreateRevisionPack = () => {
                           )}
                         </View>
                         
-                        {/* 🚀 সিঙ্গেল ডিলিট বাটন (যদি সিলেক্ট মোড অফ থাকে)[cite: 1, 2] */}
+                   {/* 🚀 সিঙ্গেল ডিলিট বাটন (যদি সিলেক্ট মোড অফ থাকে)[cite: 1] */}
                       {!isBankSelectionMode && (
                           <TouchableOpacity activeOpacity={0.7} onPress={() => {
                             Alert.alert("মুছে ফেলুন", "এই প্রশ্নটি কি মুছে ফেলতে চান?", [
@@ -3988,21 +5264,8 @@ const handleCreateRevisionPack = () => {
                                   setBankHistory(newHistory);
                                   setHistoryStep(newHistory.length - 1);
 
-                                  const updatedBank = { ...managingBank, questions: updatedQuestions };
-                                  setManagingBank(updatedBank);
-
-                                  const updatedFailedItems = selectedSubject.failedItems.map(b => b.bankId === managingBank.bankId ? updatedBank : b);
-                                  const updatedSubject = { ...selectedSubject, failedItems: updatedFailedItems };
-                                  setSelectedSubject(updatedSubject);
-                                  setChannelGuides(prev => prev.map(g => g.shareCode === updatedSubject.shareCode ? updatedSubject : g));
-                                  
-                                  try {
-                                    await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-                                      method: 'POST',
-                                      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-                                      body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
-                                    });
-                                  } catch (e) { console.log(e); }
+                                  // 🚀 Fix 3: Use updateBankWithQuestions to properly handle both normal and special banks
+                                  await updateBankWithQuestions(updatedQuestions);
                               }}
                             ]);
                           }} className="w-8 h-8 rounded-full bg-[#FFF4E5] border border-[#FFDDAA] items-center justify-center">
@@ -4067,13 +5330,23 @@ const handleCreateRevisionPack = () => {
                 </View>
               </TouchableOpacity>
 
-              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>কুইজের নাম</Text>
+         <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>কুইজের নাম</Text>
               <TextInput
                 className="bg-white p-4 rounded-[16px] text-[16px] text-[#3D382F] mb-5 border border-[#EFE8D6]"
                 style={{ fontFamily: 'BanglaBold' }}
                 placeholder="যেমন: Weekly Model Test 1"
                 value={quizTitle}
                 onChangeText={setQuizTitle}
+              />
+
+              <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>কতক্ষণ লাইভ থাকবে? (মিনিটে)</Text>
+              <TextInput
+                className="bg-white p-4 rounded-[16px] text-[16px] text-[#3D382F] mb-5 border border-[#EFE8D6]"
+                style={{ fontFamily: 'BanglaBold' }}
+                placeholder="যেমন: 60"
+                keyboardType="numeric"
+                value={quizLiveDuration}
+                onChangeText={setQuizLiveDuration}
               />
 
            <View className="flex-row space-x-3 mb-5">
@@ -4197,12 +5470,12 @@ const handleCreateRevisionPack = () => {
                     </View>
                   </View>
                 ) : (
-                  <>
-                    <Text className="text-[#AFAFAF] text-[12px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>AI এর রেসপন্স (JSON) পেস্ট করুন:</Text>
+              <>
+                    <Text className="text-[#AFAFAF] text-[12px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>AI এর রেসপন্স পেস্ট করুন:</Text>
                     <TextInput
                       className="bg-white p-3 rounded-xl text-[13px] text-[#3D382F] min-h-[100px] border border-[#EFE8D6] mb-3"
                       style={{ fontFamily: 'BanglaRegular', textAlignVertical: 'top' }}
-                      placeholder="[ { question: '...', options: [...] } ]"
+                      placeholder="AI-র দেওয়া প্রশ্নগুলো এখানে পেস্ট করুন..."
                       multiline
                       value={quizJsonInput}
                       onChangeText={setQuizJsonInput}
@@ -4228,7 +5501,7 @@ const handleCreateRevisionPack = () => {
               onPress={async () => {
                 if (!quizTitle) return Alert.alert("সতর্কতা", "কুইজের নাম দিন!");
 
-             const quizDataObj = {
+       const quizDataObj = {
                   _id: editingQuizId || 'quiz_' + Date.now(),
                   id: editingQuizId || 'quiz_' + Date.now(),
                   title: quizTitle,
@@ -4236,9 +5509,11 @@ const handleCreateRevisionPack = () => {
                   dateText: quizTimestamp ? formatBnDate(quizTimestamp) : 'শীঘ্রই',
                   timeText: quizTimestamp ? formatBnTime(quizTimestamp) : '--:--',
                   targetTimestamp: quizTimestamp || null,
-                  isReady: tempGeneratedQuestions.length > 0, // 🚀 প্রশ্ন থাকলেই কুইজ রেডি
+                  target: lessonItem?.niche || 'এইচএসসি (HSC)', // 🚀 কুইজে কমিউনিটির টার্গেট ট্যাগ যুক্ত করা হলো!
+                  liveDuration: Number(quizLiveDuration) || 60, // 🚀 কাস্টম লাইভ ডিউরেশন
+                  isReady: tempGeneratedQuestions.length > 0, 
                   resources: quizSelectedRules,
-                  questions: tempGeneratedQuestions // 🚀 সরাসরি স্টেট থেকে সেভ হবে
+                  questions: tempGeneratedQuestions 
                 };
 
                 // 🚀 এডিট নাকি নতুন কুইজ সেটা চেক করে স্টেটে আপডেট করা
@@ -4258,13 +5533,13 @@ const handleCreateRevisionPack = () => {
                 setquizSelectedRules([]);
                 setEditingQuizId(null); // 🚀 আইডি ক্লিয়ার করা হলো
 
-                try {
+        try {
                   await fetch('https://growshelby-api.vercel.app/api/update_coins', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
                     body: JSON.stringify({ 
                       action: editingQuizId ? 'update_quiz' : 'create_quiz', 
-                      channelId: lessonItem?.channelId || currentUserEmail,
+                      channelId: currentUserEmail, // 🚀 সবসময় নিজের (Master) অ্যাকাউন্টে সেভ হবে
                       quizId: editingQuizId, // 🚀 আপডেটের জন্য আইডি পাস করা
                       quizData: quizDataObj 
                     })
@@ -4281,10 +5556,10 @@ const handleCreateRevisionPack = () => {
         </KeyboardAvoidingView>
       </Modal>
 
-      {/* 🚀 ৫. Smart Resource Picker (Accordion Style) */}
+{/* 🚀 ৫. Smart Resource Picker (Accordion Style) */}
       <Modal visible={isResourcePickerVisible} animationType="fade" transparent={true} onRequestClose={() => setIsResourcePickerVisible(false)}>
         <View className="flex-1 bg-black/60 justify-end">
-          <View className="bg-[#FFFDF8] rounded-t-[32px] p-5 pt-3 w-full h-[80%] shadow-lg border-t-4 border-[#EFE8D6]">
+          <View className="bg-[#FFFDF8] rounded-t-[32px] p-5 pt-3 w-full h-[85%] shadow-lg border-t-4 border-[#EFE8D6] flex flex-col">
             <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mb-5" />
             <View className="flex-row justify-between items-center mb-4 pb-3 border-b border-[#EFE8D6]">
               <Text className="text-[17px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>সিলেবাস ও ফিল্টার</Text>
@@ -4293,140 +5568,296 @@ const handleCreateRevisionPack = () => {
               </TouchableOpacity>
             </View>
 
-            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }}>
-              {channelGuides.length > 0 ? (
-                channelGuides.map((guide, idx) => {
-                  // ডাইনামিক্যালি টাইপ এবং টপিক বের করা হচ্ছে
-                  let uniqueTypes = new Set();
-                  let uniqueTopics = new Set();
-                  if (guide.failedItems) {
-                    guide.failedItems.forEach(bank => {
-                      if (bank.questions) {
-                        bank.questions.forEach(q => {
-                          if (q.type) uniqueTypes.add(q.type);
-                          if (q.topic) uniqueTopics.add(q.topic);
-                        });
-                      }
+            {/* Segmented Tab Switcher */}
+            <View className="mb-4">
+              <View className="flex-row bg-[#EAE4D4] p-1.5 rounded-[20px]">
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setResourcePickerTab('main'); }}
+                  className={`flex-1 items-center justify-center py-2.5 rounded-[16px] border-2 ${resourcePickerTab === 'main' ? 'bg-[#1CB0F6] border-[#1899D6] border-b-[4px]' : 'border-transparent'}`}
+                >
+                  <Text className={`text-[14px] pt-1 ${resourcePickerTab === 'main' ? 'text-white' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaBold' }}>মেইন প্যাক</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  activeOpacity={0.8}
+                  onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setResourcePickerTab('special'); }}
+                  className={`flex-1 items-center justify-center py-2.5 rounded-[16px] border-2 ${resourcePickerTab === 'special' ? 'bg-white border-[#D7D7D7] border-b-[4px]' : 'border-transparent'}`}
+                >
+                  <Text className={`text-[14px] pt-1 ${resourcePickerTab === 'special' ? 'text-[#3D382F]' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaBold' }}>CA স্পেশাল 🌟</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            {(() => {
+              // 🚀 Inline Special Toggles
+              const toggleSpecialRuleArray = (group, bank, arrayName, value) => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setquizSelectedRules(prev => {
+                  let newRules = [...prev];
+                  const ruleId = `special_${group.communityId}_${bank.bankId}`;
+                  let ruleIdx = newRules.findIndex(r => r.guideId === ruleId);
+                  if (ruleIdx === -1) {
+                    newRules.push({
+                      sourceType: 'special', guideId: ruleId, guideShareCode: group.guideId, communityId: group.communityId,
+                      bankId: bank.bankId, bankName: bank.bankName, communityName: group.communityName,
+                      allowedTypes: arrayName === 'types' ? [value] : [], allowedTopics: arrayName === 'topics' ? [value] : []
                     });
+                  } else {
+                    let targetArray = [...newRules[ruleIdx][arrayName === 'types' ? 'allowedTypes' : 'allowedTopics']];
+                    if (targetArray.includes(value)) targetArray = targetArray.filter(v => v !== value);
+                    else targetArray.push(value);
+                    newRules[ruleIdx] = { ...newRules[ruleIdx], [arrayName === 'types' ? 'allowedTypes' : 'allowedTopics']: targetArray };
                   }
-                  
-                  const typesArr = Array.from(uniqueTypes);
-                  const topicsArr = Array.from(uniqueTopics);
-                  
-                  const isExpanded = expandedResourceGuide === guide.id;
-                  
-                  // এই গাইডের জন্য কোনো রুল সেভ আছে কিনা চেক করা
-                  let currentRule = quizSelectedRules.find(r => r.guideId === guide.id);
-                  const isSelected = !!currentRule;
-                  
-                  // রুলস টগল করার হেল্পার ফাংশন
-                  const toggleRuleArray = (arrayName, value) => {
-                    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                    setquizSelectedRules(prev => {
-                      let newRules = [...prev];
-                      let ruleIdx = newRules.findIndex(r => r.guideId === guide.id);
-                      
-                      if (ruleIdx === -1) {
-                        // নতুন রুল অ্যাড করা
-                        newRules.push({ guideId: guide.id, allowedTypes: arrayName === 'types' ? [value] : [], allowedTopics: arrayName === 'topics' ? [value] : [] });
-                      } else {
-                        // এক্সিস্টিং রুল আপডেট করা
-                        let targetArray = [...newRules[ruleIdx][arrayName === 'types' ? 'allowedTypes' : 'allowedTopics']];
-                        if (targetArray.includes(value)) {
-                          targetArray = targetArray.filter(v => v !== value);
-                        } else {
-                          targetArray.push(value);
+                  return newRules;
+                });
+              };
+
+              const toggleSpecialBank = (group, bank) => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setquizSelectedRules(prev => {
+                  const ruleId = `special_${group.communityId}_${bank.bankId}`;
+                  if (prev.some(r => r.guideId === ruleId)) {
+                    return prev.filter(r => r.guideId !== ruleId);
+                  } else {
+                    return [...prev, {
+                      sourceType: 'special', guideId: ruleId, guideShareCode: group.guideId, communityId: group.communityId,
+                      bankId: bank.bankId, bankName: bank.bankName, communityName: group.communityName, allowedTypes: [], allowedTopics: []
+                    }];
+                  }
+                });
+              };
+
+              return (
+                <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 20 }} className="flex-1">
+                  {resourcePickerTab === 'main' ? (
+                    channelGuides.length > 0 ? (
+                      channelGuides.map((guide, idx) => {
+                        let uniqueTypes = new Set();
+                        let uniqueTopics = new Set();
+                        if (guide.failedItems) {
+                          guide.failedItems.forEach(bank => {
+                            if (bank.questions) {
+                              bank.questions.forEach(q => {
+                                if (q.type) uniqueTypes.add(q.type);
+                                if (q.topic) uniqueTopics.add(q.topic);
+                              });
+                            }
+                          });
                         }
-                        newRules[ruleIdx] = { ...newRules[ruleIdx], [arrayName === 'types' ? 'allowedTypes' : 'allowedTopics']: targetArray };
+                        const typesArr = Array.from(uniqueTypes);
+                        const topicsArr = Array.from(uniqueTopics);
+                        const isExpanded = expandedResourceGuide === guide.id;
+                        let currentRule = quizSelectedRules.find(r => r.guideId === guide.id);
+                        const isSelected = !!currentRule;
                         
-                        // যদি দুটো অ্যারে-ই ফাঁকা হয়ে যায়, তার মানে সে পুরো প্যাকটাই রিমুভ করতে চাচ্ছে (বা সব সিলেক্ট করেছে)
-                        if (newRules[ruleIdx].allowedTypes.length === 0 && newRules[ruleIdx].allowedTopics.length === 0) {
-                           newRules.splice(ruleIdx, 1);
-                        }
-                      }
-                      return newRules;
-                    });
-                  };
-
-                  return (
-                    <View key={idx} className={`mb-3 rounded-[20px] border overflow-hidden ${isSelected ? 'border-[#8BA85E]' : 'border-[#EFE8D6]'}`}>
-                      <TouchableOpacity 
-                        activeOpacity={0.8}
-                        onPress={() => {
+                        const toggleRuleArray = (arrayName, value) => {
                           LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-                          setExpandedResourceGuide(isExpanded ? null : guide.id);
-                        }}
-                        className={`flex-row items-center p-4 ${isSelected ? 'bg-[#EAF2D7]' : 'bg-white'}`}
-                      >
-                        <View className="flex-1">
-                          <Text className={`text-[16px] ${isSelected ? 'text-[#4A632D]' : 'text-[#3D382F]'}`} style={{ fontFamily: 'BanglaBold' }}>{guide.notebookName}</Text>
-                          <Text className={`text-[12px] mt-0.5 ${isSelected ? 'text-[#6B8544]' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaRegular' }}>ট্যাপ করে নির্দিষ্ট টপিক ফিল্টার করুন</Text>
-                        </View>
-                        <FontAwesome5 name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color={isSelected ? "#58A700" : "#AFAFAF"} />
-                      </TouchableOpacity>
+                          setquizSelectedRules(prev => {
+                            let newRules = [...prev];
+                            let ruleIdx = newRules.findIndex(r => r.guideId === guide.id);
+                            if (ruleIdx === -1) {
+                              newRules.push({ guideId: guide.id, allowedTypes: arrayName === 'types' ? [value] : [], allowedTopics: arrayName === 'topics' ? [value] : [] });
+                            } else {
+                              let targetArray = [...newRules[ruleIdx][arrayName === 'types' ? 'allowedTypes' : 'allowedTopics']];
+                              if (targetArray.includes(value)) targetArray = targetArray.filter(v => v !== value);
+                              else targetArray.push(value);
+                              newRules[ruleIdx] = { ...newRules[ruleIdx], [arrayName === 'types' ? 'allowedTypes' : 'allowedTopics']: targetArray };
+                              
+                              if (newRules[ruleIdx].allowedTypes.length === 0 && newRules[ruleIdx].allowedTopics.length === 0) {
+                                 newRules.splice(ruleIdx, 1);
+                              }
+                            }
+                            return newRules;
+                          });
+                        };
 
-                      {/* 🚀 Accordion Expanded View (Duolingo Style Chunky Chips) */}
-                      {isExpanded && (
-                        <View className="bg-[#FFFDF8] p-4 border-t border-[#EFE8D6]">
-                          
-                          {typesArr.length > 0 && (
-                            <>
-                              <Text className="text-[#AFAFAF] text-[12px] mb-2" style={{ fontFamily: 'BanglaBold' }}>প্রশ্নের ধরন:</Text>
-                              <View className="flex-row flex-wrap mb-4">
-                                {typesArr.map(type => {
-                                  const isActive = currentRule?.allowedTypes.includes(type);
-                                  return (
-                                    <TouchableOpacity 
-                                      key={type}
-                                      activeOpacity={0.7}
-                                      onPress={() => toggleRuleArray('types', type)}
-                                      className={`mr-2 mb-2 px-4 py-2 rounded-full border-2 ${isActive ? 'bg-[#1899D6] border-[#1073A4]' : 'bg-white border-[#EFE8D6]'}`}
-                                    >
-                                      <Text className={`text-[13px] pt-0.5 ${isActive ? 'text-white' : 'text-[#6B655B]'}`} style={{ fontFamily: 'BanglaBold' }}>{type}</Text>
-                                    </TouchableOpacity>
-                                  );
-                                })}
+                        return (
+                          <View key={idx} className={`mb-3 rounded-[20px] border overflow-hidden ${isSelected ? 'border-[#8BA85E]' : 'border-[#EFE8D6]'}`}>
+                            <TouchableOpacity 
+                              activeOpacity={0.8}
+                              onPress={() => { LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut); setExpandedResourceGuide(isExpanded ? null : guide.id); }}
+                              className={`flex-row items-center p-4 ${isSelected ? 'bg-[#EAF2D7]' : 'bg-white'}`}
+                            >
+                              <View className="flex-1">
+                                <Text className={`text-[16px] ${isSelected ? 'text-[#4A632D]' : 'text-[#3D382F]'}`} style={{ fontFamily: 'BanglaBold' }}>{guide.notebookName}</Text>
+                                <Text className={`text-[12px] mt-0.5 ${isSelected ? 'text-[#6B8544]' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaRegular' }}>ট্যাপ করে নির্দিষ্ট টপিক ফিল্টার করুন</Text>
                               </View>
-                            </>
-                          )}
-
-                          {topicsArr.length > 0 && (
-                            <>
-                              <Text className="text-[#AFAFAF] text-[12px] mb-2" style={{ fontFamily: 'BanglaBold' }}>অধ্যায় / টপিক:</Text>
-                              <View className="flex-row flex-wrap">
-                                {topicsArr.map(topic => {
-                                  const isActive = currentRule?.allowedTopics.includes(topic);
-                                  return (
-                                    <TouchableOpacity 
-                                      key={topic}
-                                      activeOpacity={0.7}
-                                      onPress={() => toggleRuleArray('topics', topic)}
-                                      className={`mr-2 mb-2 px-4 py-2 rounded-full border-2 ${isActive ? 'bg-[#FF9600] border-[#D47B00]' : 'bg-white border-[#EFE8D6]'}`}
-                                    >
-                                      <Text className={`text-[13px] pt-0.5 ${isActive ? 'text-white' : 'text-[#6B655B]'}`} style={{ fontFamily: 'BanglaBold' }}>{topic}</Text>
-                                    </TouchableOpacity>
-                                  );
-                                })}
+                              <FontAwesome5 name={isExpanded ? "chevron-up" : "chevron-down"} size={14} color={isSelected ? "#58A700" : "#AFAFAF"} />
+                            </TouchableOpacity>
+                            {isExpanded && (
+                              <View className="bg-[#FFFDF8] p-4 border-t border-[#EFE8D6]">
+                                {typesArr.length > 0 && (
+                                  <>
+                                    <Text className="text-[#AFAFAF] text-[12px] mb-2" style={{ fontFamily: 'BanglaBold' }}>প্রশ্নের ধরন:</Text>
+                                    <View className="flex-row flex-wrap mb-4">
+                                      {typesArr.map(type => {
+                                        const isActive = currentRule?.allowedTypes.includes(type);
+                                        return (
+                                          <TouchableOpacity 
+                                            key={type} activeOpacity={0.7} onPress={() => toggleRuleArray('types', type)}
+                                            className={`mr-2 mb-2 px-4 py-2 rounded-full border-2 ${isActive ? 'bg-[#1899D6] border-[#1073A4]' : 'bg-white border-[#EFE8D6]'}`}
+                                          >
+                                            <Text className={`text-[13px] pt-0.5 ${isActive ? 'text-white' : 'text-[#6B655B]'}`} style={{ fontFamily: 'BanglaBold' }}>{type}</Text>
+                                          </TouchableOpacity>
+                                        );
+                                      })}
+                                    </View>
+                                  </>
+                                )}
+                                {topicsArr.length > 0 && (
+                                  <>
+                                    <Text className="text-[#AFAFAF] text-[12px] mb-2" style={{ fontFamily: 'BanglaBold' }}>অধ্যায় / টপিক:</Text>
+                                    <View className="flex-row flex-wrap">
+                                      {topicsArr.map(topic => {
+                                        const isActive = currentRule?.allowedTopics.includes(topic);
+                                        return (
+                                          <TouchableOpacity 
+                                            key={topic} activeOpacity={0.7} onPress={() => toggleRuleArray('topics', topic)}
+                                            className={`mr-2 mb-2 px-4 py-2 rounded-full border-2 ${isActive ? 'bg-[#FF9600] border-[#D47B00]' : 'bg-white border-[#EFE8D6]'}`}
+                                          >
+                                            <Text className={`text-[13px] pt-0.5 ${isActive ? 'text-white' : 'text-[#6B655B]'}`} style={{ fontFamily: 'BanglaBold' }}>{topic}</Text>
+                                          </TouchableOpacity>
+                                        );
+                                      })}
+                                    </View>
+                                  </>
+                                )}
+                                {(typesArr.length === 0 && topicsArr.length === 0) && (
+                                  <Text className="text-[#AFAFAF] text-[13px]" style={{ fontFamily: 'BanglaRegular' }}>এই প্যাকে ফিল্টার করার মতো কোনো টপিক নেই।</Text>
+                                )}
                               </View>
-                            </>
-                          )}
-                          
-                          {(typesArr.length === 0 && topicsArr.length === 0) && (
-                            <Text className="text-[#AFAFAF] text-[13px]" style={{ fontFamily: 'BanglaRegular' }}>এই প্যাকে ফিল্টার করার মতো কোনো টপিক নেই।</Text>
-                          )}
-                        </View>
-                      )}
-                    </View>
-                  );
-                })
-              ) : (
-                <View className="items-center py-10">
-                  <Text className="text-[#827B6E] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>কোনো স্টাডি প্যাক পাওয়া যায়নি</Text>
-                </View>
-              )}
-            </ScrollView>
+                            )}
+                          </View>
+                        );
+                      })
+                    ) : (
+                      <View className="items-center py-10">
+                        <Text className="text-[#827B6E] text-[14px]" style={{ fontFamily: 'BanglaBold' }}>কোনো স্টাডি প্যাক পাওয়া যায়নি</Text>
+                      </View>
+                    )
+                  ) : (
+                    isSpecialPickerLoading ? (
+                      <View>
+                        <BankCardSkeleton />
+                        <BankCardSkeleton />
+                      </View>
+                    ) : specialPickerGroups.length === 0 ? (
+                      <View className="items-center justify-center py-10 px-6 bg-[#FDF6E3] rounded-2xl border-2 border-dashed border-[#FFDDAA]">
+                        <Text className="text-[#D47B00] text-[14px] text-center" style={{ fontFamily: 'BanglaBold' }}>এখনো কোনো CA স্পেশাল সাজেশন আপলোড করেনি</Text>
+                      </View>
+                    ) : (
+                      specialPickerGroups.map((group, gIdx) => (
+                        <View key={gIdx} className="mb-6">
+                          <View className="flex-row items-center mb-3">
+                            <View className="bg-[#1899D6]/10 px-3 py-1.5 rounded-full border border-[#1899D6]/30 flex-row items-center">
+                              <FontAwesome5 name="users" size={10} color="#1899D6" />
+                              <Text className="text-[#1899D6] text-[12px] pt-0.5 ml-1.5" style={{ fontFamily: 'BanglaBold' }}>{group.communityName}</Text>
+                            </View>
+                            <Text className="text-[#AFAFAF] text-[12px] pt-1 ml-3" style={{ fontFamily: 'BanglaRegular' }}>{group.creatorName}</Text>
+                          </View>
+                          {group.banks.map(bank => {
+                            const ruleId = `special_${group.communityId}_${bank.bankId}`;
+                            const currentRule = quizSelectedRules.find(r => r.guideId === ruleId);
+                            const isSelected = !!currentRule;
+                            const isExpanded = expandedSpecialBankKey === ruleId;
 
-       <TouchableOpacity 
+                            let uniqueTypes = new Set();
+                            let uniqueTopics = new Set();
+                            if (bank.questions) {
+                              bank.questions.forEach(q => {
+                                if (q.type) uniqueTypes.add(q.type);
+                                if (q.topic) uniqueTopics.add(q.topic);
+                              });
+                            }
+                            const typesArr = Array.from(uniqueTypes);
+                            const topicsArr = Array.from(uniqueTopics);
+
+                            return (
+                              <View key={bank.bankId} className={`mb-3 rounded-[20px] border-2 border-b-[4px] overflow-hidden ${isSelected ? 'border-[#8BA85E] bg-[#EAF2D7]' : 'border-[#EFE8D6] bg-white'}`}>
+                                <TouchableOpacity
+                                  activeOpacity={0.8}
+                                  onPress={() => {
+                                     if (isSelected) {
+                                         LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                         setExpandedSpecialBankKey(isExpanded ? null : ruleId);
+                                     } else {
+                                        toggleSpecialBank(group, bank);
+                                        LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                                        setExpandedSpecialBankKey(ruleId);
+                                     }
+                                  }}
+                                  className="flex-row items-center p-4"
+                                >
+                                  <View className="flex-1 pr-3">
+                                    <Text className={`text-[16px] leading-[22px] ${isSelected ? 'text-[#4A632D]' : 'text-[#3D382F]'}`} style={{ fontFamily: 'BanglaBold' }}>{bank.bankName}</Text>
+                                    <View className="flex-row items-center mt-1">
+                                      <View className={`px-2 py-0.5 rounded ${isSelected ? 'bg-[#58A700]/10 border border-[#58A700]/30' : 'bg-[#EAE4D4]'}`}>
+                                        <Text className={`text-[10px] pt-0.5 ${isSelected ? 'text-[#4A632D]' : 'text-[#827B6E]'}`} style={{ fontFamily: 'BanglaBold' }}>{bank.questions?.length || 0} টি প্রশ্ন</Text>
+                                      </View>
+                                    </View>
+                                  </View>
+
+                                  <TouchableOpacity
+                                    activeOpacity={0.7}
+                                    onPress={() => toggleSpecialBank(group, bank)}
+                                    className={`w-8 h-8 rounded-full border-2 items-center justify-center ${isSelected ? 'bg-[#58A700] border-[#58A700]' : 'bg-[#F9F9F9] border-[#D7D7D7]'}`}
+                                  >
+                                    {isSelected && <FontAwesome5 name="check" size={12} color="#FFF" />}
+                                  </TouchableOpacity>
+                                </TouchableOpacity>
+
+                                {isExpanded && isSelected && (
+                                  <View className="p-4 border-t border-[#8BA85E]/30 bg-[#FFFDF8]">
+                                    {typesArr.length > 0 && (
+                                      <>
+                                        <Text className="text-[#6B8544] text-[12px] mb-2" style={{ fontFamily: 'BanglaBold' }}>প্রশ্নের ধরন (ঐচ্ছিক):</Text>
+                                        <View className="flex-row flex-wrap mb-4">
+                                          {typesArr.map(type => {
+                                            const isActive = currentRule?.allowedTypes?.includes(type);
+                                            return (
+                                              <TouchableOpacity
+                                                key={type} activeOpacity={0.7} onPress={() => toggleSpecialRuleArray(group, bank, 'types', type)}
+                                                className={`mr-2 mb-2 px-3 py-1.5 rounded-full border-2 ${isActive ? 'bg-[#1899D6] border-[#1073A4]' : 'bg-white border-[#EFE8D6]'}`}
+                                              >
+                                                <Text className={`text-[12px] pt-0.5 ${isActive ? 'text-white' : 'text-[#6B655B]'}`} style={{ fontFamily: 'BanglaBold' }}>{type}</Text>
+                                              </TouchableOpacity>
+                                            );
+                                          })}
+                                        </View>
+                                      </>
+                                    )}
+                                    {topicsArr.length > 0 && (
+                                      <>
+                                        <Text className="text-[#6B8544] text-[12px] mb-2" style={{ fontFamily: 'BanglaBold' }}>অধ্যায় / টপিক (ঐচ্ছিক):</Text>
+                                        <View className="flex-row flex-wrap">
+                                          {topicsArr.map(topic => {
+                                            const isActive = currentRule?.allowedTopics?.includes(topic);
+                                            return (
+                                              <TouchableOpacity
+                                                key={topic} activeOpacity={0.7} onPress={() => toggleSpecialRuleArray(group, bank, 'topics', topic)}
+                                                className={`mr-2 mb-2 px-3 py-1.5 rounded-full border-2 ${isActive ? 'bg-[#FF9600] border-[#D47B00]' : 'bg-white border-[#EFE8D6]'}`}
+                                              >
+                                                <Text className={`text-[12px] pt-0.5 ${isActive ? 'text-white' : 'text-[#6B655B]'}`} style={{ fontFamily: 'BanglaBold' }}>{topic}</Text>
+                                              </TouchableOpacity>
+                                            );
+                                          })}
+                                        </View>
+                                      </>
+                                    )}
+                                  </View>
+                                )}
+                              </View>
+                            );
+                          })}
+                        </View>
+                      ))
+                    )
+                  )}
+                </ScrollView>
+              );
+            })()}
+
+            <TouchableOpacity 
               activeOpacity={0.8}
               onPress={() => setIsResourcePickerVisible(false)}
               className="bg-[#58A700] py-4 rounded-[16px] items-center shadow-sm"
@@ -4436,7 +5867,7 @@ const handleCreateRevisionPack = () => {
           </View>
         </View>
       </Modal>
-
+      
     {/* ==========================================================
           🚀 Smart Live Quiz Engine Modal (Vibe Coder AI Integration)
           ========================================================== */}
@@ -4599,6 +6030,112 @@ const handleCreateRevisionPack = () => {
               </View>
             )}
           </View>
+        </View>
+      </Modal>
+
+ {/* 🚀 Quiz Action Modal (Duolingo Style) */}
+      <Modal visible={!!pickedQuizForAction} transparent animationType="none" onRequestClose={() => closeQuizActionSheet()}>
+        <View className="flex-1 justify-end">
+          <Animated.View style={{ opacity: quizActionFadeAnim }} className="absolute inset-0 bg-black/60" />
+          <TouchableOpacity className="flex-1" activeOpacity={1} onPress={() => closeQuizActionSheet()} />
+          
+          <Animated.View 
+            style={{ 
+              transform: [{ translateY: quizActionSlideAnim }],
+              paddingBottom: Math.max(insets.bottom + 20, 20)
+            }}
+            className="bg-[#FFFDF8] rounded-t-[32px] overflow-hidden relative"
+          >
+            {/* Dragger */}
+            <View className="w-12 h-1.5 bg-[#EAE4D4] rounded-full self-center mt-5 mb-4" />
+            
+            {/* Header */}
+            <View className="flex-row justify-between items-center px-6 pb-4 border-b border-[#EFE8D6]">
+              <View className="flex-1 pr-2">
+                <Text className="text-[18px] text-[#3D382F] pt-1" style={{ fontFamily: 'BanglaBold' }} numberOfLines={1}>
+                  {pickedQuizForAction?.title}
+                </Text>
+                <Text className="text-[13px] text-[#827B6E]" style={{ fontFamily: 'BanglaRegular' }}>কী করতে চাও?</Text>
+              </View>
+              <TouchableOpacity onPress={() => closeQuizActionSheet()} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
+                <FontAwesome5 name="times" size={14} color="#6B655B" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Content Cards */}
+            <View className="px-6 pt-5">
+              {(() => {
+                const history = pickedQuizForAction ? quizHistoryMap[pickedQuizForAction.id || pickedQuizForAction._id] : null;
+                const mistakeCount = history?.failedItems?.length || 0;
+
+                return (
+                  <>
+                    {/* Option 1: আবারো কুইজ দাও */}
+                    <TouchableOpacity 
+                      activeOpacity={0.85} 
+                      onPress={() => {
+                        closeQuizActionSheet(() => {
+                          setLiveQuizActiveQuiz(pickedQuizForAction);
+                          setParsedQuizData(pickedQuizForAction.questions);
+                          setCurrentQuizIndex(0);
+                          setQuizAnswers({});
+                          setIsQuizFinished(false);
+                          setQuizStartTime(Date.now());
+                          setQuizTimeLeft(pickedQuizForAction.questions.length * 60); 
+                          setIsLiveQuizModalVisible(true);
+                        });
+                      }}
+                      className="bg-[#EAF6FE] border-2 border-[#1CB0F6] border-b-[4px] rounded-[20px] p-4 mb-4 flex-row items-center"
+                    >
+                      <View className="w-12 h-12 rounded-full bg-[#1CB0F6] items-center justify-center mr-4">
+                        <FontAwesome5 name="redo-alt" size={18} color="#FFF" />
+                      </View>
+                      <View className="flex-1 pr-2">
+                        <Text className="text-[#1073A4] text-[17px] mb-0.5 pt-1" style={{ fontFamily: 'BanglaBold' }}>আবারো কুইজ দাও</Text>
+                        <Text className="text-[#1899D6] text-[12px] leading-[18px]" style={{ fontFamily: 'BanglaRegular' }}>নতুন করে পরীক্ষা দাও, স্কোর লিডারবোর্ডে লক থাকবে</Text>
+                      </View>
+                      <FontAwesome5 name="chevron-right" size={16} color="#1CB0F6" />
+                    </TouchableOpacity>
+
+                    {/* Option 2: ভুলগুলো রিভিশন করো */}
+                    <TouchableOpacity 
+                      activeOpacity={mistakeCount > 0 ? 0.85 : 1}
+                      disabled={mistakeCount === 0}
+                      onPress={() => {
+                        closeQuizActionSheet(() => {
+                          openBookInReader({
+                            id: 'revision_' + Date.now(),
+                            notebookName: pickedQuizForAction.title + ' (রিভিশন)',
+                            failedItems: history.failedItems,
+                            channelId: lessonItem?.channelId,
+                            creatorName: 'Smart AI Revision',
+                            isQuizResourceMode: true 
+                          });
+                        });
+                      }}
+                      className={`border-2 border-b-[4px] rounded-[20px] p-4 flex-row items-center ${mistakeCount > 0 ? 'bg-[#FFF4E5] border-[#FF9600]' : 'bg-[#F5F5F5] border-[#E5E5E5]'}`}
+                    >
+                      <View className={`w-12 h-12 rounded-full items-center justify-center mr-4 relative ${mistakeCount > 0 ? 'bg-[#FF9600]' : 'bg-[#D7D7D7]'}`}>
+                        <FontAwesome5 name="sync-alt" size={18} color="#FFF" />
+                        {mistakeCount > 0 && (
+                          <View className="absolute -top-1 -right-1 bg-[#FF4B4B] w-5 h-5 rounded-full items-center justify-center border-2 border-white">
+                            <Text className="text-white text-[9px] pt-[1px]" style={{ fontFamily: 'BanglaBold' }}>{mistakeCount}</Text>
+                          </View>
+                        )}
+                      </View>
+                      <View className="flex-1 pr-2">
+                        <Text className={`text-[17px] mb-0.5 pt-1 ${mistakeCount > 0 ? 'text-[#D47B00]' : 'text-[#AFAFAF]'}`} style={{ fontFamily: 'BanglaBold' }}>ভুলগুলো রিভিশন করো</Text>
+                        <Text className={`text-[12px] leading-[18px] ${mistakeCount > 0 ? 'text-[#FF9600]' : 'text-[#AFAFAF]'}`} style={{ fontFamily: 'BanglaRegular' }}>
+                          {mistakeCount > 0 ? `${mistakeCount} টি প্রশ্ন রিভিশনের জন্য রেডি` : 'কোনো ভুল নেই, দারুণ! 🎉'}
+                        </Text>
+                      </View>
+                      <FontAwesome5 name="chevron-right" size={16} color={mistakeCount > 0 ? "#FF9600" : "#D7D7D7"} />
+                    </TouchableOpacity>
+                  </>
+                );
+              })()}
+            </View>
+          </Animated.View>
         </View>
       </Modal>
 

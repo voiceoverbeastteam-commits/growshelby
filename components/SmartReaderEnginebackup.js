@@ -134,10 +134,7 @@ const ShortAnswerCard = ({ data, globalReveal, onOpenDiscussion }) => {
           )}
         </View>
 
-        <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-[#FDF6E3] px-3 py-1.5 rounded-full border border-[#EFE8D6] flex-shrink-0">
-          <FontAwesome5 name="comments" size={12} color="#D47B00" />
-          <Text className="text-[12px] text-[#D47B00] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>আলোচনা</Text>
-        </TouchableOpacity>
+     
       </View>
    {/* 🚀 রিডিং মোডে চিত্র দেখালে টেক্সট হাইড হয়ে যাবে */}
     {data.image ? (
@@ -309,10 +306,7 @@ useEffect(() => {
           )}
         </View>
         
-        <TouchableOpacity activeOpacity={0.7} onPress={() => onOpenDiscussion(data)} className="flex-row items-center bg-white px-3 py-1.5 rounded-full border border-[#FFDDAA] flex-shrink-0">
-          <FontAwesome5 name="comments" size={12} color="#D47B00" />
-          <Text className="text-[12px] text-[#D47B00] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>আলোচনা</Text>
-        </TouchableOpacity>
+    
       </View>
   {showStem && (
         <View className="mb-4 bg-white p-4 rounded-xl border border-[#FFDDAA]">

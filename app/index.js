@@ -22,6 +22,30 @@ let cachedChallenges = [];
 let cachedUserCoins = 50;
 let currentUserId = 'default_user'; 
 
+// 🚀 গ্লোবাল লাইভ ব্যাজ কম্পোনেন্ট
+const LiveBadge = () => {
+  const blinkAnim = useRef(new Animated.Value(1)).current;
+  useEffect(() => {
+    Animated.loop(
+      Animated.sequence([
+        Animated.timing(blinkAnim, { toValue: 0.3, duration: 600, useNativeDriver: true }),
+        Animated.timing(blinkAnim, { toValue: 1, duration: 600, useNativeDriver: true })
+      ])
+    ).start();
+  }, []);
+  return (
+    <View className="bg-[#FF4B4B] rounded-full px-3 py-1.5 flex-row items-center shadow-sm">
+      <Animated.View style={{ opacity: blinkAnim }} className="w-2 h-2 rounded-full bg-white" />
+      <Text className="text-white text-[11px] ml-1.5 pt-0.5" style={{ fontFamily: 'BanglaBold' }}>লাইভ কুইজ</Text>
+    </View>
+  );
+};
+
+// 🚀 কমিউনিটিতে কোনো কুইজ লাইভ আছে কিনা তার হেল্পার
+const isCommunityLive = (guide, nowTime) => {
+  return guide.quizWindows?.some(w => nowTime >= w.start && nowTime < w.end) ?? false;
+};
+
 // 🚀 Skeleton Loading Card (ইউটিউবের মতো শিমার ইফেক্ট)
 const SkeletonCard = () => {
   const shimmerAnim = useRef(new Animated.Value(0.4)).current;
@@ -66,10 +90,10 @@ export default function Home() {
   const [activeTab, setActiveTab] = useState('in_progress');
 
   const [exploreGuides, setExploreGuides] = useState([]);
+  const [myJoinedCommunities, setMyJoinedCommunities] = useState([]); // 🚀 আমার কমিউনিটি লিস্ট সেভ করার স্টেট
   const [isExploreLoading, setIsExploreLoading] = useState(true);
-  const [exploreCategory, setExploreCategory] = useState('সব');
-  const [dynamicCategories, setDynamicCategories] = useState(['সব']); // 🚀 ডাইনামিক ক্যাটাগরি স্টেট
-
+  const [exploreCategory, setExploreCategory] = useState('টপ কমিউনিটি');
+  const [dynamicCategories, setDynamicCategories] = useState(['টপ কমিউনিটি', 'আমার কমিউনিটি']);
   const [userCoins, setUserCoins] = useState(cachedUserCoins);
   const [challenges, setChallenges] = useState(cachedChallenges);
   const [isLoggedIn, setIsLoggedIn] = useState(null);
@@ -184,53 +208,60 @@ useEffect(() => {
     runNetworkDiagnostic();
   }, []);
 
- // 🚀 এক্সপ্লোর ফিড লোড করার ফাংশন (YouTube Style SWR)
-  const loadExploreGuides = async () => {
-    // 🚀 ম্যাজিক ফিক্স: যদি স্টেটে আগে থেকেই ডেটা থাকে, তবে শিমার দেখাবে না (সাইলেন্ট লোড হবে)।
-    // শুধুমাত্র প্রথমবার অ্যাপে ঢোকার সময় (যখন ক্যাশ একদম ফাঁকা) শিমার দেখাবে।
-    if (exploreGuides.length === 0) {
+ const loadExploreGuides = async () => {
+    if (exploreGuides.length === 0 && myJoinedCommunities.length === 0) {
       setIsExploreLoading(true);
     }
     
     try {
-      const response = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-        body: JSON.stringify({ action: 'fetch_explore_channels' })
-      });
-      const data = await response.json();
-      if (data.success && data.channels) {
-        // 🚀 কমিউনিটি র‍্যাঙ্কিং (বেশি রেটিং ও মেম্বার উপরে)
-        const sortedChannels = data.channels.sort((a, b) => {
+      const uid = await AsyncStorage.getItem('@current_user_id');
+      
+  const [exploreRes, joinedRes] = await Promise.all([
+        fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'fetch_explore_channels', userEmail: uid }) // 🚀 ফিক্স: সার্ভারে মাস্টার চেক করার জন্য uid পাঠানো হলো
+        }).then(r => r.json()).catch(() => ({ success: false, channels: [] })), // 🚀 ফিক্স: এরর হলে খালি লিস্ট রিটার্ন করবে
+        
+        uid && uid !== 'guest' && uid !== 'default_user' ? 
+        fetch('https://growshelby-api.vercel.app/api/update_coins', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+          body: JSON.stringify({ action: 'fetch_joined_communities', userEmail: uid })
+        }).then(r => r.json()).catch(() => ({})) : Promise.resolve({})
+      ]);
+
+    if (exploreRes.channels) { // 🚀 ফিক্স: success না হলেও channels (খালি) পেলে লিস্ট ক্লিয়ার করবে
+        const validChannels = exploreRes.channels.filter(c => 
+          c && 
+          c.notebookName && 
+          c.notebookName.trim() !== '' && 
+          c.notebookName !== 'স্মার্ট কমিউনিটি' && 
+          (uid === 'rumontrader662@gmail.com' || (c.membersCount || 0) >= 3)
+        );
+        
+        const sortedChannels = validChannels.sort((a, b) => {
           const scoreA = ((a.averageRating || 0) * 10) + (a.membersCount || 1);
           const scoreB = ((b.averageRating || 0) * 10) + (b.membersCount || 1);
           return scoreB - scoreA;
         });
         setExploreGuides(sortedChannels);
-
-        // 🚀 ক্যাটাগরি র‍্যাঙ্কিং ম্যাজিক (যে টার্গেটের কমিউনিটি বেশি, সেটা আগে আসবে)
-        const categoryCounts = {};
-        sortedChannels.forEach(guide => {
-          const niche = guide.niche;
-          // গারবেজ ডাটা ফিল্টার করে শুধু আসল ক্যাটাগরিগুলো কাউন্ট করবো
-          if (niche && niche !== 'সাধারণ শিক্ষার্থী' && niche !== 'আমার কমিউনিটি') {
-            categoryCounts[niche] = (categoryCounts[niche] || 0) + 1;
-          }
-        });
-
-        // কাউন্ট অনুযায়ী বড় থেকে ছোট সর্ট করা
-        const sortedCategories = Object.keys(categoryCounts).sort((a, b) => categoryCounts[b] - categoryCounts[a]);
-        
-        // 'সব' সবসময় প্রথমে থাকবে, তারপর র্যাঙ্কিং করা ক্যাটাগরিগুলো
-        setDynamicCategories(['সব', ...sortedCategories]);
+      } else {
+        setExploreGuides([]); // 🚀 ফিক্স: এরর হলে বা লিস্ট খালি এলে পুরনো ডেটা মুছে ফেলবে
       }
+
+      if (joinedRes.success && joinedRes.channels) {
+        setMyJoinedCommunities(joinedRes.channels);
+      }
+
+      setDynamicCategories(['টপ কমিউনিটি', 'আমার কমিউনিটি']);
+      
     } catch (error) {
-      console.log('Error fetching explore guides:', error);
+      console.log('Error fetching guides:', error);
     } finally { 
       setIsExploreLoading(false); 
     }
   };
-
   useFocusEffect(
     useCallback(() => {
       if (isDataLoaded) loadExploreGuides();
@@ -431,14 +462,49 @@ const handleStartReading = (lessonItem) => {
     setEditCardName('');
   };
 
-  const inProgressChallenges = challenges.filter(c => c.status === 'in_progress' && c.id !== selectedLesson?.id);
+ const inProgressChallenges = challenges.filter(c => c.status === 'in_progress' && c.id !== selectedLesson?.id);
   const nextChallenge = inProgressChallenges.length > 0 ? inProgressChallenges[0] : null;
+
+  // 🚀 ম্যাজিক ফিক্স: লগআউটের ইভেন্ট লিসেন করে গ্লোবাল ভেরিয়েবল ও স্টেট ক্লিন করা
+  useEffect(() => {
+    const subscription = DeviceEventEmitter.addListener('USER_LOGGED_OUT_CLEAR_CACHE', () => {
+      setChallenges([]);
+      setUserCoins(50);
+      setExploreGuides([]);
+      setMyJoinedCommunities([]); // যদি আগের স্টেপে অ্যাড করে থাকেন
+      
+      cachedChallenges = [];
+      cachedUserCoins = 50;
+      currentUserId = 'default_user';
+      
+   setIsLoggedIn(false);
+      setIsDataLoaded(false); // 🚀 ডেটা লোড স্টেট ফলস করে দিলাম, যাতে নতুন লগইনে আবার ফ্রেশ ডেটা ফেচ হয়
+    });
+
+    // 🚀 ম্যাজিক ফিক্স: নতুন লগইন হলে ফোর্স করে আবার ডাটা লোড করানো
+    const refreshSubscription = DeviceEventEmitter.addListener('FORCE_REFRESH_HOME_DATA', () => {
+      setIsDataLoaded(false); 
+      loadExploreGuides(); // এক্সপ্লোর ফিডও নতুন করে লোড হবে
+    });
+
+    return () => {
+      subscription.remove();
+      refreshSubscription.remove();
+    };
+  }, []);
+
+ // 🚀 প্রতি ৩০ সেকেন্ডে হোমের লাইভ স্ট্যাটাস চেক করার জন্য লোকাল ঘড়ি
+  const [liveClock, setLiveClock] = useState(Date.now());
+  useEffect(() => {
+    const timer = setInterval(() => setLiveClock(Date.now()), 30000);
+    return () => clearInterval(timer);
+  }, []);
 
   const isReadyToEnter = isDataLoaded && isLoggedIn !== null && isMaintenanceChecked;
 
  if (showSplash) {
     return (
-      <SplashScreen 
+      <SplashScreen
         isReady={isReadyToEnter} 
         onFinish={() => {
           setShowSplash(false);
@@ -544,14 +610,26 @@ return (
               <SkeletonCard />
               <SkeletonCard />
             </View>
+       ) : exploreCategory === 'আমার কমিউনিটি' && myJoinedCommunities.length === 0 ? (
+            // 🚀 ইউজার কোনো কমিউনিটিতে জয়েন না থাকলে এই মেসেজ দেখাবে
+            <View className="items-center py-10 mt-10">
+              <FontAwesome5 name="users-slash" size={40} color="#D7D7D7" />
+              <Text className="text-[#AFAFAF] text-[16px] mt-4" style={{ fontFamily: 'BanglaBold' }}>আপনি এখনো কোনো কমিউনিটিতে জয়েন করেননি</Text>
+            </View>
          ) : (
-                exploreGuides
-                  .filter(guide => exploreCategory === 'সব' || (guide.niche && guide.niche.includes(exploreCategory)) || (guide.notebookName && guide.notebookName.includes(exploreCategory)))
+                // 🚀 ম্যাজিক: 'আমার কমিউনিটি' সিলেক্ট করলে myJoinedCommunities রেন্ডার হবে, নাহলে exploreGuides
+                (exploreCategory === 'আমার কমিউনিটি' ? myJoinedCommunities : exploreGuides)
                   .map((guide, idx) => (
 
-            <TouchableOpacity key={idx} activeOpacity={0.9} delayPressIn={0} onPress={() => handleStartReading(guide)} className="mb-8">
-                <View className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#F0F2F5] border border-[#E5E5E5]">
+         <TouchableOpacity key={idx} activeOpacity={0.9} delayPressIn={0} onPress={() => handleStartReading(guide)} className="mb-8">
+                <View className="w-full aspect-[16/9] rounded-xl overflow-hidden bg-[#F0F2F5] border border-[#E5E5E5] relative">
                   <Image source={{ uri: guide.banner || 'https://images.unsplash.com/photo-1579546929518-9e396f3cc809?q=80&w=1000' }} className="w-full h-full" resizeMode="cover" />
+                  {/* 🚀 লাইভ কুইজ ব্যাজ */}
+                  {isCommunityLive(guide, liveClock) && (
+                    <View className="absolute top-3 right-3 z-10">
+                      <LiveBadge />
+                    </View>
+                  )}
                 </View>
                 <View className="flex-row mt-3 px-1">
                  <View className="w-11 h-11 rounded-full border border-[#E5E5E5] bg-[#F9F9F9] mr-3 overflow-hidden">
