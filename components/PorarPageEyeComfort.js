@@ -5021,10 +5021,10 @@ const handleCreateRevisionPack = () => {
                       }}
                     />
                     
-                    {/* 🚀 প্লাস আইকন (নতুন প্রশ্ন অ্যাড করার জন্য) */}
+                  {/* 🚀 প্লাস আইকন (নতুন প্রশ্ন অ্যাড করার জন্য) */}
                     <TouchableOpacity activeOpacity={0.8} onPress={async () => {
                         const targetSubj = isManagingSpecialBank 
-                          ? { ...selectedSubject, shareCode: `SPECIAL_${lessonItem?.channelId}_${selectedSubject.shareCode}` } 
+                          ? { ...selectedSubject, shareCode: `SPECIAL_${lessonItem?.channelId}_${selectedSubject.shareCode}`, failedItems: specialBanks[selectedSubject.shareCode] || [] } 
                           : selectedSubject;
                         await AsyncStorage.setItem('@target_subject', JSON.stringify(targetSubj));
                         await AsyncStorage.setItem('@target_bank_to_update', JSON.stringify(managingBank));
