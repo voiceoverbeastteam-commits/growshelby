@@ -568,39 +568,30 @@ const handleFinalSave = () => {
         const updatedFailedItems = targetSubject.failedItems.map(b => b.bankId === targetBankToUpdate.bankId ? updatedBankData : b);
         const updatedSubject = { ...targetSubject, failedItems: updatedFailedItems };
 
-        fetch('https://growshelby-api.vercel.app/api/update_coins', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-          body: JSON.stringify({ action: 'save_guide', guideData: updatedSubject })
-        });
+    fetch('https://growshelby-api.vercel.app/api/update_coins', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+              body: JSON.stringify({ 
+                action: 'add_question_bank', 
+                shareCode: targetSubject.shareCode,
+                bankData: newBankData
+              })
+            });
 
-        DeviceEventEmitter.emit('question_bank_updated', { shareCode: targetSubject.shareCode, updatedSubject });
-      } else {
-        // 🚀 সম্পূর্ণ নতুন ব্যাংক তৈরি
-        const newBankData = {
-          bankId: 'bank_' + Date.now(),
-          bankName: notebookName.trim(),
-          isBank: true,
-          questions: questionsWithTimestamp
-        };
-
-        fetch('https://growshelby-api.vercel.app/api/update_coins', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-          body: JSON.stringify({ 
-            action: 'add_question_bank', 
-            shareCode: targetSubject.shareCode,
-            bankData: newBankData
-          })
-        });
-
-        DeviceEventEmitter.emit('question_bank_added', { shareCode: targetSubject.shareCode, newBankData });
-      }
-      
-      DeviceEventEmitter.emit('refresh_library');
-      if (onBack) onBack();
-      return;
-    }
+            if (targetSubject.shareCode.startsWith('SPECIAL_')) {
+              DeviceEventEmitter.emit('special_question_bank_added', { shareCode: targetSubject.shareCode, newBankData });
+            } else {
+              DeviceEventEmitter.emit('question_bank_added', { shareCode: targetSubject.shareCode, newBankData });
+            }
+          }
+          
+          if (!targetSubject.shareCode.startsWith('SPECIAL_')) {
+            DeviceEventEmitter.emit('refresh_library');
+          }
+          
+          if (onBack) onBack();
+          return;
+        }
 
     // 🚀 সাধারণ গাইড বা সাবজেক্ট তৈরি (পূর্বের লজিক)
     const newGuideData = {

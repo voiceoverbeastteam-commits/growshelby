@@ -652,9 +652,9 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
 
  // 🚀 কোশ্চেন ব্যাংক তৈরি হওয়ার পর ফ্রন্টএন্ডে রিয়েল-টাইম আপডেট করার লজিক
   useEffect(() => {
-    const subscription = DeviceEventEmitter.addListener('question_bank_added', ({ shareCode, newBankData }) => {
+    const handleBankAdded = ({ shareCode, newBankData }) => {
       
-      // 🚀 স্পেশাল ব্যাংক তৈরি হলে মেইন বইতে না বসিয়ে স্পেশাল লিস্টে বসবে
+      // 🚀 স্পেশাল ব্যাংক তৈরি হলে মেইন বইতে না বসিয়ে স্পেশাল লিস্টে বসবে
       if (shareCode.startsWith('SPECIAL_')) {
         const body = shareCode.slice(8); const idx = body.lastIndexOf('_'); const actualShareCode = body.slice(idx + 1);
         setSpecialBanks(prev => {
@@ -674,18 +674,21 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
         return guide;
       }));
 
-      // যদি সাবজেক্ট ভিউ ওপেন থাকে, তবে সেটাকেও আপডেট করতে হবে
-   // যদি সাবজেক্ট ভিউ ওপেন থাকে, তবে সেটাকেও আপডেট করতে হবে
-      setSelectedSubject(prevSubject => {
-        if (prevSubject && prevSubject.shareCode === shareCode) {
-          return {
-            ...prevSubject,
-            failedItems: [...(prevSubject.failedItems || []), newBankData]
-          };
-        }
-        return prevSubject;
-      });
-    });
+ // যদি সাবজেক্ট ভিউ ওপেন থাকে, তবে সেটাকেও আপডেট করতে হবে
+          setSelectedSubject(prevSubject => {
+            if (prevSubject && prevSubject.shareCode === shareCode) {
+              return {
+                ...prevSubject,
+                failedItems: [...(prevSubject.failedItems || []), newBankData]
+              };
+            }
+            return prevSubject;
+          });
+        };
+
+        const subscription = DeviceEventEmitter.addListener('question_bank_added', handleBankAdded);
+        const specialSubscription = DeviceEventEmitter.addListener('special_question_bank_added', handleBankAdded);
+
 // 🚀 নতুন: এক্সিস্টিং কোশ্চেন ব্যাংকে আপডেট হলে রিয়েল-টাইমে রিফ্রেশ করার ইভেন্ট
     const updateSubscription = DeviceEventEmitter.addListener('question_bank_updated', ({ shareCode, updatedSubject }) => {
       if (shareCode.startsWith('SPECIAL_')) {
@@ -697,8 +700,9 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
       setSelectedSubject(prevSubject => (prevSubject && prevSubject.shareCode === shareCode) ? updatedSubject : prevSubject);
     });
 
-    return () => {
+   return () => {
       subscription.remove();
+      specialSubscription.remove();
       updateSubscription.remove();
     };
   }, []);
