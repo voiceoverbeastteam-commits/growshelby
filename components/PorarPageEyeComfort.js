@@ -4425,7 +4425,7 @@ const handleCreateRevisionPack = () => {
               </View>
             </TouchableOpacity>
 
-            <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>সাবজেক্টের নাম</Text>
+          <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>সাবজেক্টের নাম</Text>
             <TextInput
               className="bg-white p-4 rounded-[16px] text-[16px] text-[#3D382F] mb-5 border border-[#EFE8D6]"
               style={{ fontFamily: 'BanglaBold' }}
@@ -4436,9 +4436,10 @@ const handleCreateRevisionPack = () => {
 
             <TouchableOpacity 
               className="bg-[#1899D6] py-3.5 rounded-[16px] items-center shadow-sm" 
-              onPress={() => {
+              onPress={async () => { // 🚀 ফিক্স ১: এখানে async যুক্ত করা হয়েছে
                 if(!newSubjectTitle) return Alert.alert("সতর্কতা", "নাম দিন!");
-          const newSubjectData = {
+                
+                const newSubjectData = {
                   id: 'guide_' + Date.now(),
                   shareCode: Math.random().toString(36).substring(2, 8).toUpperCase(),
                   notebookName: newSubjectTitle,
@@ -4449,16 +4450,23 @@ const handleCreateRevisionPack = () => {
                   target: lessonItem?.niche || 'এইচএসসি (HSC)', // 🚀 কমিউনিটির টার্গেট ট্যাগ হিসেবে সেভ হবে!
                   failedItems: []
                 };
+                
+                // 🚀 সাথে সাথে স্ক্রিনে দেখানোর জন্য লোকাল আপডেট
                 setChannelGuides(prev => [newSubjectData, ...prev]);
                 setIsSubjectCreateVisible(false);
                 setNewSubjectTitle('');
                 setTempGuideThumbnail('');
                 
-                fetch('https://growshelby-api.vercel.app/api/update_coins', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-                  body: JSON.stringify({ action: 'save_guide', guideData: newSubjectData })
-                });
+                try {
+                  // 🚀 ফিক্স ২: await এবং try-catch দেওয়া হয়েছে, যেন ডাটাবেস রিকোয়েস্ট ড্রপ না হয়
+                  await fetch('https://growshelby-api.vercel.app/api/update_coins', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+                    body: JSON.stringify({ action: 'save_guide', guideData: newSubjectData })
+                  });
+                } catch (error) {
+                  console.log("Subject API Save Error: ", error);
+                }
               }}
             >
               <Text style={{ fontFamily: 'BanglaBold' }} className="text-white text-[16px] pt-1">সাবজেক্ট তৈরি করুন</Text>
