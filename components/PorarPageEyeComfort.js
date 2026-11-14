@@ -4386,7 +4386,17 @@ const handleCreateRevisionPack = () => {
         </View>
       </Modal>
 
-{/* 🚀 Reader Engine Modal (The Actual Reading Mode) */}
+{/* 🚀 Discussion (Community Chat) Modal */}
+      <Discussion
+        visible={discussionVisible}
+        onClose={() => setDiscussionVisible(false)}
+        data={activeDiscussionData}
+        guideName={lessonItem?.notebookName}
+        guideId={lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode}
+        isStaff={isStaff}
+      />
+
+      {/* 🚀 Reader Engine Modal (The Actual Reading Mode) */}
       <SmartReaderEngine 
         visible={readerVisible} 
         onClose={() => setReaderVisible(false)} 
