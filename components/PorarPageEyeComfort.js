@@ -14,6 +14,28 @@ import DateTimePicker from '@react-native-community/datetimepicker'; // 🚀 ড
 // 🚀 Modular Discussion Component
 import Discussion from './Discussion';
 
+const API_URL = 'https://growshelby-api.vercel.app/api/update_coins';
+
+const apiCall = async (label, body) => {
+  const t = Date.now();
+  try {
+    const res = await fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
+      body: JSON.stringify(body),
+    });
+    const raw = await res.text();
+    let data = null;
+    try { data = JSON.parse(raw); } catch (e) { console.log(`[API:${label}] ❌ JSON পার্স হয়নি`); }
+    console.log(`[API:${label}] status=${res.status} ${Date.now() - t}ms success=${data?.success} error=${data?.error || '-'}`);
+    if (!data?.success) console.log(`[API:${label}] ⚠️ RAW=`, raw.slice(0, 800));
+    return data;
+  } catch (e) {
+    console.log(`[API:${label}] 🔌 NETWORK ERROR:`, e?.message);
+    return null;
+  }
+};
+
 // 🚀 বাংলা ফরম্যাট হেল্পার
 const formatBnDate = (timestamp) => {
   if (!timestamp) return 'তারিখ বাছুন';
@@ -653,6 +675,8 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
  // 🚀 কোশ্চেন ব্যাংক তৈরি হওয়ার পর ফ্রন্টএন্ডে রিয়েল-টাইম আপডেট করার লজিক
   useEffect(() => {
     const subscription = DeviceEventEmitter.addListener('question_bank_added', ({ shareCode, newBankData }) => {
+            addedTrackerRef.current.banks[newBankData.bankId] = { shareCode, bankId: newBankData.bankId, bankName: newBankData.bankName };
+      console.log('📦 question_bank_added ইভেন্ট:', shareCode, newBankData.bankId);
       
       // 🚀 স্পেশাল ব্যাংক তৈরি হলে মেইন বইতে না বসিয়ে স্পেশাল লিস্টে বসবে
       if (shareCode.startsWith('SPECIAL_')) {
@@ -779,6 +803,7 @@ const [discussionVisible, setDiscussionVisible] = useState(false);
   const [isDescriptionExpanded, setIsDescriptionExpanded] = useState(false);
   // 🚀 Channel Guides & Reader States
   const [channelGuides, setChannelGuides] = useState([]);
+    const addedTrackerRef = useRef({ guides: {}, banks: {} });
   const [isLoadingGuides, setIsLoadingGuides] = useState(false);
   const [readerVisible, setReaderVisible] = useState(false);
  // 🚀 Refresh States
@@ -1210,11 +1235,16 @@ const [activeBankTypeFilter, setActiveBankTypeFilter] = useState('সব');
     // একসাথে গাইড, মেম্বার এবং রিভিউ ફેচ করবো
       await Promise.all([
    // 🚀 ১. গাইড ফেচ (মাস্টার অ্যাকাউন্ট থেকে + নির্দিষ্ট টার্গেট ট্যাগ অনুযায়ী)
-        fetch('https://growshelby-api.vercel.app/api/update_coins', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-          body: JSON.stringify({ action: 'fetch_channel_guides', channelId: 'rumontrader662@gmail.com', targetCategory: lessonItem?.niche })
-        }).then(res => res.json()).then(data => { if (data.success) setChannelGuides(data.guides); }),
+              apiCall('refresh_fetch_channel_guides', {
+          action: 'fetch_channel_guides',
+          channelId: 'rumontrader662@gmail.com',
+          targetCategory: lessonItem?.niche,
+        }).then(data => {
+          if (data?.success) {
+            console.log(`🔄 রিফ্রেশে ${data.guides?.length} টি গাইড এল`);
+            setChannelGuides(data.guides);
+          }
+        }),
         
         // ২. মেম্বার ফেচ
         fetch('https://growshelby-api.vercel.app/api/update_coins', {
@@ -1369,13 +1399,41 @@ const pickGuideThumbnail = async () => {
         setIsLoadingGuides(true);
         try {
         // 🚀 Master Account থেকে নির্দিষ্ট টার্গেটের (যেমন HSC) স্টাডি প্যাক ফেচ করা হচ্ছে
-          const res = await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-            body: JSON.stringify({ action: 'fetch_channel_guides', channelId: 'rumontrader662@gmail.com', targetCategory: lessonItem?.niche })
+                const data = await apiCall('fetch_channel_guides', {
+            action: 'fetch_channel_guides',
+            channelId: 'rumontrader662@gmail.com',
+            targetCategory: lessonItem?.niche,
           });
-          const data = await res.json();
-          if (data.success) setChannelGuides(data.guides);
+
+          if (!data?.success) {
+            console.log('🔴 গাইড ফেচ ফেইল — লোকাল লিস্ট আগের মতোই থাকল');
+          } else {
+            const serverGuides = data.guides || [];
+            console.log(`📥 সার্ভার থেকে ${serverGuides.length} টি গাইড | niche = "${lessonItem?.niche}"`);
+            serverGuides.forEach(g =>
+              console.log(`   • ${g.shareCode} | ${g.notebookName} | target="${g.target}" | channelId=${g.channelId} | banks=${g.failedItems?.length || 0}`)
+            );
+
+            Object.values(addedTrackerRef.current.guides).forEach(saved => {
+              const found = serverGuides.find(g => g.shareCode === saved.shareCode);
+              if (!found) {
+                console.log('🔴🔴 MISSING GUIDE:', saved.notebookName);
+                console.log('   সেভের সময়: target=', saved.target, '| channelId=', saved.channelId);
+                console.log('   ফেচের সময়: targetCategory=', lessonItem?.niche, '| channelId=rumontrader662@gmail.com');
+                console.log('   target মেলে?', saved.target === lessonItem?.niche);
+              } else {
+                console.log('🟢 গাইড সার্ভারে আছে:', saved.notebookName);
+              }
+            });
+
+            Object.values(addedTrackerRef.current.banks).forEach(({ shareCode, bankId, bankName }) => {
+              const g = serverGuides.find(x => x.shareCode === shareCode);
+              const bankFound = g?.failedItems?.some(b => b.bankId === bankId);
+              console.log(bankFound ? `🟢 ব্যাংক আছে: ${bankName}` : `🔴🔴 MISSING BANK: ${bankName} (গাইড পাওয়া গেছে? ${!!g})`);
+            });
+
+            setChannelGuides(serverGuides);
+          }
 
       const uid = await AsyncStorage.getItem('@current_user_id');
           // 🚀 Master Account থেকে নির্দিষ্ট টার্গেটের (যেমন HSC) কুইজ ফেচ করা হচ্ছে
@@ -4383,60 +4441,9 @@ const handleCreateRevisionPack = () => {
               onChangeText={setTempGuideTitle}
             />
 
-            <TouchableOpacity 
+          <TouchableOpacity 
               className="bg-[#1899D6] py-3.5 rounded-[16px] items-center shadow-sm" 
-              onPress={saveGuideEdits}
-            >
-              <Text style={{ fontFamily: 'BanglaBold' }} className="text-white text-[16px] pt-1">সেভ করুন</Text>
-            </TouchableOpacity>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
-
-   {/* 🚀 Discussion Modal */}
-   <Discussion 
-        key={activeDiscussionData ? activeDiscussionData.question : 'general_community'}
-        visible={discussionVisible} 
-        onClose={() => setDiscussionVisible(false)} 
-        data={activeDiscussionData} 
-        guideName={lessonItem?.notebookName}
-        guideId={lessonItem?.channelId || lessonItem?.id || lessonItem?.shareCode || 'default_guide'}
-        isStaff={isStaff}
-      />
-
-      {/* 🚀 ১. নতুন সাবজেক্ট তৈরির মডাল (Instant Create) */}
-      <Modal visible={isSubjectCreateVisible} animationType="slide" transparent={true} onRequestClose={() => setIsSubjectCreateVisible(false)}>
-        <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} className="flex-1 bg-black/60 justify-end">
-          <View className="bg-[#FFFDF8] rounded-t-[32px] p-6 pt-5 w-full">
-            <View className="flex-row justify-between items-center mb-4 border-b border-[#EFE8D6] pb-3">
-              <Text className="text-[18px] text-[#3D382F]" style={{ fontFamily: 'BanglaBold' }}>নতুন সাবজেক্ট তৈরি করুন</Text>
-              <TouchableOpacity onPress={() => setIsSubjectCreateVisible(false)} className="bg-[#EAE4D4] w-8 h-8 rounded-full items-center justify-center">
-                <FontAwesome5 name="times" size={14} color="#6B655B" />
-              </TouchableOpacity>
-            </View>
-
-            <TouchableOpacity activeOpacity={0.85} onPress={pickGuideThumbnail} className="mb-6 items-center">
-              <View className="w-32 h-32 rounded-[20px] overflow-hidden border-2 border-[#EFE8D6] border-dashed bg-[#F5F5F5] items-center justify-center relative">
-                {tempGuideThumbnail ? (
-                  <Image source={{ uri: tempGuideThumbnail }} className="w-full h-full" resizeMode="cover" />
-                ) : (
-                  <FontAwesome5 name="image" size={32} color="#D7D7D7" />
-                )}
-              </View>
-            </TouchableOpacity>
-
-          <Text className="text-[#AFAFAF] text-[13px] mb-2 ml-1" style={{ fontFamily: 'BanglaBold' }}>সাবজেক্টের নাম</Text>
-            <TextInput
-              className="bg-white p-4 rounded-[16px] text-[16px] text-[#3D382F] mb-5 border border-[#EFE8D6]"
-              style={{ fontFamily: 'BanglaBold' }}
-              placeholder="যেমন: HSC Physics"
-              value={newSubjectTitle}
-              onChangeText={setNewSubjectTitle}
-            />
-
-            <TouchableOpacity 
-              className="bg-[#1899D6] py-3.5 rounded-[16px] items-center shadow-sm" 
-              onPress={async () => { // 🚀 ফিক্স ১: এখানে async যুক্ত করা হয়েছে
+              onPress={async () => { 
                 if(!newSubjectTitle) return Alert.alert("সতর্কতা", "নাম দিন!");
                 
                 const newSubjectData = {
@@ -4446,26 +4453,41 @@ const handleCreateRevisionPack = () => {
                   thumbnail: tempGuideThumbnail,
                   isPublic: true,
                   creatorEmail: currentUserEmail,
-                  channelId: currentUserEmail, // 🚀 সবসময় নিজের (Master) অ্যাকাউন্টে সেভ হবে
-                  target: lessonItem?.niche || 'এইচএসসি (HSC)', // 🚀 কমিউনিটির টার্গেট ট্যাগ হিসেবে সেভ হবে!
+                  channelId: currentUserEmail,
+                  target: lessonItem?.niche || 'এইচএসসি (HSC)', 
                   failedItems: []
                 };
                 
-                // 🚀 সাথে সাথে স্ক্রিনে দেখানোর জন্য লোকাল আপডেট
-                setChannelGuides(prev => [newSubjectData, ...prev]);
-                setIsSubjectCreateVisible(false);
-                setNewSubjectTitle('');
-                setTempGuideThumbnail('');
-                
-                try {
-                  // 🚀 ফিক্স ২: await এবং try-catch দেওয়া হয়েছে, যেন ডাটাবেস রিকোয়েস্ট ড্রপ না হয়
-                  await fetch('https://growshelby-api.vercel.app/api/update_coins', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json', 'x-api-key': process.env.EXPO_PUBLIC_API_KEY },
-                    body: JSON.stringify({ action: 'save_guide', guideData: newSubjectData })
-                  });
+                             try {
+                  console.log('💾 SAVE পাঠানো ডেটা:', JSON.stringify({ id: newSubjectData.id, shareCode: newSubjectData.shareCode, target: newSubjectData.target, channelId: newSubjectData.channelId }));
+                  const data = await apiCall('save_guide', { action: 'save_guide', guideData: newSubjectData });
+
+                  if (data?.success) {
+                    addedTrackerRef.current.guides[newSubjectData.id] = newSubjectData;
+
+                    const verify = await apiCall('verify_fetch', {
+                      action: 'fetch_channel_guides',
+                      channelId: 'rumontrader662@gmail.com',
+                      targetCategory: lessonItem?.niche,
+                    });
+                    const exists = verify?.guides?.some(g => g.shareCode === newSubjectData.shareCode);
+                    console.log(exists
+                      ? '🟢 VERIFY OK: সেভ হয়েছে এবং ফেচেও ফিরছে'
+                      : '🔴 VERIFY FAIL: success বলেছে কিন্তু ফেচে ফিরছে না → সমস্যা ব্যাকএন্ডের সেভ/ফিল্টারে');
+                    // 🚀 স্টেপ ২: ডাটাবেস থেকে 'success' সিগন্যাল পেলেই কেবল আমরা মডাল ক্লোজ করবো
+                    setChannelGuides(prev => [newSubjectData, ...prev]);
+                    setIsSubjectCreateVisible(false);
+                    setNewSubjectTitle('');
+                    setTempGuideThumbnail('');
+                    
+                    // কনফার্মেশন অ্যালার্ট (চেক করার জন্য)
+                    Alert.alert("সফল!", "নতুন সাবজেক্ট ডাটাবেসে সেভ হয়েছে।");
+                  } else {
+                    Alert.alert("দুঃখিত", "সার্ভারে সেভ হয়নি। আবার চেষ্টা করুন।");
+                  }
                 } catch (error) {
                   console.log("Subject API Save Error: ", error);
+                  Alert.alert("কানেকশন এরর", "ইন্টারনেট কানেকশন চেক করুন।");
                 }
               }}
             >

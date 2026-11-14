@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, Text, TouchableOpacity, Modal, KeyboardAvoidingView, Platform, ScrollView, FlatList, Image, TextInput, Animated, Dimensions, Clipboard } from 'react-native';
+import { View, Text, TouchableOpacity, Modal, KeyboardAvoidingView, Platform, ScrollView, FlatList, Image, TextInput, Animated, Dimensions, Clipboard, Linking, Alert } from 'react-native';
 import { FontAwesome5 } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -19,6 +19,74 @@ const Emoji3D = {
   '😂': 'https://em-content.zobj.net/source/microsoft-teams/337/face-with-tears-of-joy_1f602.png',
   '😲': 'https://em-content.zobj.net/source/microsoft-teams/337/astonished-face_1f632.png',
   '😢': 'https://em-content.zobj.net/source/microsoft-teams/337/crying-face_1f622.png',
+};
+
+// 🔗 লিংক ডিটেক্ট করার Regex (বাংলা অক্ষর এবং স্পেসে এসে থামবে)
+const URL_REGEX = /((?:https?:\/\/|www\.)[^\s\u0980-\u09FF]+|(?:chat\.whatsapp\.com|wa\.me|m\.me|fb\.me|fb\.com|facebook\.com|m\.facebook\.com|web\.facebook\.com|messenger\.com|t\.me)\/[^\s\u0980-\u09FF]+)/gi;
+const TRAILING_PUNCTUATION = /[.,;:!?)\]}'"।]+$/;
+
+const openLink = async (rawUrl) => {
+  let url = rawUrl.trim();
+  if (!/^https?:\/\//i.test(url)) url = `https://${url}`;
+  try {
+    await Linking.openURL(url);
+  } catch (error) {
+    Alert.alert('লিংক খোলা যায়নি', 'এই লিংকটি খোলা সম্ভব হচ্ছে না।');
+  }
+};
+
+// 🔗 টেক্সটের ভেতরের লিংকগুলোকে ক্লিকযোগ্য করার কম্পোনেন্ট (Text এর ভেতরে ব্যবহার করতে হবে)
+const LinkText = ({ text }) => {
+  if (!text) return null;
+
+  const parts = [];
+  let lastIndex = 0;
+  let match;
+  const regex = new RegExp(URL_REGEX.source, 'gi');
+
+  while ((match = regex.exec(text)) !== null) {
+    let matchedUrl = match[0];
+    const trailingMatch = matchedUrl.match(TRAILING_PUNCTUATION);
+    let trailing = '';
+    if (trailingMatch) {
+      trailing = trailingMatch[0];
+      matchedUrl = matchedUrl.slice(0, matchedUrl.length - trailing.length);
+    }
+
+    if (match.index > lastIndex) {
+      parts.push({ type: 'text', value: text.slice(lastIndex, match.index) });
+    }
+    if (matchedUrl.length > 0) {
+      parts.push({ type: 'link', value: matchedUrl });
+    }
+    if (trailing.length > 0) {
+      parts.push({ type: 'text', value: trailing });
+    }
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push({ type: 'text', value: text.slice(lastIndex) });
+  }
+
+  return (
+    <>
+      {parts.map((part, index) =>
+        part.type === 'link' ? (
+          <Text
+            key={index}
+            className="text-[#1899D6] underline"
+            style={{ fontFamily: 'BanglaBold' }}
+            onPress={() => openLink(part.value)}
+          >
+            {part.value}
+          </Text>
+        ) : (
+          <Text key={index}>{part.value}</Text>
+        )
+      )}
+    </>
+  );
 };
 
 const ChatSkeleton = () => {
@@ -740,7 +808,7 @@ const handleSendCommentModal = async () => {
               </View>
               <View>
                 <Text className="text-[#3D382F] text-[17px] pt-1" style={{ fontFamily: 'BanglaBold' }}>স্টাডি কমিউনিটি</Text>
-                <Text className="text-[#827B6E] text-[12px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>লাইভ চ্যাট অন</Text>
+                <Text className="text-[#827B6E] text-[12px] pt-0.5" style={{ fontFamily: 'BanglaBold' }}>এনাউন্সমেন্ট</Text>
               </View>
             </View>
             <TouchableOpacity onPress={handleCloseSmoothly} className="p-2 bg-[#EAE4D4] rounded-full w-9 h-9 items-center justify-center">
@@ -844,7 +912,7 @@ const handleSendCommentModal = async () => {
                           </Text>
                         </View>
                       )}
-                      <Text className="text-[15px] text-[#4B4B4B] leading-[26px]" style={{ fontFamily: 'BanglaRegular' }}>{item.text}</Text>
+                      <Text className="text-[15px] text-[#4B4B4B] leading-[26px]" style={{ fontFamily: 'BanglaRegular' }}><LinkText text={item.text} /></Text>
                     </View>
 
                     {/* 🚀 Reaction Info Row (Facebook Style) */}
@@ -988,7 +1056,7 @@ const handleSendCommentModal = async () => {
                               <Text className="text-[12px] text-[#D47B00] mb-1" style={{ fontFamily: 'BanglaBold' }}>{msg.userName || 'ইউজার'}</Text>
                               <Text className="text-[14px] text-[#4B4B4B] leading-5" style={{ fontFamily: 'BanglaRegular' }}>
                                 {isReply && <Text className="text-[#1899D6]" style={{ fontFamily: 'BanglaBold' }}>{replyName} </Text>}
-                                {actualText}
+                               <LinkText text={actualText} />
                               </Text>
                             </View>
                           </TouchableOpacity>
